@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" font-family="-apple-system, 'Segoe UI', system-ui, sans-serif">
+  <style>
+    .bg { fill: #ffffff; }
+    .card { fill: #f6f7f9; stroke: #d6d9de; }
+    .title { fill: #17171c; font-weight: 600; font-size: 17px; }
+    .sub { fill: #6c6e78; font-size: 13px; }
+    .label { fill: #6c6e78; font-size: 12.5px; }
+    .line { stroke: #9aa0aa; stroke-width: 1.6; fill: none; }
+    .head { fill: #9aa0aa; }
+    .track { fill: #e6e8ec; }
+    .fill { fill: #007aff; }
+    .gap { fill: #f6f7f9; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #0d1117; }
+      .card { fill: #161b22; stroke: #30363d; }
+      .title { fill: #e6edf3; }
+      .sub, .label { fill: #8b949e; }
+      .line { stroke: #6e7681; }
+      .head { fill: #6e7681; }
+      .track { fill: #21262d; }
+      .fill { fill: #0a84ff; }
+      .gap { fill: #161b22; }
+    }
+  </style>
+  <rect class="bg" width="1200" height="420" rx="16"/>
+
+  <!-- 1. Browser -->
+  <rect class="card" x="32" y="60" width="250" height="150" rx="12"/>
+  <text class="title" x="56" y="98">Your browser</text>
+  <text class="sub" x="56" y="124">SwiftDL extension catches the</text>
+  <text class="sub" x="56" y="144">download, or finds the video</text>
+  <text class="sub" x="56" y="164">on the page</text>
+
+  <!-- arrow 1 -->
+  <path class="line" d="M282 135 H352"/>
+  <path class="head" d="M352 129 l10 6 -10 6z"/>
+  <text class="label" x="322" y="121" text-anchor="middle">link</text>
+  <text class="label" x="322" y="157" text-anchor="middle">+ cookies</text>
+
+  <!-- 2. App -->
+  <rect class="card" x="364" y="60" width="250" height="150" rx="12"/>
+  <text class="title" x="388" y="98">SwiftDL app</text>
+  <text class="sub" x="388" y="124">Asks where to save it, queues</text>
+  <text class="sub" x="388" y="144">it, and shows its own window</text>
+  <text class="sub" x="388" y="164">with live progress</text>
+
+  <!-- arrow 2 -->
+  <path class="line" d="M614 135 H684"/>
+  <path class="head" d="M684 129 l10 6 -10 6z"/>
+
+  <!-- 3. Engine -->
+  <rect class="card" x="696" y="60" width="472" height="150" rx="12"/>
+  <text class="title" x="720" y="98">Download engine</text>
+  <text class="sub" x="720" y="124">Checks the size and resume support, reserves the file,</text>
+  <text class="sub" x="720" y="144">then opens many connections, one per part of the file.</text>
+  <text class="sub" x="720" y="164">Progress is saved every second.</text>
+
+  <!-- connections fan-out to the file -->
+  <text class="label" x="32" y="262">Each connection writes its part straight into the final file, so there is no joining at the end.</text>
+  <g transform="translate(32 284)">
+    <rect class="track" width="1136" height="28" rx="6"/>
+    <!-- 8 parts, each partly filled -->
+    <rect class="fill" x="0"   width="96"  height="28" rx="6"/>
+    <rect class="fill" x="142" width="70"  height="28"/>
+    <rect class="fill" x="284" width="104" height="28"/>
+    <rect class="fill" x="426" width="58"  height="28"/>
+    <rect class="fill" x="568" width="88"  height="28"/>
+    <rect class="fill" x="710" width="112" height="28"/>
+    <rect class="fill" x="852" width="66"  height="28"/>
+    <rect class="fill" x="994" width="92"  height="28"/>
+    <!-- part boundaries -->
+    <rect class="gap" x="140" width="2" height="28"/>
+    <rect class="gap" x="282" width="2" height="28"/>
+    <rect class="gap" x="424" width="2" height="28"/>
+    <rect class="gap" x="566" width="2" height="28"/>
+    <rect class="gap" x="708" width="2" height="28"/>
+    <rect class="gap" x="850" width="2" height="28"/>
+    <rect class="gap" x="992" width="2" height="28"/>
+  </g>
+  <g class="label">
+    <text x="32" y="340">connection 1</text>
+    <text x="174" y="340">2</text>
+    <text x="316" y="340">3</text>
+    <text x="458" y="340">4</text>
+    <text x="600" y="340">5</text>
+    <text x="742" y="340">6</text>
+    <text x="884" y="340">7</text>
+    <text x="1026" y="340">8</text>
+  </g>
+  <text class="label" x="32" y="384">When a connection finishes, it takes half of the biggest part that's left, so every connection stays busy until the end.</text>
+</svg>

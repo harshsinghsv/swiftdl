@@ -60,3 +60,15 @@ Scopes: `engine`, `cli`, `app`, `ui`, `extension`, `release`.
 
 Open an issue with the bug report template. Include your OS, SwiftDL version,
 browser (for extension issues) and, if possible, a link that reproduces it.
+
+## For maintainers
+
+### Releasing
+
+1. Update the version in `Cargo.toml`, `app/src-tauri/tauri.conf.json` and `extension/manifest.json`, and move the **Unreleased** notes in `CHANGELOG.md` under the new version.
+2. Commit `chore(release): x.y.z` and tag it: `git tag -a vx.y.z -m "SwiftDL x.y.z"`.
+3. `git push --follow-tags`. The release workflow builds Windows, macOS and Linux installers plus the extension zip into a draft release, with notes from the changelog. Review it, then publish.
+
+### Publishing the extension
+
+`extension/manifest.json` has a `key` that pins the extension ID to `knmfjbmojepkdiflnckpfjimfmjfcbgh`, which the app trusts (`app/src-tauri/src/browser.rs`) and offers to installed browsers. For the first Chrome Web Store upload, include the private key as `key.pem` in the zip so the store keeps that ID. The key isn't in the repository, so keep it safe.

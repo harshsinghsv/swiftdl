@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 230" font-family="-apple-system, 'Segoe UI', system-ui, sans-serif">
+  <style>
+    .bg { fill: #ffffff; }
+    .text { fill: #17171c; font-size: 14px; font-weight: 600; }
+    .muted { fill: #6c6e78; font-size: 13px; }
+    .track { fill: #eceef1; }
+    .bar { fill: #007aff; }
+    .base { fill: #9aa0aa; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #0d1117; }
+      .text { fill: #e6edf3; }
+      .muted { fill: #8b949e; }
+      .track { fill: #21262d; }
+      .bar { fill: #0a84ff; }
+      .base { fill: #6e7681; }
+    }
+  </style>
+  <rect class="bg" width="900" height="230" rx="16"/>
+  <text class="muted" x="32" y="40">64 MiB file · server limits each connection to 2 MB/s (common for real servers)</text>
+
+  <text class="text" x="32" y="88">1 connection</text>
+  <rect class="track" x="190" y="72" width="540" height="22" rx="5"/>
+  <rect class="base" x="190" y="72" width="43" height="22" rx="5"/>
+  <text class="muted" x="746" y="88">2.0 MiB/s · 32.0 s</text>
+
+  <text class="text" x="32" y="136">8 connections</text>
+  <rect class="track" x="190" y="120" width="540" height="22" rx="5"/>
+  <rect class="bar" x="190" y="120" width="342" height="22" rx="5"/>
+  <text class="muted" x="746" y="136">15.9 MiB/s · 4.0 s</text>
+
+  <text class="text" x="32" y="184">16 connections</text>
+  <rect class="track" x="190" y="168" width="540" height="22" rx="5"/>
+  <rect class="bar" x="190" y="168" width="540" height="22" rx="5"/>
+  <text class="muted" x="746" y="184">25.1 MiB/s · 2.6 s</text>
+</svg>
