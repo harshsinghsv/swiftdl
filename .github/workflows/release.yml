@@ -1,17 +1,50 @@
 # Push a tag like v0.2.0 to build installers for every platform and attach
-# them, plus the browser extension, to a draft GitHub release.
+# them, plus the browser extension, to a draft GitHub release whose notes
+# come from CHANGELOG.md. Review the draft on GitHub, then publish it.
 name: Release
 
 on:
   push:
     tags: ["v*"]
-  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
+  # One release for all builds, so parallel jobs don't race to create it.
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      id: ${{ steps.release.outputs.id }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Release notes from CHANGELOG.md
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v head="## [$version]" '
+            index($0, head) == 1 { on = 1; next }
+            on && index($0, "## [") == 1 { exit }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          cat >> notes.md <<'EOF'
+
+          ### Install
+          - **Windows:** `SwiftDL_*_x64-setup.exe` (no admin rights needed)
+          - **macOS:** `SwiftDL_*_universal.dmg`
+          - **Linux:** `.AppImage`, `.deb` or `.rpm`
+          - **Browser extension:** after installing, Chrome, Edge and Brave offer it on their next start. To install it by hand, unzip `swiftdl-extension.zip`, open `chrome://extensions`, turn on Developer mode and click *Load unpacked*.
+          EOF
+      - name: Create draft release
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "SwiftDL $GITHUB_REF_NAME" --notes-file notes.md
+          id=$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq ".[] | select(.tag_name == \"$GITHUB_REF_NAME\") | .id" | head -n1)
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
   app:
+    needs: create-release
     strategy:
       fail-fast: false
       matrix:
@@ -48,26 +81,17 @@ jobs:
         with:
           projectPath: app/src-tauri
           tauriScript: npx --yes @tauri-apps/cli@2
-          tagName: ${{ github.ref_name }}
-          releaseName: SwiftDL ${{ github.ref_name }}
-          releaseBody: |
-            **Windows:** download the `-setup.exe` and run it (no admin rights needed).
-            **macOS:** download the `.dmg`. **Linux:** `.AppImage`, `.deb` or `.rpm`.
-
-            **Browser extension:** download `swiftdl-extension.zip`, unzip it, open `chrome://extensions`,
-            turn on Developer mode, click *Load unpacked* and choose the unzipped folder.
-          releaseDraft: true
+          releaseId: ${{ needs.create-release.outputs.id }}
           args: ${{ matrix.args }}
 
   extension:
+    needs: create-release
     runs-on: ubuntu-latest
-    needs: app
     steps:
       - uses: actions/checkout@v4
-      - name: Zip the extension
-        run: cd extension && zip -r ../swiftdl-extension.zip .
-      - uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          draft: true
-          files: swiftdl-extension.zip
+      - name: Zip and attach the extension
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          (cd extension && zip -r ../swiftdl-extension.zip .)
+          gh release upload "$GITHUB_REF_NAME" swiftdl-extension.zip --clobber
