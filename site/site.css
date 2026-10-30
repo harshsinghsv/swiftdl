@@ -148,11 +148,10 @@ pre.cmd { margin: 0; padding: 12px 14px; border-radius: 9px; background: var(--b
 .os-linux { --src: url(assets/os/linux.svg); }
 
 .hero { position: relative; isolation: isolate; }
-.hero::before { content: ""; position: absolute; inset: -80px 0 auto; height: 720px; z-index: -1; pointer-events: none;
-  background: radial-gradient(ellipse 60% 50% at 50% 0%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%); }
+/* No glow behind the hero: the page stays one flat colour, like the app. */
 .title-grad { background: linear-gradient(180deg, var(--text) 30%, color-mix(in srgb, var(--text) 55%, var(--bg))); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
-.frame { position: relative; border-radius: 16px; padding: 8px; background: color-mix(in srgb, var(--panel) 70%, transparent); box-shadow: inset 0 0 0 1px var(--border), 0 40px 120px -40px color-mix(in srgb, var(--accent) 25%, transparent); }
+.frame { position: relative; border-radius: 16px; padding: 8px; background: color-mix(in srgb, var(--panel) 70%, transparent); box-shadow: inset 0 0 0 1px var(--border); }
 .frame img { display: block; width: 100%; height: auto; border-radius: 10px; box-shadow: 0 0 0 1px var(--border); }
 .fade-bottom { -webkit-mask-image: linear-gradient(180deg, #000 60%, transparent); mask-image: linear-gradient(180deg, #000 60%, transparent); }
 
