@@ -1,0 +1,73 @@
+# Push a tag like v0.2.0 to build installers for every platform and attach
+# them, plus the browser extension, to a draft GitHub release.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  app:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            args: ""
+          - platform: macos-latest
+            args: "--target universal-apple-darwin"
+          - platform: ubuntu-22.04
+            args: ""
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Linux build dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: app/src-tauri
+          tauriScript: npx --yes @tauri-apps/cli@2
+          tagName: ${{ github.ref_name }}
+          releaseName: SwiftDL ${{ github.ref_name }}
+          releaseBody: |
+            **Windows:** download the `-setup.exe` and run it (no admin rights needed).
+            **macOS:** download the `.dmg`. **Linux:** `.AppImage`, `.deb` or `.rpm`.
+
+            **Browser extension:** download `swiftdl-extension.zip`, unzip it, open `chrome://extensions`,
+            turn on Developer mode, click *Load unpacked* and choose the unzipped folder.
+          releaseDraft: true
+          args: ${{ matrix.args }}
+
+  extension:
+    runs-on: ubuntu-latest
+    needs: app
+    steps:
+      - uses: actions/checkout@v4
+      - name: Zip the extension
+        run: cd extension && zip -r ../swiftdl-extension.zip .
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          draft: true
+          files: swiftdl-extension.zip

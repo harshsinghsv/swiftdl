@@ -1,0 +1,16 @@
+[package]
+name = "swiftdl-engine"
+description = "Segmented, resumable, multi-connection download engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow = "1.0.104"
+futures-util = "0.3.34"
+percent-encoding = "2.3.2"
+reqwest = { version = "0.13.5", default-features = false, features = ["native-tls", "stream"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+tokio = { version = "1.54.1", features = ["rt", "macros", "time", "sync"] }
+tokio-util = "0.7.20"

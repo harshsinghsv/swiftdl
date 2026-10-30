@@ -26,6 +26,16 @@ def make_handler(data: bytes, rate: int):
             pass
 
         def do_GET(self):
+            if self.path == "/":
+                # A page with a link, for testing browser-extension capture.
+                page = b'<!doctype html><title>SwiftDL test</title><h1>SwiftDL test page</h1>' \
+                       b'<p><a id="dl" href="/test.bin" style="font-size:40px">Download test.bin</a></p>'
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html")
+                self.send_header("Content-Length", str(len(page)))
+                self.end_headers()
+                self.wfile.write(page)
+                return
             if self.path != "/test.bin":
                 self.send_error(404)
                 return
@@ -39,6 +49,8 @@ def make_handler(data: bytes, rate: int):
                 self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
             else:
                 self.send_response(200)
+            self.send_header("Content-Type", "application/octet-stream")
+            self.send_header("Content-Disposition", 'attachment; filename="test.bin"')
             self.send_header("Accept-Ranges", "bytes")
             self.send_header("Content-Length", str(end - start + 1))
             self.send_header("ETag", '"test-v1"')

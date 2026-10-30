@@ -1,45 +1,52 @@
-# swiftdl
+<p align="center"><img src="app/icon.svg" width="88" alt=""></p>
+<h1 align="center">SwiftDL</h1>
+<p align="center">A fast, resumable download manager with a browser extension.<br>Many connections per file, instant resume, free and open source.</p>
 
-A fast, resumable, multi-connection download manager written in Rust.
+## Features
 
-## Usage
+- **Faster downloads.** Each file is split across up to 32 connections. When one connection finishes, it takes half of the largest remaining part ("dynamic segmentation"), so every connection stays busy until the end.
+- **Resume anything.** Pause, close the app, lose Wi-Fi or crash: progress is saved every second and picks up where it stopped.
+- **Browser integration.** The extension catches downloads in Chrome, Edge, Brave and Vivaldi and sends them to SwiftDL with your cookies, so downloads that need a login still work. You can also right-click a link and choose *Download with SwiftDL*.
+- **Live connection map.** See each connection filling its own part of the file in real time.
+- **Queue and speed limit.** Choose how many downloads run at once and cap total bandwidth.
+- **Tidy by default.** Files are sorted into Video, Music, Programs and similar folders.
+- **No join step.** The file is pre-allocated and each connection writes straight into it, so there are no temp chunks and no waiting at 100%.
 
-```bash
-swiftdl https://example.com/big.iso                  # 8 connections, saves to ./big.iso
-swiftdl https://example.com/big.iso -c 16 -o D:\ISOs # 16 connections, into a folder
-swiftdl URL -H "Cookie: session=abc" -H "Referer: https://example.com"
-swiftdl URL --restart                                # ignore saved progress
-```
+## Install
 
-Press **Ctrl+C** to pause. Run the same command again to resume. A crash or
-network drop is also resumable: progress is saved every second.
+Download the latest release from the [Releases page](../../releases):
+
+| Platform | File |
+|---|---|
+| Windows | `SwiftDL_x.y.z_x64-setup.exe` (no admin rights needed) |
+| macOS | `SwiftDL_x.y.z_universal.dmg` |
+| Linux | `.AppImage`, `.deb` or `.rpm` |
+
+**Browser extension:** download `swiftdl-extension.zip`, unzip it, open `chrome://extensions` (or `edge://extensions`), turn on **Developer mode**, click **Load unpacked** and pick the folder. Open SwiftDL once so the extension can find it.
 
 ## How it works
 
-1. **Probe:** requests `bytes=0-0`. A `206` reply proves range support and
-   gives the total size; a `200` falls back to a single stream.
-2. **Pre-allocate:** `file.part` is created at full size, so each connection
-   writes straight to its final offset. No temp chunks, no join step.
-3. **Segment:** the file is split into N ranges, one HTTP/1.1 connection each
-   (HTTP/2 is disabled on purpose: it would multiplex all ranges over one
-   TCP connection and one congestion window).
-4. **Dynamic segmentation:** when a connection finishes, it takes the back half
-   of the largest unfinished range. All connections stay busy until the end.
-5. **Resume:** `file.swiftdl` (JSON) lists the missing ranges. It is matched
-   against URL + size + ETag/Last-Modified before reuse.
-6. **Retries:** each segment reconnects from where it stopped, with backoff.
+```
+Browser extension ──native messaging──▶ SwiftDL (same .exe, host mode)
+                                              │ single-instance hand-off
+                                              ▼
+        UI (HTML/CSS/JS) ◀──events── Download manager ──▶ Engine (Rust, tokio)
+                                      queue, settings,        probe → pre-allocate →
+                                      persistence             N connections → resume file
+```
 
-| File | Purpose |
+| Path | What it is |
 |---|---|
-| `src/probe.rs` | Size, range support, file name detection |
-| `src/segment.rs` | Byte-range ownership, positioned writes, splitting |
-| `src/engine.rs` | Workers, work stealing, saving, progress |
-| `src/state.rs` | Resume file |
-| `tools/throttle_server.py` | Local per-connection-throttled server for benchmarks |
+| `crates/engine` | The download engine: probing, segmentation, work stealing, resume, speed limiter |
+| `crates/cli` | `swiftdl` command-line tool built on the engine |
+| `app/src-tauri` | Desktop app (Tauri 2): download manager, native messaging host, browser registration |
+| `app/ui` | The interface. Plain HTML/CSS/JS with no build step |
+| `extension` | Chromium extension (Manifest V3) |
+| `tools` | Throttled test server and a native-messaging test client |
 
-## Benchmark
+### Benchmark
 
-Local server limited to 2 MB/s **per connection** (like many real servers), 64 MiB file:
+Local server limited to 2 MB/s **per connection**, as many real servers are. 64 MiB file:
 
 | Connections | Time | Speed |
 |---|---|---|
@@ -47,24 +54,26 @@ Local server limited to 2 MB/s **per connection** (like many real servers), 64 M
 | 8 | 4.0 s | 15.9 MiB/s |
 | 16 | 2.6 s | 25.1 MiB/s |
 
-```bash
-python tools/throttle_server.py --size-mb 64 --rate-mb 2
-swiftdl http://127.0.0.1:8765/test.bin -c 8
-```
-
-## Building on Windows
-
-Uses the `x86_64-pc-windows-gnu` toolchain with MinGW-w64 (WinLibs) on PATH:
+## Develop
 
 ```bash
-cargo build --release
+cargo tauri dev            # run the desktop app (needs: cargo install tauri-cli)
+cargo test --workspace     # engine tests
+cargo tauri build          # build installers
 ```
 
-## Roadmap
+**Working on the UI only?** Serve `app/ui` with any static server (for example `python -m http.server -d app/ui`) and open it in a browser. `mock.js` simulates downloads, so no Rust build is needed.
 
-- [ ] Adaptive connection count (add connections while throughput rises)
-- [ ] SHA-256 verification (`--sha256`)
-- [ ] Download queue + SQLite state, speed limiter, scheduler
-- [ ] Local API + Tauri desktop UI
-- [ ] Browser extension (MV3) + native messaging host
-- [ ] Multi-mirror downloads, HLS/DASH streams
+**Testing:** `python tools/throttle_server.py` serves a test file (and a page with a download link) at `http://127.0.0.1:8765` with per-connection throttling. `python tools/send_native_message.py <app.exe> ping` talks to the app the way the extension does.
+
+### Windows toolchain notes
+
+The release workflow builds with MSVC on GitHub's runners. Locally you can use either MSVC (Visual Studio Build Tools) or the `x86_64-pc-windows-gnu` toolchain with MinGW-w64 on `PATH`.
+
+## Publishing the extension
+
+`extension/manifest.json` contains a `key` that pins the extension ID to `knmfjbmojepkdiflnckpfjimfmjfcbgh`. The app only trusts IDs listed in `app/src-tauri/src/browser.rs`. When you publish to the Chrome Web Store, add the store's ID there too.
+
+## License
+
+MIT

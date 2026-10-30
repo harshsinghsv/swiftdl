@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>SwiftDL</title>
+  <style>
+    :root { --bg: #fff; --text: #1c2230; --muted: #6b7385; --border: #e1e4ea; --accent: #2f6fed; --ok: #1f9d55; --err: #d23f3f; color-scheme: light; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #1a1e26; --text: #e6e9ef; --muted: #8a93a6; --border: #2a303b; --accent: #4f8bff; --ok: #3ccf7f; --err: #ff6b6b; color-scheme: dark; }
+    }
+    body { margin: 0; width: 300px; font: 13px/1.45 "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+    header { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+    header img { width: 28px; height: 28px; }
+    header b { font-size: 15px; }
+    main { padding: 12px 16px 16px; }
+    .status { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
+    .dot.ok { background: var(--ok); }
+    .dot.err { background: var(--err); }
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid var(--border); }
+    .row span small { display: block; color: var(--muted); font-size: 11.5px; }
+    input[type=number] { width: 70px; padding: 4px 6px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: inherit; font: inherit; }
+    .switch { position: relative; width: 36px; height: 20px; flex: none; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .switch i { position: absolute; inset: 0; border-radius: 10px; background: var(--border); cursor: pointer; transition: .15s; }
+    .switch i::after { content: ""; position: absolute; left: 3px; top: 3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: .15s; }
+    .switch input:checked + i { background: var(--accent); }
+    .switch input:checked + i::after { transform: translateX(16px); }
+    .help { color: var(--muted); font-size: 12px; margin: 10px 0 0; }
+    a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="icons/64.png" alt="">
+    <b>SwiftDL</b>
+  </header>
+  <main>
+    <div class="status"><span class="dot" id="dot"></span><span id="status">Checking for the SwiftDL app…</span></div>
+    <label class="row">
+      <span>Catch browser downloads<small>Send downloads to SwiftDL automatically</small></span>
+      <span class="switch"><input type="checkbox" id="enabled"><i></i></span>
+    </label>
+    <label class="row">
+      <span>Skip files smaller than<small>KB · 0 catches everything</small></span>
+      <input type="number" id="minSize" min="0" step="100">
+    </label>
+    <p class="help" id="help" hidden>
+      Install the SwiftDL app and open it once, then reopen this popup.
+      <a href="https://github.com/OWNER/swiftdl/releases" target="_blank">Download SwiftDL</a>
+    </p>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SwiftDL</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="side-top" data-tauri-drag-region>
+        <div class="brand" data-tauri-drag-region><img src="logo.svg" alt="" width="20" height="20"><span>SwiftDL</span></div>
+        <button class="sq-btn" id="btn-palette" title="Search and commands (Ctrl K)"><i data-icon="search"></i></button>
+        <button class="sq-btn bordered" id="btn-add" title="New download (Ctrl N)"><i data-icon="compose"></i></button>
+      </div>
+      <nav class="nav" id="nav"></nav>
+      <div class="side-bottom">
+        <div class="net" id="net">
+          <div class="net-head"><span>Network</span><button class="limit" id="limit-btn" title="Speed limit"></button></div>
+          <div class="net-speed"><b id="net-speed">0</b><span id="net-unit">B/s</span></div>
+          <canvas id="net-graph"></canvas>
+          <div class="net-foot" id="net-foot">Idle</div>
+        </div>
+        <button class="nav-item" id="btn-settings"><span class="ni-icon"><i data-icon="settings"></i></span><span class="ni-label">Settings</span></button>
+      </div>
+    </aside>
+
+    <!-- Main card -->
+    <main class="main">
+      <header class="header" data-tauri-drag-region>
+        <div class="h-title" data-tauri-drag-region><span class="h-icon" id="h-icon"></span><span id="h-name">All downloads</span><span class="h-count" id="h-count"></span></div>
+        <div class="h-actions">
+          <button class="ghost-btn" id="btn-pause-all"><i data-icon="pause"></i>Pause all</button>
+          <button class="ghost-btn" id="btn-resume-all"><i data-icon="play"></i>Resume all</button>
+          <button class="search-btn" id="btn-search"><i data-icon="search"></i><span>Search</span><kbd>Ctrl K</kbd></button>
+          <span class="win-ctrls" id="win-ctrls">
+            <button id="w-min" title="Minimize"><svg viewBox="0 0 10 10"><path d="M1 5h8" /></svg></button>
+            <button id="w-max" title="Maximize"><svg viewBox="0 0 10 10"><rect x="1.5" y="1.5" width="7" height="7" rx="1.2" /></svg></button>
+            <button id="w-close" class="close" title="Close"><svg viewBox="0 0 10 10"><path d="M2 2l6 6M8 2 2 8" /></svg></button>
+          </span>
+        </div>
+      </header>
+      <div class="body">
+        <div class="list" id="list">
+          <div id="rows"></div>
+          <div class="empty" id="empty" hidden>
+            <div class="empty-icon"><i data-icon="download"></i></div>
+            <h2 id="empty-title">No downloads yet</h2>
+            <p id="empty-text">Paste a link, drop one onto this window, or start a download in your browser.</p>
+            <div class="empty-actions" id="empty-actions">
+              <button class="btn primary" id="empty-add"><i data-icon="plus"></i>New download <kbd>Ctrl N</kbd></button>
+              <button class="btn" id="empty-ext"><i data-icon="globe"></i>Get the browser extension</button>
+            </div>
+          </div>
+        </div>
+        <aside class="inspector" id="inspector" hidden></aside>
+      </div>
+    </main>
+  </div>
+
+  <div class="toasts" id="toasts"></div>
+  <div class="drop" id="drop" hidden><div class="drop-card"><i data-icon="download"></i><b>Drop to download</b><span>SwiftDL will fetch the file's details first</span></div></div>
+
+  <!-- Command palette -->
+  <dialog id="dlg-palette" class="modal palette">
+    <div class="pal-input"><i data-icon="search"></i><input id="pal-q" placeholder="Search downloads or type a command…" autocomplete="off" spellcheck="false"><kbd>Esc</kbd></div>
+    <div class="pal-list" id="pal-list"></div>
+    <div class="pal-foot"><span><kbd>↑</kbd><kbd>↓</kbd> navigate</span><span><kbd>Enter</kbd> select</span><span><kbd>Esc</kbd> close</span></div>
+  </dialog>
+
+  <!-- New download -->
+  <dialog id="dlg-add" class="modal composer">
+    <form method="dialog" id="form-add">
+      <div class="comp-top">
+        <span class="crumb"><img src="logo.svg" alt="" width="14" height="14">SwiftDL</span><i data-icon="chevron" class="crumb-sep"></i><span class="crumb-cur">New download</span>
+        <span class="grow"></span>
+        <button type="button" class="sq-btn" id="add-x" title="Close (Esc)"><i data-icon="x"></i></button>
+      </div>
+      <input id="add-url" class="comp-url" type="url" placeholder="Paste a link…" required autocomplete="off" spellcheck="false">
+      <div class="comp-file" id="add-file" hidden>
+        <div id="add-tile"></div>
+        <div class="cf-body">
+          <input id="add-filename" class="cf-name" spellcheck="false" aria-label="File name">
+          <div class="cf-sub" id="add-sub"></div>
+        </div>
+      </div>
+      <div class="comp-state" id="add-state"></div>
+      <div class="chips" id="add-chips"></div>
+      <div class="comp-foot">
+        <button type="button" class="ghost-btn" id="add-paste"><i data-icon="clipboard"></i>Paste from clipboard</button>
+        <span class="grow"></span>
+        <button type="button" class="btn" id="add-later">Download later</button>
+        <button type="submit" class="btn primary" id="add-start">Download <kbd>Ctrl ↵</kbd></button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Settings -->
+  <dialog id="dlg-settings" class="modal settings">
+    <form method="dialog" id="form-settings">
+      <nav class="set-nav" id="set-nav">
+        <div class="set-nav-title">Settings</div>
+        <button type="button" data-tab="general" class="on"><i data-icon="sliders"></i>General</button>
+        <button type="button" data-tab="speed"><i data-icon="gauge"></i>Speed</button>
+        <button type="button" data-tab="browser"><i data-icon="globe"></i>Browser</button>
+        <button type="button" data-tab="about"><i data-icon="info"></i>About</button>
+      </nav>
+      <div class="set-main">
+        <section data-panel="general">
+          <h2>General</h2>
+          <div class="set-group">
+            <div class="set-row"><div class="sr-text"><b>Download folder</b><span id="set-dir"></span></div><button type="button" class="btn sm" id="set-browse">Change…</button></div>
+            <label class="set-row"><div class="sr-text"><b>Sort by file type</b><span>Save videos, music, programs and archives into their own folders</span></div><span class="switch"><input type="checkbox" id="set-sort"><i></i></span></label>
+          </div>
+          <div class="set-group">
+            <label class="set-row"><div class="sr-text"><b>Confirm browser downloads</b><span>Show New download before a download from the browser starts</span></div><span class="switch"><input type="checkbox" id="set-ask"><i></i></span></label>
+            <label class="set-row"><div class="sr-text"><b>Notifications</b><span>Notify me when a download finishes</span></div><span class="switch"><input type="checkbox" id="set-notify"><i></i></span></label>
+          </div>
+        </section>
+        <section data-panel="speed" hidden>
+          <h2>Speed</h2>
+          <div class="set-group">
+            <div class="set-row"><div class="sr-text"><b>Connections per download</b><span>More connections are faster on servers that limit each one</span></div><div class="stepper" data-for="set-conns"><button type="button" data-d="-1">−</button><input id="set-conns" type="number" min="1" max="32"><button type="button" data-d="1">+</button></div></div>
+            <div class="set-row"><div class="sr-text"><b>Simultaneous downloads</b><span>Others wait in the queue</span></div><div class="stepper" data-for="set-concurrent"><button type="button" data-d="-1">−</button><input id="set-concurrent" type="number" min="1" max="10"><button type="button" data-d="1">+</button></div></div>
+          </div>
+          <div class="set-group">
+            <div class="set-row col"><div class="sr-text"><b>Speed limit</b><span>Shared across all downloads</span></div>
+              <div class="seg" id="set-limits"></div>
+              <label class="custom">Custom <input id="set-limit-custom" type="number" min="0" step="64" placeholder="—"> KB/s</label>
+            </div>
+          </div>
+        </section>
+        <section data-panel="browser" hidden>
+          <h2>Browser extension</h2>
+          <p class="lead">Catch downloads in Chrome, Edge, Brave and Vivaldi and hand them to SwiftDL, with your cookies, so downloads that need a login keep working.</p>
+          <div class="set-group steps">
+            <div class="set-row"><span class="step">1</span><div class="sr-text"><b>Open the extensions page</b><span><code>chrome://extensions</code> or <code>edge://extensions</code></span></div></div>
+            <div class="set-row"><span class="step">2</span><div class="sr-text"><b>Turn on Developer mode</b><span>Top-right corner of the page</span></div></div>
+            <div class="set-row"><span class="step">3</span><div class="sr-text"><b>Load unpacked</b><span>Choose the SwiftDL extension folder</span></div><button type="button" class="btn sm" id="set-ext-folder">Open folder</button></div>
+          </div>
+        </section>
+        <section data-panel="about" hidden>
+          <div class="about"><img src="logo.svg" alt="" width="64" height="64"><h2>SwiftDL</h2><p id="version"></p><p class="muted">Fast, resumable downloads with many connections at once.<br>Free and open source.</p></div>
+        </section>
+        <div class="set-foot">
+          <button type="button" class="btn" id="set-cancel">Cancel</button>
+          <button type="submit" class="btn primary">Save</button>
+        </div>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Confirm -->
+  <dialog id="dlg-delete" class="modal confirm">
+    <form method="dialog">
+      <h3 id="del-title">Remove download?</h3>
+      <p id="del-text"></p>
+      <label class="check" id="del-files-row"><input type="checkbox" id="del-files"><span>Also delete the file from disk</span></label>
+      <div class="confirm-foot">
+        <button value="cancel" class="btn">Cancel</button>
+        <button value="ok" class="btn danger" id="del-ok">Remove</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="menu" class="menu" hidden></div>
+
+  <script src="mock.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

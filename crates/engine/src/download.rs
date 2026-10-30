@@ -2,19 +2,20 @@
 //! straight to its final offset, and keeps every connection busy until the
 //! very end by splitting the largest unfinished segment whenever one frees up.
 
+use crate::limiter::SpeedLimiter;
 use crate::probe::{RemoteFile, probe};
 use crate::segment::{Segment, initial_segments};
 use crate::state::SavedState;
 use anyhow::{Context, Result, bail};
 use futures_util::StreamExt;
-use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::{Client, StatusCode, header};
 use std::fs::{File, OpenOptions};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::task::JoinSet;
+use tokio_util::sync::CancellationToken;
 
 /// Never split a segment into halves smaller than this; a new connection's
 /// handshake costs more than it saves below ~512 KiB.
@@ -22,16 +23,36 @@ const MIN_SPLIT_HALF: u64 = 512 * 1024;
 const MAX_RETRIES: u32 = 8;
 const SAVE_EVERY: Duration = Duration::from_secs(1);
 
-pub struct Options {
+pub struct Request {
     pub url: String,
-    pub output: Option<PathBuf>,
+    /// Final file path. `<dest>.part` and `<dest>.swiftdl` live beside it
+    /// until the download completes.
+    pub dest: PathBuf,
     pub connections: usize,
     pub headers: header::HeaderMap,
+    /// Ignore any saved progress and start over.
     pub restart: bool,
 }
 
+/// Live numbers a front end can poll from any thread.
+#[derive(Default)]
+pub struct Progress {
+    /// Total size in bytes; 0 while unknown.
+    pub total: AtomicU64,
+    pub downloaded: AtomicU64,
+    pub connections: AtomicUsize,
+    /// False when the server cannot resume (no range support).
+    pub resumable: std::sync::atomic::AtomicBool,
+    /// Byte ranges `[pos, end)` still missing; each one's `pos` is where a
+    /// connection is writing. Lets a UI draw the connection map.
+    pub remaining: Mutex<Vec<(u64, u64)>>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
 pub enum Outcome {
-    Completed(PathBuf),
+    Completed,
+    /// Cancelled through the token. Progress is saved if the server
+    /// supports resuming; otherwise the next run starts over.
     Paused,
 }
 
@@ -41,7 +62,8 @@ struct Shared {
     headers: header::HeaderMap,
     file: File,
     table: Mutex<Table>,
-    active: AtomicUsize,
+    progress: Arc<Progress>,
+    limiter: Arc<SpeedLimiter>,
 }
 
 struct Table {
@@ -92,72 +114,88 @@ pub fn build_client() -> Result<Client> {
         .build()?)
 }
 
-pub async fn download(opts: Options) -> Result<Outcome> {
-    let client = build_client()?;
-    let remote = probe(&client, &opts.url, &opts.headers).await?;
-    let out = output_path(&opts, &remote);
-    let part = append_ext(&out, "part");
-    let state_path = append_ext(&out, "swiftdl");
-
-    match (remote.resumable, remote.size) {
-        (true, Some(size)) => {
-            download_segmented(client, &opts, &remote, size, &out, &part, &state_path).await
-        }
-        _ => {
-            eprintln!("Server does not support ranges: using one connection, no resume.");
-            download_single(&client, &opts, &remote, &part).await?;
-            finish(&part, &out)?;
-            Ok(Outcome::Completed(out))
-        }
+/// Downloads `req` until it completes, fails, or `cancel` fires.
+pub async fn run(
+    client: &Client,
+    req: &Request,
+    progress: Arc<Progress>,
+    cancel: CancellationToken,
+    limiter: Arc<SpeedLimiter>,
+) -> Result<Outcome> {
+    let remote = tokio::select! {
+        r = probe(client, &req.url, &req.headers) => r?,
+        _ = cancel.cancelled() => return Ok(Outcome::Paused),
+    };
+    if let Some(dir) = req.dest.parent().filter(|d| !d.as_os_str().is_empty()) {
+        std::fs::create_dir_all(dir).with_context(|| format!("could not create {}", dir.display()))?;
     }
+    progress.total.store(remote.size.unwrap_or(0), Ordering::Relaxed);
+    progress.resumable.store(remote.resumable, Ordering::Relaxed);
+
+    let part = part_path(&req.dest);
+    let state_path = append_ext(&req.dest, "swiftdl");
+    let outcome = match (remote.resumable, remote.size) {
+        (true, Some(size)) => {
+            download_segmented(client.clone(), req, &remote, size, &part, &state_path, progress, cancel, limiter)
+                .await?
+        }
+        _ => download_single(client, req, &remote, &part, progress, cancel, limiter).await?,
+    };
+    if outcome == Outcome::Completed {
+        let _ = std::fs::remove_file(&state_path);
+        if req.dest.exists() {
+            std::fs::remove_file(&req.dest)?;
+        }
+        std::fs::rename(&part, &req.dest).with_context(|| format!("could not rename to {}", req.dest.display()))?;
+    }
+    Ok(outcome)
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn download_segmented(
     client: Client,
-    opts: &Options,
+    req: &Request,
     remote: &RemoteFile,
     size: u64,
-    out: &Path,
     part: &Path,
     state_path: &Path,
+    progress: Arc<Progress>,
+    cancel: CancellationToken,
+    limiter: Arc<SpeedLimiter>,
 ) -> Result<Outcome> {
-    let saved = (!opts.restart && part.exists())
+    let saved = (!req.restart && part.exists())
         .then(|| SavedState::load(state_path))
         .flatten()
-        .filter(|s| s.matches(&opts.url, size, &remote.etag, &remote.last_modified));
+        .filter(|s| s.matches(&req.url, size, &remote.etag, &remote.last_modified));
 
     let (file, ranges) = match saved {
-        Some(s) => {
-            let file = OpenOptions::new().write(true).open(part)?;
-            (file, s.segments)
-        }
+        Some(s) => (OpenOptions::new().write(true).open(part)?, s.segments),
         None => {
             let file = OpenOptions::new().create(true).write(true).truncate(true).open(part)?;
             // Reserve the full size up front so segments can write anywhere
             // and there is no join step at the end.
             file.set_len(size).context("not enough disk space?")?;
-            (file, initial_segments(size, opts.connections))
+            (file, initial_segments(size, req.connections))
         }
     };
 
     let shared = Arc::new(Shared {
         client,
         url: remote.url.clone(),
-        headers: opts.headers.clone(),
+        headers: req.headers.clone(),
         file,
         table: Mutex::new(Table {
             segments: ranges.into_iter().map(|(p, e)| Arc::new(Segment::new(p, e))).collect(),
             next: 0,
         }),
-        active: AtomicUsize::new(0),
+        progress: progress.clone(),
+        limiter,
     });
-
-    let already = size - shared.remaining_bytes();
-    print_header(remote, out, size, opts.connections, already);
+    progress.downloaded.store(size - shared.remaining_bytes(), Ordering::Relaxed);
 
     let save = {
         let meta = SavedState {
-            url: opts.url.clone(),
+            url: req.url.clone(),
             size,
             etag: remote.etag.clone(),
             last_modified: remote.last_modified.clone(),
@@ -168,33 +206,24 @@ async fn download_segmented(
         move || SavedState { segments: shared.remaining_ranges(), ..meta.clone() }.save(&state_path)
     };
 
-    let saver = {
+    let background = {
         let save = save.clone();
-        tokio::spawn(async move {
-            let mut tick = tokio::time::interval(SAVE_EVERY);
-            loop {
-                tick.tick().await;
-                let _ = save();
-            }
-        })
-    };
-
-    let bar = progress_bar(size, already);
-    let ticker = {
         let shared = shared.clone();
-        let bar = bar.clone();
         tokio::spawn(async move {
-            let mut tick = tokio::time::interval(Duration::from_millis(200));
-            loop {
+            let mut tick = tokio::time::interval(Duration::from_millis(250));
+            for n in 0u64.. {
                 tick.tick().await;
-                bar.set_position(size - shared.remaining_bytes());
-                bar.set_message(format!("{} conns", shared.active.load(Ordering::Relaxed)));
+                shared.progress.downloaded.store(size - shared.remaining_bytes(), Ordering::Relaxed);
+                *shared.progress.remaining.lock().unwrap() = shared.remaining_ranges();
+                if n % (SAVE_EVERY.as_millis() as u64 / 250) == 0 {
+                    let _ = save();
+                }
             }
         })
     };
 
     let mut workers = JoinSet::new();
-    for _ in 0..opts.connections.max(1) {
+    for _ in 0..req.connections.max(1) {
         workers.spawn(worker(shared.clone()));
     }
 
@@ -205,35 +234,29 @@ async fn download_segmented(
             }
             Ok(true)
         } => r,
-        _ = tokio::signal::ctrl_c() => Ok(false),
+        _ = cancel.cancelled() => Ok(false),
     };
 
     workers.shutdown().await;
-    saver.abort();
-    ticker.abort();
-    let _ = saver.await;
-    let _ = ticker.await;
+    background.abort();
+    let _ = background.await;
+    progress.connections.store(0, Ordering::Relaxed);
+    progress.downloaded.store(size - shared.remaining_bytes(), Ordering::Relaxed);
+    *progress.remaining.lock().unwrap() = shared.remaining_ranges();
 
     match result {
         Ok(true) if shared.remaining_bytes() == 0 => {
-            bar.set_position(size);
-            bar.finish_with_message("done");
             shared.file.sync_all()?;
-            drop(shared);
-            let _ = std::fs::remove_file(state_path);
-            finish(part, out)?;
-            Ok(Outcome::Completed(out.to_path_buf()))
+            Ok(Outcome::Completed)
         }
         Ok(true) => bail!("workers finished but data is missing (this is a bug)"),
         Ok(false) => {
             save()?;
-            bar.abandon_with_message("paused");
             Ok(Outcome::Paused)
         }
         Err(e) => {
             save()?;
-            bar.abandon_with_message("failed");
-            Err(e.context("download stopped; progress saved, run the same command to resume"))
+            Err(e)
         }
     }
 }
@@ -242,9 +265,9 @@ async fn download_segmented(
 /// steal half of someone else's), until there is nothing worth taking.
 async fn worker(shared: Arc<Shared>) -> Result<()> {
     while let Some(seg) = shared.claim() {
-        shared.active.fetch_add(1, Ordering::Relaxed);
+        shared.progress.connections.fetch_add(1, Ordering::Relaxed);
         let result = download_segment(&shared, &seg).await;
-        shared.active.fetch_sub(1, Ordering::Relaxed);
+        shared.progress.connections.fetch_sub(1, Ordering::Relaxed);
         result?;
     }
     Ok(())
@@ -299,7 +322,9 @@ async fn fetch_range(shared: &Shared, seg: &Segment, pos: u64, end: u64) -> Resu
     }
     let mut body = resp.bytes_stream();
     while let Some(chunk) = body.next().await {
-        if !seg.write(&shared.file, &chunk?)? {
+        let chunk = chunk?;
+        shared.limiter.take(chunk.len()).await;
+        if !seg.write(&shared.file, &chunk)? {
             break; // segment complete (or its tail was stolen): hang up
         }
     }
@@ -307,51 +332,65 @@ async fn fetch_range(shared: &Shared, seg: &Segment, pos: u64, end: u64) -> Resu
 }
 
 /// Fallback for servers without range support: one plain sequential stream.
-async fn download_single(client: &Client, opts: &Options, remote: &RemoteFile, part: &Path) -> Result<()> {
+/// Pausing it loses progress, because the server cannot resume.
+async fn download_single(
+    client: &Client,
+    req: &Request,
+    remote: &RemoteFile,
+    part: &Path,
+    progress: Arc<Progress>,
+    cancel: CancellationToken,
+    limiter: Arc<SpeedLimiter>,
+) -> Result<Outcome> {
     use std::io::Write;
-    let resp = client.get(&remote.url).headers(opts.headers.clone()).send().await?.error_for_status()?;
+    let resp = client.get(&remote.url).headers(req.headers.clone()).send().await?.error_for_status()?;
     let mut file = std::io::BufWriter::new(File::create(part)?);
-    let bar = match remote.size {
-        Some(size) => progress_bar(size, 0),
-        None => ProgressBar::new_spinner(),
-    };
     let mut body = resp.bytes_stream();
-    while let Some(chunk) = body.next().await {
-        let chunk = chunk?;
-        file.write_all(&chunk)?;
-        bar.inc(chunk.len() as u64);
+    progress.downloaded.store(0, Ordering::Relaxed);
+    progress.connections.store(1, Ordering::Relaxed);
+    let result = async {
+        loop {
+            let chunk = tokio::select! {
+                c = body.next() => c,
+                _ = cancel.cancelled() => return Ok(Outcome::Paused),
+            };
+            let Some(chunk) = chunk else { break };
+            let chunk = chunk?;
+            limiter.take(chunk.len()).await;
+            file.write_all(&chunk)?;
+            progress.downloaded.fetch_add(chunk.len() as u64, Ordering::Relaxed);
+        }
+        file.flush()?;
+        Ok(Outcome::Completed)
     }
-    file.flush()?;
-    bar.finish_with_message("done");
-    Ok(())
+    .await;
+    progress.connections.store(0, Ordering::Relaxed);
+    result
 }
 
-fn finish(part: &Path, out: &Path) -> Result<()> {
-    std::fs::rename(part, out).with_context(|| format!("could not rename to {}", out.display()))
-}
-
-/// Uses `-o` if given (a directory or a file path); otherwise the server's
-/// file name in the current directory, adding " (1)", " (2)"... rather than
-/// overwriting a finished file. An unfinished download keeps its name so it
-/// can resume.
-fn output_path(opts: &Options, remote: &RemoteFile) -> PathBuf {
-    match &opts.output {
-        Some(p) if p.is_dir() => unique(p.join(&remote.filename)),
-        Some(p) => p.clone(),
-        None => unique(PathBuf::from(&remote.filename)),
-    }
-}
-
-fn unique(path: PathBuf) -> PathBuf {
-    if !path.exists() || append_ext(&path, "part").exists() {
+/// Picks a free path for `filename` inside `dir`, adding " (1)", " (2)"...
+/// rather than overwriting an existing file. A path with an unfinished
+/// `.part` beside it is reused so the download can resume.
+pub fn resolve_dest(dir: &Path, filename: &str) -> PathBuf {
+    let path = dir.join(filename);
+    if !path.exists() || part_path(&path).exists() {
         return path;
     }
     let stem = path.file_stem().unwrap_or_default().to_string_lossy().into_owned();
     let ext = path.extension().map(|e| format!(".{}", e.to_string_lossy())).unwrap_or_default();
     (1..)
         .map(|i| path.with_file_name(format!("{stem} ({i}){ext}")))
-        .find(|p| !p.exists())
+        .find(|p| !p.exists() && !part_path(p).exists())
         .unwrap()
+}
+
+pub fn part_path(dest: &Path) -> PathBuf {
+    append_ext(dest, "part")
+}
+
+/// The still-missing ranges of a paused download, from its resume file.
+pub fn saved_remaining(dest: &Path) -> Option<Vec<(u64, u64)>> {
+    SavedState::load(&append_ext(dest, "swiftdl")).map(|s| s.segments)
 }
 
 fn append_ext(path: &Path, ext: &str) -> PathBuf {
@@ -359,27 +398,4 @@ fn append_ext(path: &Path, ext: &str) -> PathBuf {
     s.push(".");
     s.push(ext);
     PathBuf::from(s)
-}
-
-fn progress_bar(size: u64, start: u64) -> ProgressBar {
-    let bar = ProgressBar::new(size).with_position(start);
-    bar.set_style(
-        ProgressStyle::with_template(
-            "{bar:40.cyan/blue} {bytes:>10}/{total_bytes} {binary_bytes_per_sec:>12}  ETA {eta:>4}  {msg}",
-        )
-        .unwrap()
-        .progress_chars("█▉▊▋▌▍▎▏ "),
-    );
-    bar.enable_steady_tick(Duration::from_millis(200));
-    bar
-}
-
-fn print_header(remote: &RemoteFile, out: &Path, size: u64, conns: usize, already: u64) {
-    eprintln!("File:   {}", out.display());
-    eprintln!("Size:   {} ({} bytes)", indicatif::HumanBytes(size), size);
-    if already > 0 {
-        eprintln!("Resume: {} already downloaded", indicatif::HumanBytes(already));
-    }
-    eprintln!("Conns:  {conns}, with dynamic segmentation");
-    eprintln!("Source: {}", remote.url);
 }
