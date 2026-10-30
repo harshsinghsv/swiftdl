@@ -59,6 +59,6 @@ uses [Semantic Versioning](https://semver.org/).
 - GitHub Actions for CI and tagged releases (Windows, macOS, Linux and the
   extension zip).
 
-[Unreleased]: https://github.com/OWNER/swiftdl/compare/v0.2.0...HEAD
-[0.2.0]: https://github.com/OWNER/swiftdl/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/OWNER/swiftdl/releases/tag/v0.1.0
+[Unreleased]: https://github.com/harshsinghsv/swiftdl/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/harshsinghsv/swiftdl/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/harshsinghsv/swiftdl/releases/tag/v0.1.0

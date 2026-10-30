@@ -17,7 +17,7 @@
 
 ## Install
 
-Download the latest release from the [Releases page](../../releases):
+Download the latest release from the [Releases page](https://github.com/harshsinghsv/swiftdl/releases):
 
 | Platform | File |
 |---|---|
@@ -81,7 +81,6 @@ The automatic browser prompt only works once the extension is on the Chrome Web 
 
 1. `extension/manifest.json` has a `key` that pins the extension ID to `knmfjbmojepkdiflnckpfjimfmjfcbgh`. The app trusts that ID (see `app/src-tauri/src/browser.rs`) and registers it with installed browsers.
 2. For the first upload to the Web Store, include the private key as `key.pem` in the zip so the store keeps the same ID. The key isn't in the repository (`extension-key.pem` is in `.gitignore`), so keep it safe.
-3. Replace `OWNER` in `Cargo.toml` and `extension/popup.html` with your GitHub user or organisation.
 
 ## Releasing
 
