@@ -36,9 +36,22 @@ def make_handler(data: bytes, rate: int):
                 self.end_headers()
                 self.wfile.write(page)
                 return
-            if self.path != "/test.bin":
+            if self.path == "/video":
+                # A page with a video player, for testing the extension's
+                # "Download video" button and media detection.
+                page = b'<!doctype html><title>Sample Clip 4K</title><h1>Video test page</h1>' \
+                       b'<video src="/video.mp4" width="640" height="360" controls style="background:#000"></video>' \
+                       b'<p><a id="dl" href="/test.bin">Download test.bin</a></p>'
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html")
+                self.send_header("Content-Length", str(len(page)))
+                self.end_headers()
+                self.wfile.write(page)
+                return
+            if self.path not in ("/test.bin", "/video.mp4"):
                 self.send_error(404)
                 return
+            is_video = self.path == "/video.mp4"
             size = len(data)
             start, end = 0, size - 1
             m = re.fullmatch(r"bytes=(\d+)-(\d*)", self.headers.get("Range", ""))
@@ -49,8 +62,11 @@ def make_handler(data: bytes, rate: int):
                 self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
             else:
                 self.send_response(200)
-            self.send_header("Content-Type", "application/octet-stream")
-            self.send_header("Content-Disposition", 'attachment; filename="test.bin"')
+            if is_video:
+                self.send_header("Content-Type", "video/mp4")
+            else:
+                self.send_header("Content-Type", "application/octet-stream")
+                self.send_header("Content-Disposition", 'attachment; filename="test.bin"')
             self.send_header("Accept-Ranges", "bytes")
             self.send_header("Content-Length", str(end - start + 1))
             self.send_header("ETag", '"test-v1"')
