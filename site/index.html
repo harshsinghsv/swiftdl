@@ -5,13 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SwiftDL · The fast, open-source download manager</title>
   <meta name="description" content="SwiftDL downloads every file over many connections at once, resumes after anything, and takes over downloads from your browser. Free and open source for Windows, macOS and Linux.">
+  <meta name="theme-color" content="#0a0a0b">
   <meta property="og:title" content="SwiftDL">
   <meta property="og:description" content="The fast, open-source download manager.">
   <meta property="og:image" content="assets/app-dark.png">
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;550;600;650&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="site.css">
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
   <style type="text/tailwindcss">
@@ -23,139 +24,199 @@
   </style>
 </head>
 <body>
-  <header class="site-header sticky top-0 z-50">
-    <nav class="mx-auto flex h-16 max-w-6xl items-center gap-8 px-4 sm:px-6">
-      <a href="index.html" class="flex items-center gap-2.5 text-[15px] font-semibold tracking-tight text-ink no-underline"><span class="mark"></span>SwiftDL</a>
+  <header class="site-header">
+    <nav class="mx-auto flex h-16 max-w-[1200px] items-center gap-8 px-5 sm:px-8">
+      <a href="index.html" class="flex items-center gap-2.5 text-[15px] font-medium tracking-tight text-ink no-underline"><span class="mark"></span>SwiftDL</a>
       <div class="hidden items-center gap-7 md:flex">
-        <a class="nav-link" href="#features">Features</a>
-        <a class="nav-link" href="#how">How it works</a>
+        <a class="nav-link" href="#connections">Features</a>
         <a class="nav-link" href="download.html">Download</a>
         <a class="nav-link" href="changelog.html">Changelog</a>
       </div>
       <div class="ml-auto flex items-center gap-2">
-        <a class="btn sm hidden sm:inline-flex" href="https://github.com/harshsinghsv/swiftdl" target="_blank" rel="noopener"><span data-icon="github" class="size-4"></span>GitHub</a>
-        <a class="btn sm primary" href="download.html">Download</a>
+        <a class="btn sm" href="https://github.com/harshsinghsv/swiftdl" target="_blank" rel="noopener" aria-label="GitHub"><span class="logo b-github size-4"></span><span class="hidden sm:inline">GitHub</span></a>
+        <a class="btn sm primary" data-download href="download.html"><span class="logo size-3.5" data-os-logo></span>Download</a>
       </div>
     </nav>
   </header>
 
-  <main>
-    <section class="hero mx-auto max-w-6xl px-4 pt-20 text-center sm:px-6 sm:pt-28">
-      <h1 class="title-grad mx-auto max-w-4xl pb-2 text-[2.9rem] font-semibold leading-[1.02] tracking-[-.045em] sm:text-7xl md:text-[5.25rem]">Every download,<br>at full speed.</h1>
-      <p class="mx-auto mt-5 max-w-md text-lg text-muted">The free, open-source download manager for Windows, macOS and Linux.</p>
+  <main class="frame">
+    <!-- Hero -->
+    <section class="px-5 pt-20 pb-16 text-center sm:px-8 sm:pt-28">
+      <div class="flex items-center justify-center gap-4 text-[13px] text-muted">
+        <span>Works in</span>
+        <span class="flex items-center gap-3 text-ink-2"><span class="logo b-chrome size-4" title="Chrome"></span><span class="logo b-brave size-4" title="Brave"></span><span class="logo b-vivaldi size-4" title="Vivaldi"></span></span>
+        <span class="text-faint">+ Edge</span>
+      </div>
+      <h1 class="h-hero mx-auto mt-8 max-w-5xl">Your connection is fast.<br><span class="dim">Your downloads should be too.</span></h1>
+      <p class="lede mx-auto mt-7 max-w-xl">SwiftDL splits every file across many connections at once, picks up after anything, and takes over from your browser.</p>
       <div class="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-        <a class="btn primary h-12! gap-2.5! px-6! text-[15px]!" data-download href="download.html"><span class="os-logo size-4" data-os-logo></span><span>Download for <span data-os>Windows</span></span></a>
-        <a class="btn h-12! px-6! text-[15px]!" href="download.html">All platforms</a>
+        <a class="btn lg primary" data-download href="download.html"><span class="logo size-4" data-os-logo></span><span>Download for <span data-os>Windows</span></span></a>
+        <a class="btn lg" href="https://github.com/harshsinghsv/swiftdl" target="_blank" rel="noopener"><span class="logo b-github size-4"></span>GitHub<span data-stars hidden><span class="sep"></span><span data-icon="star" class="size-3.5 text-[#e8b931]"></span><span data-stars-n></span></span></a>
       </div>
-      <p class="mt-5 text-[13px] text-faint"><a class="hover:text-muted" href="changelog.html"><span data-version>v0.2.0</span> · Release notes</a><span class="mx-2">·</span>MIT licensed</p>
-
-      <div class="mx-auto mt-20 max-w-5xl">
-        <div class="frame fade-bottom">
-          <img class="shot-dark" src="assets/app-dark.png" width="2640" height="1640" alt="SwiftDL main window with downloads grouped by status, live speed and a detail panel">
-          <img class="shot-light" src="assets/app-light.png" width="2640" height="1640" alt="SwiftDL main window in light mode" loading="lazy">
-        </div>
-      </div>
+      <p class="mt-5 text-[13px] text-faint">Free and open source · <a class="hover:text-muted" href="changelog.html"><span data-version>v0.2.0</span></a> · Windows, macOS and Linux</p>
     </section>
 
-    <!-- Features -->
-    <section id="features" class="mx-auto mt-24 max-w-6xl scroll-mt-20 px-4 sm:px-6">
-      <div class="reveal flex flex-col justify-between gap-4 md:flex-row md:items-end">
-        <h2 class="section-title max-w-xl text-ink">Built for big files and bad connections.</h2>
-        <p class="max-w-sm text-muted">Everything you need from a download manager, without the clutter.</p>
-      </div>
-      <div class="reveal mt-12 grid gap-px overflow-hidden rounded-2xl bg-line shadow-[inset_0_0_0_1px_var(--border)] sm:grid-cols-2 lg:grid-cols-3">
-        <div class="bg-panel p-7"><h3 class="font-semibold text-ink">Resume anything</h3><p class="mt-2 text-[14.5px] text-muted">Pause, quit, lose Wi-Fi or crash. Progress is saved every second.</p></div>
-        <div class="bg-panel p-7"><h3 class="font-semibold text-ink">Smart splitting</h3><p class="mt-2 text-[14.5px] text-muted">A connection that finishes early takes half of the biggest part left.</p></div>
-        <div class="bg-panel p-7"><h3 class="font-semibold text-ink">No joining step</h3><p class="mt-2 text-[14.5px] text-muted">Every connection writes straight into the final file.</p></div>
-        <div class="bg-panel p-7"><h3 class="font-semibold text-ink">Video button</h3><p class="mt-2 text-[14.5px] text-muted">Grab the video and audio a page plays, from a button on the player.</p></div>
-        <div class="bg-panel p-7"><h3 class="font-semibold text-ink">Queue and speed limit</h3><p class="mt-2 text-[14.5px] text-muted">Choose how many run at once and cap total bandwidth.</p></div>
-        <div class="bg-panel p-7"><h3 class="font-semibold text-ink">Tidy by default</h3><p class="mt-2 text-[14.5px] text-muted">Files land in Video, Music, Programs, Compressed and Documents.</p></div>
-        <div class="bg-panel p-7"><h3 class="font-semibold text-ink">Command palette</h3><p class="mt-2 text-[14.5px] text-muted">Press <kbd>Ctrl</kbd> <kbd>K</kbd> to find any download or run any action.</p></div>
-        <div class="bg-panel p-7"><h3 class="font-semibold text-ink">Logins just work</h3><p class="mt-2 text-[14.5px] text-muted">Your browser's cookies come along, so downloads behind a sign-in go through.</p></div>
-        <div class="bg-panel p-7"><h3 class="font-semibold text-ink">Private</h3><p class="mt-2 text-[14.5px] text-muted">No account, analytics or telemetry. Ever.</p></div>
-      </div>
-    </section>
+    <div class="stage light rule px-5 pt-14 sm:px-14 sm:pt-20">
+      <img class="mx-auto block w-full max-w-[1040px] rounded-t-[12px] shadow-[0_0_0_1px_rgba(255,255,255,.12),0_40px_100px_-30px_rgba(0,0,0,.9)]" src="assets/app-dark.png" width="2640" height="1640" alt="SwiftDL main window with downloads grouped by status, live speed and a detail panel">
+    </div>
+    <div class="rule px-5 py-5 sm:px-12"><div class="strip" data-strip></div></div>
 
-    <!-- How it works -->
-    <section id="how" class="mx-auto mt-32 max-w-6xl scroll-mt-20 px-4 sm:mt-40 sm:px-6">
-      <div class="reveal max-w-2xl">
-        <h2 class="section-title text-ink">One file. Many connections.</h2>
-        <p class="mt-5 text-lg text-muted">Servers often cap each connection. SwiftDL opens up to 32 at once, each fetching its own part, and moves work to whichever finishes first.</p>
+    <!-- Connections -->
+    <section id="connections" class="rule scroll-mt-16">
+      <div class="reveal px-5 pt-24 pb-14 sm:px-12">
+        <div class="label">connections</div>
+        <h2 class="h-sec mt-5 max-w-3xl">One file, many connections.<br><span class="dim">Every part downloads at the same time.</span></h2>
+        <p class="lede mt-6 max-w-2xl">Servers often limit how fast one connection can go. SwiftDL opens up to 32 at once, and when one finishes early it takes half of the biggest part left, so no connection sits idle at the end.</p>
       </div>
-
-      <div class="reveal mt-12 rounded-2xl bg-panel p-6 shadow-[inset_0_0_0_1px_var(--border)] sm:p-10">
-        <div class="flex items-baseline justify-between gap-4 text-sm">
-          <span class="truncate font-medium text-ink">ubuntu-26.04-desktop-amd64.iso</span>
-          <span class="mono text-muted"><span id="demo-pct">0</span>%</span>
-        </div>
-        <div class="demo-bar mt-4" id="demo"></div>
-        <div class="mt-4 flex flex-wrap justify-between gap-x-6 gap-y-1 text-sm text-muted">
-          <span><span class="text-ink" id="demo-conns">8</span> connections</span>
-          <span><span class="mono text-ink" id="demo-speed">0.0</span> MB/s</span>
+      <div class="stage rule px-5 py-14 sm:px-12 sm:py-20">
+        <div class="win reveal mx-auto max-w-[620px]">
+          <div class="win-bar"><span class="mark"></span><span id="m-title">37% · ubuntu-26.04-desktop-amd64.iso</span></div>
+          <div class="win-body">
+            <div class="w-name">ubuntu-26.04-desktop-amd64.iso</div>
+            <div class="w-sub"><span class="w-dot"></span><span>Downloading · <span id="m-conns">8</span> connections · releases.ubuntu.com</span></div>
+            <div class="mt-5 flex items-center gap-3"><div class="w-bar flex-1"><i id="m-bar" style="width:0%"></i></div><span class="w-12 text-right text-[13px] font-semibold tabular-nums" id="m-pct">0%</span></div>
+            <div class="w-meta"><span id="m-done">0 GB of 6.10 GB</span><span id="m-speed">0 MB/s</span></div>
+            <div class="mt-6 flex items-baseline justify-between text-[12px] text-[#8a8e98]"><b class="font-medium text-[#eef0f3]">Connections</b><span id="m-parts">8 active · 8 parts</span></div>
+            <div class="lanes mt-3" id="m-lanes"></div>
+            <div class="mt-3" id="m-rows"></div>
+            <div class="mt-5 flex justify-end gap-2"><span class="w-btn">Cancel</span><span class="w-btn">Pause</span></div>
+          </div>
         </div>
       </div>
-
-      <div class="reveal mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-        <div><div class="mono text-sm text-faint">01</div><h3 class="mt-2 font-semibold text-ink">Check</h3><p class="mt-1.5 text-[14.5px] text-muted">One tiny request reveals the size and whether parts are allowed.</p></div>
-        <div><div class="mono text-sm text-faint">02</div><h3 class="mt-2 font-semibold text-ink">Split</h3><p class="mt-1.5 text-[14.5px] text-muted">The file is reserved on disk and divided, one part per connection.</p></div>
-        <div><div class="mono text-sm text-faint">03</div><h3 class="mt-2 font-semibold text-ink">Rebalance</h3><p class="mt-1.5 text-[14.5px] text-muted">Early finishers take half of the largest part left. Nobody waits.</p></div>
-        <div><div class="mono text-sm text-faint">04</div><h3 class="mt-2 font-semibold text-ink">Save</h3><p class="mt-1.5 text-[14.5px] text-muted">What's left is saved every second, so resume always works.</p></div>
+      <div class="cells c3 rule">
+        <div><h3>Up to 32 connections</h3><p>Pick how many per file. Eight is a good start for most servers.</p></div>
+        <div><h3>Smart splitting</h3><p>Early finishers take over half of the largest part left.</p></div>
+        <div><h3>No joining step</h3><p>The file is reserved up front and every connection writes straight into it.</p></div>
       </div>
     </section>
 
     <!-- Browser -->
-    <section class="mx-auto mt-32 max-w-6xl px-4 sm:mt-40 sm:px-6">
-      <div class="reveal grid items-center gap-12 lg:grid-cols-2">
-        <div>
-          <h2 class="section-title text-ink">Starts from your browser.</h2>
-          <p class="mt-5 text-lg text-muted">Click any download link. SwiftDL opens a small window, and the file arrives faster, with your sign-in intact.</p>
-          <div class="mt-8 flex flex-wrap items-center gap-x-4 gap-y-3 text-sm text-muted">
-            <span>Chrome</span><span class="text-faint">·</span><span>Edge</span><span class="text-faint">·</span><span>Brave</span><span class="text-faint">·</span><span>Vivaldi</span>
+    <section id="browser" class="rule scroll-mt-16">
+      <div class="reveal px-5 pt-24 pb-14 sm:px-12">
+        <div class="label">browser</div>
+        <h2 class="h-sec mt-5 max-w-3xl">Click download in your browser.<br><span class="dim">SwiftDL takes it from there.</span></h2>
+        <p class="lede mt-6 max-w-2xl">The extension comes with the app. It hands each download to SwiftDL with your cookies, so files behind a sign-in work too, and a small window asks where to save it.</p>
+      </div>
+      <div class="stage light rule px-5 py-14 sm:px-12 sm:py-20">
+        <div class="reveal relative mx-auto max-w-[760px]">
+          <div class="win opacity-90">
+            <div class="win-bar gap-3"><span class="flex gap-1.5"><i class="size-2.5 rounded-full bg-[#ff5f57]"></i><i class="size-2.5 rounded-full bg-[#febc2e]"></i><i class="size-2.5 rounded-full bg-[#28c840]"></i></span><span class="ml-2 flex h-6 flex-1 items-center rounded-md bg-white/5 px-3 font-[var(--mono)] text-[11.5px]">drive.usercontent.google.com/download?id=1z8f…</span></div>
+            <div class="h-56 px-8 pt-8 text-[#8a8e98] sm:h-64">
+              <div class="h-3 w-1/3 rounded bg-white/8"></div>
+              <div class="mt-3 h-3 w-2/3 rounded bg-white/5"></div>
+              <div class="mt-2 h-3 w-1/2 rounded bg-white/5"></div>
+              <div class="mt-8 inline-flex h-8 items-center rounded-md bg-[#1a73e8] px-4 text-[12.5px] font-medium text-white">Download anyway</div>
+            </div>
+          </div>
+          <div class="win absolute right-[-8px] bottom-[-28px] w-[min(400px,88%)] sm:right-[-36px]">
+            <div class="win-bar"><span class="mark"></span>New download</div>
+            <div class="win-body">
+              <div class="w-name">Avatar.Fire.and.Ash.2025.1080p.mkv</div>
+              <div class="w-sub">drive.usercontent.google.com</div>
+              <div class="mt-4 grid grid-cols-[72px_1fr] gap-y-1.5 text-[12px]"><span class="text-[#8a8e98]">Size</span><span>3.81 GB · Resumable</span><span class="text-[#8a8e98]">Save to</span><span class="truncate">C:\Users\you\Downloads\Video</span></div>
+              <div class="mt-5 flex justify-end gap-2"><span class="w-btn">Later</span><span class="w-btn primary">Start download</span></div>
+            </div>
           </div>
         </div>
-        <img class="w-full" src="assets/window-progress.png" width="1104" height="1132" alt="SwiftDL download window with live progress and each connection" loading="lazy">
+      </div>
+      <div class="cells c3 rule">
+        <div><h3>Sign-ins come along</h3><p>Cookies and referrer travel with each download, so private links work.</p></div>
+        <div><h3>Download video</h3><p>A button over video players lists the video and audio files a page loaded.</p></div>
+        <div><h3>Stays out of the way</h3><p>Hold <kbd>Alt</kbd> to let the browser handle a link, or turn it off per site.</p></div>
       </div>
     </section>
 
-    <!-- Download -->
-    <section id="download" class="mx-auto mt-32 max-w-6xl scroll-mt-20 px-4 sm:mt-40 sm:px-6">
-      <div class="reveal text-center">
-        <h2 class="section-title text-ink">Get SwiftDL</h2>
-        <p class="mt-4 text-muted">Free and open source · <span data-version>v0.2.0</span></p>
+    <!-- Resume -->
+    <section id="resume" class="rule">
+      <div class="reveal px-5 pt-24 pb-14 sm:px-12">
+        <div class="label">resume</div>
+        <h2 class="h-sec mt-5 max-w-3xl">Pause anything.<br><span class="dim">Lose nothing.</span></h2>
+        <p class="lede mt-6 max-w-2xl">SwiftDL saves what's left to download every second. Wi-Fi drops, a closed laptop, even a crash: it carries on from where it stopped.</p>
       </div>
-      <div class="reveal mt-12 grid gap-4 md:grid-cols-3" id="platforms"></div>
-      <p class="mt-6 text-center text-sm text-muted"><a class="hover:text-ink" href="download.html">Older versions and install help</a></p>
+      <div class="stage rule px-5 py-14 sm:px-12 sm:py-20">
+        <div class="win reveal mx-auto max-w-[620px]">
+          <div class="win-bar"><span class="mark"></span>ubuntu-26.04-desktop-amd64.iso</div>
+          <div class="win-body tl py-2!">
+            <div class="tl-row"><span class="tl-time">21:41</span><div><span class="tl-tag bg-[#0a84ff]/15 text-[#5aa2fb]">downloading</span><div class="tl-sub">8 connections · 31.9 MB/s</div></div></div>
+            <div class="tl-row"><span class="tl-time">21:52</span><div><span class="tl-tag bg-[#e0a33e]/15 text-[#e0a33e]">wi-fi dropped</span><div class="tl-sub">Paused at 1.94 GB of 6.10 GB. Progress saved.</div></div></div>
+            <div class="tl-row"><span class="tl-time">23:10</span><div><span class="tl-tag bg-white/8 text-[#c9c9ce]">laptop closed</span><div class="tl-sub">SwiftDL quits. The missing parts are on disk.</div></div></div>
+            <div class="tl-row"><span class="tl-time">08:02</span><div><span class="tl-tag bg-[#0a84ff]/15 text-[#5aa2fb]">resumed</span><div class="tl-sub">Picks up at 1.94 GB. Nothing is downloaded twice.</div></div></div>
+            <div class="tl-row"><span class="tl-time">08:05</span><div><span class="tl-tag bg-[#3fb27f]/15 text-[#3fb27f]">done</span><div class="tl-sub">Saved to Downloads\Compressed</div></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="cells c3 rule">
+        <div><h3>Saved every second</h3><p>At most a second of data is fetched again after a crash.</p></div>
+        <div><h3>Queue and speed limit</h3><p>Choose how many run at once and cap total bandwidth.</p></div>
+        <div><h3>Tidy by default</h3><p>Files land in Video, Music, Programs, Compressed and Documents.</p></div>
+      </div>
+    </section>
+
+    <!-- Everything else -->
+    <section class="rule">
+      <div class="reveal px-5 pt-24 pb-14 sm:px-12">
+        <div class="label">and more</div>
+        <h2 class="h-sec mt-5 max-w-3xl">The small things, done right.</h2>
+      </div>
+      <div class="cells c3 rule">
+        <div><h3>Command palette</h3><p>Press <kbd>Ctrl</kbd> <kbd>K</kbd> to find any download or run any action.</p></div>
+        <div><h3>A window per download</h3><p>Live progress for each file, then a summary with Open and Show in folder.</p></div>
+        <div><h3>Lives in the tray</h3><p>Close the window and downloads keep going.</p></div>
+      </div>
+      <div class="cells c3 rule">
+        <div><h3>Private</h3><p>No account, analytics or telemetry. It only talks to the servers you download from.</p></div>
+        <div><h3>Light and dark</h3><p>Follows your system, on Windows, macOS and Linux.</p></div>
+        <div><h3>Open source</h3><p>MIT licensed and built in Rust. Read it, change it, ship it.</p></div>
+      </div>
+    </section>
+
+    <div class="rule px-5 py-5 sm:px-12"><div class="strip" data-strip></div></div>
+
+    <!-- Download -->
+    <section id="download" class="rule scroll-mt-16">
+      <div class="reveal px-5 pt-24 pb-14 sm:px-12">
+        <div class="label">download</div>
+        <h2 class="h-sec mt-5">Get SwiftDL.<br><span class="dim">Free for Windows, macOS and Linux.</span></h2>
+      </div>
+      <div class="cells c3 rule" id="platforms"></div>
+      <div class="rule px-5 py-5 text-sm text-muted sm:px-12"><a class="hover:text-ink" href="download.html">Older versions and install help →</a></div>
     </section>
 
     <!-- FAQ -->
-    <section id="faq" class="mx-auto mt-32 max-w-3xl scroll-mt-20 px-4 sm:mt-40 sm:px-6">
-      <h2 class="section-title reveal text-center text-ink">Questions</h2>
-      <div class="reveal mt-10">
-        <details class="faq"><summary>Is it really faster?</summary><p>When the server limits each connection, which many do, yes, by roughly the number of connections. When one connection already fills your internet line, more can't add speed you don't have, but resume and the queue still help.</p></details>
-        <details class="faq"><summary>Can it download from YouTube or Netflix?</summary><p>Not yet. Those sites stream video in small pieces (HLS or DASH), which needs stream support in the engine. DRM-protected video will never be supported.</p></details>
-        <details class="faq"><summary>Why does Windows or macOS warn me when installing?</summary><p>The installers aren't code-signed yet. On Windows choose More info, then Run anyway. On macOS, right-click the app and choose Open.</p></details>
-        <details class="faq"><summary>Does SwiftDL collect any data?</summary><p>No. No accounts, analytics or telemetry. It only connects to the servers you download from.</p></details>
-        <details class="faq"><summary>Is it really free?</summary><p>Yes. SwiftDL is MIT licensed, and the code is on GitHub.</p></details>
+    <section id="faq" class="rule">
+      <div class="grid gap-10 px-5 pt-24 pb-24 sm:px-12 lg:grid-cols-[280px_1fr]">
+        <div class="reveal"><div class="label">questions</div><h2 class="h-sec mt-5">Answers.</h2></div>
+        <div class="reveal">
+          <details class="faq"><summary>Is it really faster?</summary><p>When the server limits each connection, which many do, yes, by roughly the number of connections. When one connection already fills your internet line, more can't add speed you don't have, but resume and the queue still help.</p></details>
+          <details class="faq"><summary>Can it download from YouTube?</summary><p>Not yet. YouTube streams video through its own protocol, so it needs separate support, which is in the works.</p></details>
+          <details class="faq"><summary>Why does Windows or macOS warn me when installing?</summary><p>The installers aren't code-signed yet. On Windows choose More info, then Run anyway. On macOS, right-click the app and choose Open.</p></details>
+          <details class="faq"><summary>Does SwiftDL collect any data?</summary><p>No. No accounts, analytics or telemetry. It only connects to the servers you download from.</p></details>
+          <details class="faq border-b hairline"><summary>Is it really free?</summary><p>Yes. SwiftDL is MIT licensed, and the code is on GitHub.</p></details>
+        </div>
       </div>
     </section>
-  </main>
 
-  <footer class="mt-32 border-t hairline">
-    <div class="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 text-sm sm:flex-row sm:items-center sm:px-6">
-      <div class="flex items-center gap-2.5 text-muted"><span class="mark size-[18px]! text-muted!"></span><span>SwiftDL · MIT licensed · <span data-year>2026</span></span></div>
-      <div class="flex flex-wrap gap-x-6 gap-y-2 sm:ml-auto">
-        <a class="nav-link" href="download.html">Download</a>
-        <a class="nav-link" href="changelog.html">Changelog</a>
-        <a class="nav-link" href="https://github.com/harshsinghsv/swiftdl" target="_blank" rel="noopener">GitHub</a>
-        <a class="nav-link" href="https://github.com/harshsinghsv/swiftdl/issues" target="_blank" rel="noopener">Report a bug</a>
+    <footer class="rule">
+      <div class="flex flex-col gap-8 px-5 py-12 sm:flex-row sm:items-end sm:px-12">
+        <div>
+          <div class="flex items-center gap-2.5 text-[15px] font-medium"><span class="mark"></span>SwiftDL</div>
+          <p class="mt-3 text-sm text-muted">The fast, open-source download manager.</p>
+        </div>
+        <div class="flex flex-wrap gap-x-7 gap-y-2 sm:ml-auto">
+          <a class="nav-link" href="download.html">Download</a>
+          <a class="nav-link" href="changelog.html">Changelog</a>
+          <a class="nav-link" href="https://github.com/harshsinghsv/swiftdl" target="_blank" rel="noopener">GitHub</a>
+          <a class="nav-link" href="https://github.com/harshsinghsv/swiftdl/issues" target="_blank" rel="noopener">Report a bug</a>
+        </div>
       </div>
-    </div>
-  </footer>
+      <div class="rule px-5 py-5 text-[12.5px] text-faint sm:px-12">MIT licensed · <span data-year>2026</span></div>
+    </footer>
+  </main>
 
   <script src="site.js"></script>
   <script>
     hydrateLatest().then((latest) => renderPlatforms(document.getElementById("platforms"), latest));
-    runDemo(document.getElementById("demo"));
+    runDemo();
   </script>
 </body>
 </html>

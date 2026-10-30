@@ -2,13 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="theme-color" content="#0a0a0b">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Changelog · SwiftDL</title>
   <meta name="description" content="Every SwiftDL release and what changed in it.">
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;550;600;650&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="site.css">
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
@@ -21,17 +22,16 @@
   </style>
 </head>
 <body>
-  <header class="site-header sticky top-0 z-50">
-    <nav class="mx-auto flex h-16 max-w-6xl items-center gap-8 px-4 sm:px-6">
-      <a href="index.html" class="flex items-center gap-2.5 text-[15px] font-semibold tracking-tight text-ink no-underline"><span class="mark"></span>SwiftDL</a>
+  <header class="site-header">
+    <nav class="mx-auto flex h-16 max-w-[1200px] items-center gap-8 px-5 sm:px-8">
+      <a href="index.html" class="flex items-center gap-2.5 text-[15px] font-medium tracking-tight text-ink no-underline"><span class="mark"></span>SwiftDL</a>
       <div class="hidden items-center gap-6 md:flex">
-        <a class="nav-link" href="index.html#features">Features</a>
-        <a class="nav-link" href="index.html#how">How it works</a>
+        <a class="nav-link" href="index.html#connections">Features</a>
         <a class="nav-link" href="download.html">Download</a>
         <a class="nav-link" href="changelog.html" aria-current="page">Changelog</a>
       </div>
       <div class="ml-auto flex items-center gap-2">
-        <a class="btn sm hidden sm:inline-flex" href="https://github.com/harshsinghsv/swiftdl" target="_blank" rel="noopener"><span data-icon="github" class="size-4"></span>GitHub</a>
+        <a class="btn sm hidden sm:inline-flex" href="https://github.com/harshsinghsv/swiftdl" target="_blank" rel="noopener"><span class="logo b-github size-4"></span>GitHub</a>
         <a class="btn sm primary" href="download.html">Download</a>
       </div>
     </nav>
@@ -39,7 +39,7 @@
 
   <main class="mx-auto max-w-5xl px-4 pb-24 sm:px-6">
     <section class="pt-14 sm:pt-20">
-      <h1 class="display text-4xl font-semibold text-ink sm:text-5xl">Changelog</h1>
+      <div class="label">changelog</div><h1 class="h-sec mt-5">Every release.<br><span class="dim">What changed, and when.</span></h1>
       <p class="mt-4 text-muted">Every release of SwiftDL and what changed. Subscribe with the <a class="text-accent" href="https://github.com/harshsinghsv/swiftdl/releases.atom">releases feed</a>, or watch the repository on GitHub.</p>
     </section>
 

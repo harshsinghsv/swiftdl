@@ -84,6 +84,7 @@ const ICONS = {
   linux: '<path d="M12 3c-2 0-3.2 1.7-3.2 4 0 1.4.4 2.3-.4 3.7C7.3 12.6 5.5 15 6 17.5c.3 1.5 1.5 2.5 3 2.5h6c1.5 0 2.7-1 3-2.5.5-2.5-1.3-4.9-2.4-6.8-.8-1.4-.4-2.3-.4-3.7 0-2.3-1.2-4-3.2-4z"/><path d="M10.5 7.5h.01M13.5 7.5h.01"/>',
   github: '<path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/>',
   arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+  star: '<path fill="currentColor" stroke="none" d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>',
   external: '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
   puzzle: '<path d="M9 4h3.5a1.5 1.5 0 0 1 3 0H19v3.5a1.5 1.5 0 0 1 0 3V14h-3.5a1.5 1.5 0 0 0-3 0H9v-3.5a1.5 1.5 0 0 0 0-3z"/><path d="M9 14v6H4v-6"/>',
 };
@@ -104,10 +105,11 @@ async function hydrateLatest() {
   });
   document.querySelectorAll("[data-os-icon]").forEach((el) => { el.innerHTML = icon(os); });
   document.querySelectorAll("[data-os-logo]").forEach((el) => el.classList.add(`os-${os}`));
+  document.querySelectorAll("[data-download]").forEach((el) => { if (main) el.href = main.asset.browser_download_url; });
   return latest;
 }
 
-// Three platform cards with the real OS logos: the recommended file as the
+// Three platform cells with the real OS logos: the recommended file as the
 // button, the other formats listed under it.
 const PLATFORM_SUB = { windows: "Windows 10 and 11", macos: "Apple silicon and Intel", linux: "64-bit, most distributions" };
 function renderPlatforms(el, release) {
@@ -116,68 +118,103 @@ function renderPlatforms(el, release) {
     const files = filesFor(release, os);
     const main = files.find((f) => f.primary) || files[0];
     const rest = files.filter((f) => f !== main);
-    return `<div class="platform ${os === here ? "current" : ""}">
+    return `<div class="platform">
       <div class="flex items-center gap-4">
-        <span class="os-logo os-${os} size-10 text-ink"></span>
-        <div><div class="text-lg font-semibold text-ink">${OS_NAMES[os]}</div><div class="text-[13.5px] text-muted">${PLATFORM_SUB[os]}</div></div>
+        <span class="logo os-${os} size-9 text-ink"></span>
+        <div><div class="text-lg font-medium text-ink">${OS_NAMES[os]}</div><div class="text-[13px] text-muted">${PLATFORM_SUB[os]}</div></div>
       </div>
-      ${main ? `<a class="btn ${os === here ? "primary" : ""} h-11! w-full" href="${main.asset.browser_download_url}">${icon("download")}Download ${main.ext}<span class="ml-1 font-normal opacity-60">${fmtSize(main.asset.size)}</span></a>` : `<a class="btn h-11! w-full" href="${release.html_url}">See files on GitHub</a>`}
+      ${main ? `<a class="btn ${os === here ? "primary" : ""} h-11! w-full" href="${main.asset.browser_download_url}">${icon("download")}Download ${main.ext}<span class="font-normal opacity-55">${fmtSize(main.asset.size)}</span></a>` : `<a class="btn h-11! w-full" href="${release.html_url}">See files on GitHub</a>`}
       <div>${rest.map((f) => `<a class="alt-link" href="${f.asset.browser_download_url}"><span>${f.label}</span><span class="ext">${f.ext} · ${fmtSize(f.asset.size)}</span></a>`).join("")}</div>
     </div>`;
   }).join("");
 }
 
-// The "how it works" demo: a file split into parts, each part's fill showing
-// its connection's progress. A connection that finishes takes half of the
-// largest part left, like the engine does. Loops forever.
-function runDemo(el) {
+// GitHub stars on the hero button, once there are enough to be worth showing.
+async function showStars() {
+  const el = document.querySelector("[data-stars]");
   if (!el) return;
-  const pct = document.getElementById("demo-pct"), conns = document.getElementById("demo-conns"), speed = document.getElementById("demo-speed");
+  try {
+    const r = await fetch(`https://api.github.com/repos/${REPO}`);
+    const n = (await r.json()).stargazers_count;
+    if (n >= 10) {
+      el.querySelector("[data-stars-n]").textContent = n >= 1000 ? `${(n / 1000).toFixed(1)}k` : n;
+      el.hidden = false;
+      el.style.display = "contents";
+    }
+  } catch {}
+}
+
+// The segment strips: a file split into parts that fill in, part by part,
+// in a loop. Purely decorative.
+function runStrips() {
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  document.querySelectorAll("[data-strip]").forEach((el) => {
+    const n = 48;
+    el.innerHTML = "<i></i>".repeat(n);
+    const cells = [...el.children];
+    if (reduce) { cells.forEach((c, i) => c.classList.toggle("on", i < 30)); return; }
+    let k = 0;
+    const step = () => {
+      cells.forEach((c, i) => { c.classList.toggle("on", i < k); c.classList.toggle("mid", i >= k && i < k + 3 && k < n); });
+      k = k > n + 8 ? 0 : k + 1;
+    };
+    let t;
+    new IntersectionObserver(([e]) => { clearInterval(t); if (e.isIntersecting) t = setInterval(step, 90); }).observe(el);
+  });
+}
+
+// The connections mockup: a 6.1 GB file over 8 connections. Each part fills
+// at its own pace; a connection that finishes takes half of the biggest part
+// left, like the engine. Loops.
+function runDemo() {
+  const lanes = document.getElementById("m-lanes");
+  if (!lanes) return;
+  const $m = (id) => document.getElementById(id);
+  const SIZE = 6.1;
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   let segs, t;
-  const reset = () => {
-    segs = Array.from({ length: 8 }, (_, i) => ({ start: i / 8, end: (i + 1) / 8, pos: i / 8, rate: .6 + Math.random() * .8 }));
-  };
-  const draw = (fresh) => {
+  const reset = () => { segs = Array.from({ length: 8 }, (_, i) => ({ start: i / 8, end: (i + 1) / 8, pos: i / 8, rate: .6 + Math.random() * .8 })); };
+  const draw = (moved = 0) => {
     segs.sort((a, b) => a.start - b.start);
-    el.innerHTML = segs.map((s) => {
-      const w = (s.end - s.start) * 100, fill = s.end > s.start ? ((s.pos - s.start) / (s.end - s.start)) * 100 : 100;
-      return `<div class="demo-seg ${s.pos >= s.end ? "done" : ""} ${s === fresh ? "new" : ""}" style="width:${w}%"><i style="width:${fill}%"></i></div>`;
-    }).join("");
     const done = segs.reduce((a, s) => a + (s.pos - s.start), 0);
-    pct.textContent = Math.min(100, Math.floor(done * 100));
-    conns.textContent = segs.filter((s) => s.pos < s.end).length;
+    const pct = Math.min(100, Math.floor(done * 100));
+    const active = segs.filter((s) => s.pos < s.end).length;
+    lanes.innerHTML = segs.map((s) => `<span class="slot ${s.pos >= s.end ? "done" : ""}" style="left:calc(${s.start * 100}% + 1px);width:calc(${(s.end - s.start) * 100}% - 2px)"><i style="width:${((s.pos - s.start) / (s.end - s.start)) * 100}%"></i></span>`).join("");
+    $m("m-rows").innerHTML = segs.slice(0, 5).map((s, i) => {
+      const f = (s.pos - s.start) / (s.end - s.start), fin = s.pos >= s.end;
+      return `<div class="crow"><span>${i + 1}</span><span>${((s.pos - s.start) * SIZE * 1024).toFixed(0)} MB</span><span class="mini"><i style="width:${f * 100}%"></i></span><span class="${fin ? "" : "live"}">${fin ? "Done" : "Receiving data…"}</span></div>`;
+    }).join("");
+    $m("m-bar").style.width = `${pct}%`;
+    $m("m-pct").textContent = `${pct}%`;
+    $m("m-title").textContent = `${pct}% · ubuntu-26.04-desktop-amd64.iso`;
+    $m("m-done").textContent = `${(done * SIZE).toFixed(2)} GB of ${SIZE.toFixed(2)} GB`;
+    $m("m-conns").textContent = active;
+    $m("m-parts").textContent = `${active} active · ${segs.length} parts`;
+    if (moved) $m("m-speed").textContent = `${(moved / (.0011 * 8) * 31.9).toFixed(1)} MB/s · ${Math.max(1, Math.round((1 - done) / (moved * 10)))}s left`;
   };
   const tick = () => {
-    let moved = 0, fresh = null;
+    let moved = 0;
     for (const s of segs) {
       if (s.pos >= s.end) continue;
       const step = Math.min(s.end - s.pos, .0011 * s.rate);
       s.pos += step; moved += step;
     }
     const busy = segs.filter((s) => s.pos < s.end);
-    if (busy.length < 8) {
+    if (busy.length && busy.length < 8) {
       const big = busy.sort((a, b) => (b.end - b.pos) - (a.end - a.pos))[0];
-      if (big && big.end - big.pos > .02) {
+      if (big.end - big.pos > .02) {
         const mid = big.pos + (big.end - big.pos) / 2;
-        fresh = { start: mid, end: big.end, pos: mid, rate: .6 + Math.random() * .8 };
+        segs.push({ start: mid, end: big.end, pos: mid, rate: .6 + Math.random() * .8 });
         big.end = mid;
-        segs = segs.filter((s) => s.end > s.start);
-        segs.push(fresh);
       }
     }
-    // Shown as a realistic speed for 8 connections, not the demo's pace.
-    speed.textContent = (moved / (.0011 * 8) * 26).toFixed(1);
-    draw(fresh);
-    if (!busy.length) { clearInterval(t); setTimeout(() => { reset(); draw(); t = setInterval(tick, 50); }, 1600); }
+    draw(moved);
+    if (!busy.length) { clearInterval(t); setTimeout(() => { reset(); draw(); t = setInterval(tick, 100); }, 1800); }
   };
-  reset(); draw();
-  if (reduce) { segs.forEach((s) => { s.pos = s.start + (s.end - s.start) * .6; }); draw(); return; }
-  // Only animate while visible.
-  new IntersectionObserver(([e]) => {
-    clearInterval(t);
-    if (e.isIntersecting) t = setInterval(tick, 50);
-  }).observe(el);
+  reset();
+  if (reduce) { segs.forEach((s) => { s.pos = s.start + (s.end - s.start) * .55; }); draw(.008); return; }
+  draw();
+  new IntersectionObserver(([e]) => { clearInterval(t); if (e.isIntersecting) t = setInterval(tick, 100); }).observe(lanes);
 }
 
 function initChrome() {
@@ -194,10 +231,10 @@ function initChrome() {
       io.unobserve(e.target);
     }
   }, { threshold: 0.15 });
-  document.querySelectorAll(".reveal, .bar").forEach((el) => io.observe(el));
+  document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
   document.querySelectorAll("[data-icon]").forEach((el) => { el.innerHTML = icon(el.dataset.icon); });
   const y = document.querySelector("[data-year]");
   if (y) y.textContent = new Date().getFullYear();
 }
 
-document.addEventListener("DOMContentLoaded", initChrome);
+document.addEventListener("DOMContentLoaded", () => { initChrome(); runStrips(); showStars(); });
