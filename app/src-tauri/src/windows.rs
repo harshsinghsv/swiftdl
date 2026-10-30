@@ -32,12 +32,28 @@ pub fn polish(window: &WebviewWindow) {
 /// Card width plus the transparent margin the page uses for its shadow.
 const WINDOW_WIDTH: f64 = 520.0 + 2.0 * 16.0;
 
+/// Puts a window in front of whatever the user is doing, like IDM's dialogs.
+/// Windows only lets a background app flash its taskbar button, but a
+/// window that is briefly "always on top" still appears above everything;
+/// it then drops back to a normal window, staying in front.
+fn bring_to_front(w: &WebviewWindow) {
+    let _ = w.unminimize();
+    let _ = w.show();
+    let _ = w.set_always_on_top(true);
+    let _ = w.set_focus();
+    let w = w.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(600));
+        let _ = w.set_focus();
+        let _ = w.set_always_on_top(false);
+    });
+}
+
 /// Opens `download.html?{query}` in a window called `label`, or brings an
 /// existing one forward.
 pub fn open(app: &AppHandle, label: &str, query: &str, title: &str) -> tauri::Result<()> {
     if let Some(w) = app.get_webview_window(label) {
-        let _ = w.unminimize();
-        let _ = w.set_focus();
+        bring_to_front(&w);
         return Ok(());
     }
     // Transparent and frameless: the page draws the whole window (rounded
@@ -52,6 +68,8 @@ pub fn open(app: &AppHandle, label: &str, query: &str, title: &str) -> tauri::Re
         .shadow(false)
         .center()
         .focused(true)
-        .build()?;
+        .always_on_top(true)
+        .build()
+        .map(|w| bring_to_front(&w))?;
     Ok(())
 }

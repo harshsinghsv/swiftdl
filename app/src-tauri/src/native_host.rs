@@ -71,6 +71,10 @@ fn launch_app(args: &[&str]) -> io::Result<()> {
         // The browser's pipe handles are inheritable. If the app inherited
         // them, the browser would never see our stdout close.
         unsafe { windows_handles::stop_inheriting_std_handles() };
+        // The browser started this host, so it may come to the front; pass
+        // that on, or the app's New download window would only flash in the
+        // taskbar instead of appearing over the browser.
+        unsafe { windows_handles::allow_foreground() };
         const DETACHED_PROCESS: u32 = 0x0000_0008;
         const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
         // Chrome runs hosts in a job that is killed with the host; break
@@ -94,6 +98,12 @@ mod windows_handles {
     unsafe extern "system" {
         fn GetStdHandle(which: u32) -> *mut c_void;
         fn SetHandleInformation(handle: *mut c_void, mask: u32, flags: u32) -> i32;
+        fn AllowSetForegroundWindow(process_id: u32) -> i32;
+    }
+
+    pub unsafe fn allow_foreground() {
+        const ASFW_ANY: u32 = u32::MAX;
+        unsafe { AllowSetForegroundWindow(ASFW_ANY) };
     }
 
     pub unsafe fn stop_inheriting_std_handles() {
