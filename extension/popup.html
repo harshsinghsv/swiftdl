@@ -7,48 +7,46 @@
 </head>
 <body>
   <header>
-    <span class="brand"><img src="logo.svg" alt="" width="20" height="20">SwiftDL</span>
-    <span class="status" id="status"><i></i><span>Checking</span></span>
+    <img src="logo.svg" alt="" width="28" height="28">
+    <span class="id"><b>SwiftDL</b><span class="status" id="status"><i></i><span>Checking</span></span></span>
+    <button id="open" class="icon" title="Open SwiftDL">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>
+    </button>
   </header>
 
   <main id="main">
-    <h3>On this page <span class="count" id="count"></span></h3>
-    <div id="media" class="media"></div>
+    <section id="found" hidden>
+      <div class="label">On this page</div>
+      <div id="media"></div>
+    </section>
 
-    <h3>Downloads</h3>
-    <div class="group">
-      <label class="row">
-        <span class="txt"><b>Catch downloads</b><span>Send browser downloads to SwiftDL</span></span>
-        <span class="switch"><input type="checkbox" id="enabled"><i></i></span>
-      </label>
-      <label class="row" id="site-row">
-        <span class="txt"><b>Use on <span id="site"></span></b><span>Off leaves this site to the browser</span></span>
-        <span class="switch"><input type="checkbox" id="site-on"><i></i></span>
-      </label>
-      <label class="row">
-        <span class="txt"><b>Skip small files</b><span>Smaller files stay in the browser</span></span>
-        <span class="select"><select id="min-size">
-          <option value="0">Off</option>
-          <option value="512">512 KB</option>
-          <option value="1024">1 MB</option>
-          <option value="5120">5 MB</option>
-          <option value="20480">20 MB</option>
-        </select></span>
-      </label>
-    </div>
+    <label class="row">
+      <span class="txt">Catch downloads</span>
+      <span class="switch"><input type="checkbox" id="enabled"><i></i></span>
+    </label>
+    <label class="row" id="site-row">
+      <span class="txt">On <span id="site" class="host"></span></span>
+      <span class="switch"><input type="checkbox" id="site-on"><i></i></span>
+    </label>
+    <label class="row">
+      <span class="txt">Skip files under</span>
+      <span class="select"><select id="min-size">
+        <option value="0">Off</option>
+        <option value="512">512 KB</option>
+        <option value="1024">1 MB</option>
+        <option value="5120">5 MB</option>
+        <option value="20480">20 MB</option>
+      </select></span>
+    </label>
+
+    <p class="hint">Hold <kbd>Alt</kbd> while clicking to download in the browser</p>
   </main>
 
   <div class="missing" id="missing" hidden>
-    <img src="logo.svg" alt="" width="40" height="40">
     <b>Can't reach SwiftDL</b>
-    <span>Install the app and open it once. If it's already installed, restart the browser.</span>
-    <a href="https://github.com/harshsinghsv/swiftdl/releases/latest" target="_blank" class="btn primary">Download SwiftDL</a>
+    <span>Open the app once. If it's already open, restart the browser.</span>
+    <a href="https://github.com/harshsinghsv/swiftdl/releases/latest" target="_blank" class="btn">Download SwiftDL</a>
   </div>
-
-  <footer>
-    <span class="tip"><kbd>Alt</kbd> + click to skip SwiftDL</span>
-    <button id="open" class="btn">Open SwiftDL</button>
-  </footer>
 
   <script src="popup.js"></script>
 </body>

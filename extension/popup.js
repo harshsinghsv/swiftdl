@@ -34,23 +34,23 @@ async function main() {
     $("status").querySelector("span").textContent = r?.ok ? "Connected" : "Not connected";
     $("missing").hidden = !!r?.ok;
     $("main").hidden = !r?.ok;
-    document.querySelector("footer").hidden = !r?.ok;
+    $("open").hidden = !r?.ok;
   });
 
   const { items = [] } = await chrome.runtime.sendMessage({ type: "media", tabId: tab.id, pageUrl: tab.url });
   const files = items.filter((m) => m.kind === "file");
   const streams = items.filter((m) => m.kind !== "file");
-  $("count").textContent = files.length ? `${files.length} file${files.length === 1 ? "" : "s"}` : "";
   const title = (tab.title || "download").replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 120);
   const ext = (m) => (/\.([a-z0-9]{2,4})(?:$|[?#])/i.exec(new URL(m.url).pathname) || [])[1]?.toLowerCase() || (m.mime.split("/")[1] || "mp4").replace(/^x-/, "").slice(0, 4);
 
   let html = files.map((m, i) => {
     const e = ext(m);
     const audio = /^audio/.test(m.mime) || /mp3|m4a|aac|ogg|opus|flac|wav/.test(e);
-    return `<div class="m"><span class="tag">${e.toUpperCase()}</span><span class="mt"><b>${audio ? "Audio" : "Video"}${m.size ? ` · ${bytes(m.size)}` : ""}</b><span title="${esc(m.url)}">${esc(new URL(m.url).hostname)}</span></span><button class="dl" data-i="${i}" title="Download with SwiftDL">${DL_ICON}</button></div>`;
+    return `<div class="m"><span class="tag">${e.toUpperCase()}</span><span class="mt"><b>${audio ? "Audio" : "Video"}</b><span title="${esc(m.url)}">${m.size ? bytes(m.size) : esc(new URL(m.url).hostname)}</span></span><button class="dl" data-i="${i}" title="Download with SwiftDL">${DL_ICON}</button></div>`;
   }).join("");
-  html += streams.slice(0, 2).map((m) => `<div class="m"><span class="tag stream">${m.kind.toUpperCase()}</span><span class="mt"><b>Streaming video</b><span>Streaming formats aren't supported yet</span></span></div>`).join("");
-  $("media").innerHTML = html || `<div class="empty">No video or audio yet. If a video is playing, give it a few seconds.</div>`;
+  html += streams.slice(0, 2).map((m) => `<div class="m"><span class="tag stream">${m.kind.toUpperCase()}</span><span class="mt"><b>Stream</b><span>Not supported yet</span></span></div>`).join("");
+  $("media").innerHTML = html;
+  $("found").hidden = !html;
   $("media").onclick = async (e) => {
     const b = e.target.closest(".dl");
     if (!b) return;
