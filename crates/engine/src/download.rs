@@ -46,6 +46,9 @@ pub struct Progress {
     /// Byte ranges `[pos, end)` still missing; each one's `pos` is where a
     /// connection is writing. Lets a UI draw the connection map.
     pub remaining: Mutex<Vec<(u64, u64)>>,
+    /// Every segment as `(start, pos, end)`, in file order, for a
+    /// per-connection view.
+    pub segments: Mutex<Vec<(u64, u64, u64)>>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -99,6 +102,19 @@ impl Shared {
     fn remaining_bytes(&self) -> u64 {
         let t = self.table.lock().unwrap();
         t.segments.iter().map(|s| s.remaining()).sum()
+    }
+
+    fn spans(&self) -> Vec<(u64, u64, u64)> {
+        let t = self.table.lock().unwrap();
+        let mut v: Vec<_> = t.segments.iter().map(|s| s.span()).collect();
+        v.sort_by_key(|s| s.0);
+        v
+    }
+
+    fn publish(&self, size: u64) {
+        self.progress.downloaded.store(size - self.remaining_bytes(), Ordering::Relaxed);
+        *self.progress.remaining.lock().unwrap() = self.remaining_ranges();
+        *self.progress.segments.lock().unwrap() = self.spans();
     }
 }
 
@@ -191,7 +207,7 @@ async fn download_segmented(
         progress: progress.clone(),
         limiter,
     });
-    progress.downloaded.store(size - shared.remaining_bytes(), Ordering::Relaxed);
+    shared.publish(size);
 
     let save = {
         let meta = SavedState {
@@ -213,8 +229,7 @@ async fn download_segmented(
             let mut tick = tokio::time::interval(Duration::from_millis(250));
             for n in 0u64.. {
                 tick.tick().await;
-                shared.progress.downloaded.store(size - shared.remaining_bytes(), Ordering::Relaxed);
-                *shared.progress.remaining.lock().unwrap() = shared.remaining_ranges();
+                shared.publish(size);
                 if n % (SAVE_EVERY.as_millis() as u64 / 250) == 0 {
                     let _ = save();
                 }
@@ -241,8 +256,7 @@ async fn download_segmented(
     background.abort();
     let _ = background.await;
     progress.connections.store(0, Ordering::Relaxed);
-    progress.downloaded.store(size - shared.remaining_bytes(), Ordering::Relaxed);
-    *progress.remaining.lock().unwrap() = shared.remaining_ranges();
+    shared.publish(size);
 
     match result {
         Ok(true) if shared.remaining_bytes() == 0 => {

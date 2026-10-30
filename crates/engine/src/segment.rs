@@ -10,16 +10,25 @@ use std::io;
 use std::sync::Mutex;
 
 pub struct Segment {
+    /// Where this segment began (for showing per-connection progress).
+    start: u64,
     range: Mutex<(u64, u64)>,
 }
 
 impl Segment {
     pub fn new(pos: u64, end: u64) -> Self {
-        Self { range: Mutex::new((pos, end)) }
+        Self { start: pos, range: Mutex::new((pos, end)) }
     }
 
     pub fn range(&self) -> (u64, u64) {
         *self.range.lock().unwrap()
+    }
+
+    /// `(start, pos, end)`: began at `start`, has written up to `pos`, owns
+    /// bytes up to `end`.
+    pub fn span(&self) -> (u64, u64, u64) {
+        let (pos, end) = self.range();
+        (self.start, pos, end)
     }
 
     pub fn remaining(&self) -> u64 {
