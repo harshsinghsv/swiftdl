@@ -398,12 +398,27 @@ function renderOnboard() {
   const show = i && !i.lastSeen && !state.settings?.onboardingDismissed && installedBrowsers().length > 0;
   card.hidden = !show;
   if (!show) return;
+  // Until the extension is on the Chrome Web Store, store buttons would lead
+  // to a missing page, so offer the guided manual install instead.
+  const actions = i.storeAvailable
+    ? installedBrowsers().slice(0, 3).map((b) => `<button class="link-btn" data-store="${b.id}">Add to ${b.name}</button>`).join("")
+    : `<button class="link-btn" data-guide>Add the extension</button>`;
   const html = `<span class="ob-icon">${icon("globe")}</span>
     <span class="ob-text"><b>Connect your browser</b>Catch downloads automatically and get a download button on videos</span>
-    <span class="ob-actions">${installedBrowsers().slice(0, 3).map((b) => `<button class="link-btn" data-store="${b.id}">Add to ${b.name}</button>`).join("")}<button class="sq-btn" data-dismiss title="Dismiss">${icon("x")}</button></span>`;
+    <span class="ob-actions">${actions}<button class="sq-btn" data-dismiss title="Dismiss">${icon("x")}</button></span>`;
   if (card.innerHTML !== html) card.innerHTML = html;
 }
+async function openExtensionGuide() {
+  const dir = await invoke("extension_dir").catch(() => null);
+  $("ext-path").textContent = dir || "%LOCALAPPDATA%\\SwiftDL\\extension";
+  $("ext-path").title = $("ext-path").textContent;
+  $("dlg-ext").showModal();
+}
+$("ext-copy").innerHTML = icon("copy");
+$("ext-copy").onclick = () => copy($("ext-path").textContent, "Folder path copied");
+$("ext-open").onclick = () => call("open_extension_folder");
 $("onboard").addEventListener("click", async (e) => {
+  if (e.target.closest("[data-guide]")) return openExtensionGuide();
   const s = e.target.closest("[data-store]");
   if (s) return openStore(s.dataset.store);
   if (e.target.closest("[data-dismiss]")) {
@@ -419,11 +434,19 @@ function renderBrowserPanel() {
   const i = state.integration;
   if (!i) return;
   $("ext-status").className = `ext-status ${i.lastSeen ? "ok" : ""}`;
-  $("ext-status").innerHTML = `<span class="dot"></span><div class="sr-text"><b>${i.lastSeen ? "Extension connected" : "Extension not connected yet"}</b><span>${i.lastSeen ? `Last active ${when(i.lastSeen).toLowerCase()}` : "Add it to a browser below, then open that browser once"}</span></div>`;
+  const store = i.storeAvailable;
+  const hint = store ? "Add it to a browser below, then open that browser once" : "Follow the steps below, then open the browser once";
+  $("ext-status").innerHTML = `<span class="dot"></span><div class="sr-text"><b>${i.lastSeen ? "Extension connected" : "Extension not connected yet"}</b><span>${i.lastSeen ? `Last active ${when(i.lastSeen).toLowerCase()}` : hint}</span></div>`;
   $("browser-list").innerHTML = [...i.browsers].sort((a, b) => b.installed - a.installed).map((b) => `<div class="set-row">
       <span class="bmono ${b.installed ? "" : "off"}">${icon("globe")}</span>
-      <div class="sr-text"><b>${b.name}</b><span>${b.installed ? (b.autoOffer ? "Installed · asks to enable the extension on next start" : "Installed") : "Not installed"}</span></div>
-      ${b.installed ? `<button type="button" class="btn sm" data-store="${b.id}">Add extension</button>` : ""}</div>`).join("");
+      <div class="sr-text"><b>${b.name}</b><span>${b.installed ? (store && b.autoOffer ? "Installed · asks to enable the extension on next start" : "Installed") : "Not installed"}</span></div>
+      ${b.installed && store ? `<button type="button" class="btn sm" data-store="${b.id}">Add extension</button>` : ""}</div>`).join("");
+  // No store listing yet: show the manual steps up front, and hide the
+  // automatic offer, which only works once the extension is on the store.
+  const manual = document.querySelector(".manual");
+  manual.open = !store;
+  manual.querySelector("summary").textContent = store ? "Install manually" : "How to add it";
+  $("set-offer").closest(".set-group").hidden = !store;
 }
 $("browser-list").addEventListener("click", (e) => { const b = e.target.closest("[data-store]"); if (b) openStore(b.dataset.store); });
 

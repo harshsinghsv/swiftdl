@@ -166,6 +166,25 @@
   </dialog>
 
   <!-- Confirm -->
+  <!-- Install the extension from the folder SwiftDL ships with -->
+  <dialog id="dlg-ext" class="modal guide">
+    <form method="dialog">
+      <h3>Add the browser extension</h3>
+      <p class="muted">The extension came with SwiftDL. Add it to Chrome, Edge, Brave or Vivaldi in four steps.</p>
+      <ol class="guide-steps">
+        <li><span class="step">1</span><div><b>Open the extensions page</b><span>Type <code>chrome://extensions</code> in the address bar (Edge: <code>edge://extensions</code>)</span></div></li>
+        <li><span class="step">2</span><div><b>Turn on Developer mode</b><span>The switch is in the top-right corner of that page</span></div></li>
+        <li><span class="step">3</span><div><b>Click Load unpacked</b><span>A folder picker opens</span></div></li>
+        <li><span class="step">4</span><div><b>Choose SwiftDL's extension folder</b><span class="guide-path"><code id="ext-path">…</code><button type="button" class="sq-btn" id="ext-copy" title="Copy path"></button></span></div></li>
+      </ol>
+      <p class="guide-note">Use this folder rather than a downloaded copy: it stays in place while SwiftDL is installed and is refreshed when SwiftDL updates.</p>
+      <div class="confirm-foot">
+        <button value="close" class="btn">Done</button>
+        <button type="button" class="btn primary" id="ext-open">Open extension folder</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="dlg-delete" class="modal confirm">
     <form method="dialog">
       <h3 id="del-title">Remove download?</h3>

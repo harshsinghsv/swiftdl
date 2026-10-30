@@ -25,6 +25,11 @@ pub const HOST_NAME: &str = "com.swiftdl.host";
 pub const EXTENSION_IDS: &[&str] = &["knmfjbmojepkdiflnckpfjimfmjfcbgh"];
 pub const STORE_UPDATE_URL: &str = "https://clients2.google.com/service/update2/crx";
 
+/// Flip to `true` once the extension is live on the Chrome Web Store. Until
+/// then the UI guides users through installing it from the bundled folder
+/// instead of offering store buttons that would lead nowhere.
+pub const STORE_PUBLISHED: bool = false;
+
 pub fn store_url() -> String {
     format!("https://chromewebstore.google.com/detail/{}", EXTENSION_IDS[0])
 }
@@ -246,10 +251,13 @@ pub struct IntegrationStatus {
     /// Last time the extension talked to the app (ms since epoch).
     last_seen: Option<u64>,
     store_url: String,
+    /// Whether the extension can be added from the Chrome Web Store yet.
+    store_available: bool,
 }
 
 pub fn status() -> IntegrationStatus {
     IntegrationStatus {
+        store_available: STORE_PUBLISHED,
         browsers: BROWSERS
             .iter()
             .map(|b| BrowserStatus { id: b.id, name: b.name, installed: browser_exe(b.id).is_some(), auto_offer: b.external })

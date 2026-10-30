@@ -459,6 +459,22 @@ code { font: 11.5px ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospac
 .custom input { width: 90px; height: 28px; padding: 0 9px; border: 0; border-radius: 7px; box-shadow: inset 0 0 0 1px var(--border-2); background: none; outline: none; font-weight: 550; user-select: text; }
 .custom input:focus { box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 3px var(--accent-soft); }
 
+/* extension install guide */
+.guide { width: 480px; }
+.guide form { padding: 22px 22px 18px; }
+.guide h3 { margin: 0 0 6px; font: 600 15px/1.3 var(--font-display); }
+.guide > form > p.muted { margin: 0 0 16px; line-height: 1.5; }
+.guide-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.guide-steps li { display: flex; gap: 12px; align-items: flex-start; }
+.guide-steps li > div { min-width: 0; flex: 1; }
+.guide-steps b { display: block; font-weight: 550; }
+.guide-steps li > div > span { display: block; margin-top: 2px; font-size: 12.5px; color: var(--muted); }
+.guide-path { display: flex !important; align-items: center; gap: 6px; margin-top: 6px !important; }
+.guide-path code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 5px 8px; }
+.guide-path .sq-btn { width: 26px; height: 26px; }
+.guide-path .sq-btn svg.ic { width: 14px; height: 14px; }
+.guide-note { margin: 16px 0 0; padding: 10px 12px; border-radius: 8px; background: var(--btn-bg); font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+
 /* confirm */
 .confirm { width: 420px; }
 .confirm form { padding: 20px; }

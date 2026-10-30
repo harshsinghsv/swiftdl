@@ -135,6 +135,7 @@
     set_settings: ({ settings: s }) => { settings = s; schedule(); },
     pick_folder: () => "C:\\Users\\you\\Desktop",
     open_file: () => {}, open_folder: () => {}, open_url: () => {}, open_extension_folder: () => {},
+    extension_dir: () => "C:\\Users\\you\\AppData\\Local\\SwiftDL\\extension",
     default_dir: ({ filename }) => dirFor(catFor(filename)),
     integration_status: () => ({
       browsers: [
@@ -146,6 +147,7 @@
       ],
       lastSeen: null,
       storeUrl: "https://chromewebstore.google.com/detail/knmfjbmojepkdiflnckpfjimfmjfcbgh",
+      storeAvailable: false,
     }),
     open_store: () => {},
     get_item: ({ id }) => JSON.parse(JSON.stringify(items.find((i) => i.id === id) || null)),

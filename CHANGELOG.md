@@ -6,6 +6,14 @@ uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- **Adding the extension is a guided step.** Until the extension is on the
+  Chrome Web Store, *Add the extension* opens a four-step guide that points at
+  the copy SwiftDL installs, with a button to open that folder, instead of
+  store buttons that led nowhere. The automatic-offer switch is hidden until
+  the listing exists.
+- The README now points at the installed extension folder rather than the zip.
+
 ## [0.2.0] - 2026-10-30
 
 ### Added

@@ -124,7 +124,14 @@ The SwiftDL extension works in **Chrome, Edge, Brave and Vivaldi**:
 - Hold <kbd>Alt</kbd> while clicking a link to let the browser handle that download.
 - Can be turned off for a single site from its popup.
 
-**Install it:** download `swiftdl-extension.zip` from the [latest release](https://github.com/harshsinghsv/swiftdl/releases/latest) and unzip it. Then open `chrome://extensions` (or `edge://extensions`), turn on **Developer mode**, click **Load unpacked** and choose the folder. Open SwiftDL once so the extension can find it.
+**Install it:** the extension comes with SwiftDL, so there's nothing extra to download. In SwiftDL, click **Add the extension** (or go to **Settings → Browser**) and follow the four steps:
+
+1. Open `chrome://extensions` (or `edge://extensions`).
+2. Turn on **Developer mode**.
+3. Click **Load unpacked**.
+4. Choose SwiftDL's extension folder. The **Open extension folder** button takes you there. On Windows it's `%LOCALAPPDATA%\SwiftDL\extension`.
+
+Use that folder rather than a copy: it stays in place while SwiftDL is installed and is refreshed when SwiftDL updates. If you don't have the app installed, `swiftdl-extension.zip` on the [latest release](https://github.com/harshsinghsv/swiftdl/releases/latest) has the same files.
 
 Once the extension is on the Chrome Web Store, SwiftDL will offer it automatically: Chrome, Edge and Brave show a one-time **New extension added** prompt and you click **Enable**. No browser lets an app install an extension silently.
 
