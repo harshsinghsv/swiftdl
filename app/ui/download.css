@@ -8,7 +8,10 @@ body.dlw { overflow: hidden; --win-edge: rgba(0, 0, 0, .1); }
 #root {
   margin: 16px; display: flex; flex-direction: column; overflow: hidden;
   border-radius: 12px; background: var(--panel);
-  box-shadow: 0 0 0 1px var(--win-edge), 0 2px 6px rgba(0, 0, 0, .14), 0 12px 32px rgba(0, 0, 0, .26);
+  /* Every layer must stay inside the 16px margin: a shadow that reaches past
+     the window edge is cut off there and shows as a faint box. Bottom reach
+     is offset + blur + spread: 1 + 3 = 4 and 6 + 14 - 4 = 16. */
+  box-shadow: 0 0 0 1px var(--win-edge), 0 1px 3px rgba(0, 0, 0, .18), 0 6px 14px -4px rgba(0, 0, 0, .32);
 }
 
 .w-bar { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 6px 0 14px; flex: none; }
