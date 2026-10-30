@@ -1,26 +1,28 @@
 // SwiftDL browser integration.
 //
-// Catches downloads the browser starts and hands them to the SwiftDL app
-// (through native messaging), along with the cookies and referrer the site
-// expects, so downloads behind a login keep working. If the app isn't
-// installed or refuses, the browser simply finishes the download itself.
+// 1. Catches downloads the browser starts and hands them to the SwiftDL app
+//    (through native messaging), with the cookies and referrer the site
+//    expects, so downloads behind a login keep working. If the app isn't
+//    installed or refuses, the browser simply finishes the download itself.
+// 2. Watches each tab's network traffic for video and audio files so the
+//    page button and the popup can offer them for download.
 
 const HOST = "com.swiftdl.host";
-const DEFAULTS = { enabled: true, minSizeKB: 0 };
-
-// URLs the user explicitly wants the browser to handle (from the fallback path).
-const bypass = new Set();
+const DEFAULTS = { enabled: true, minSizeKB: 0, disabledSites: [] };
 
 const getSettings = () => chrome.storage.sync.get(DEFAULTS);
+const hostOf = (url) => { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return ""; } };
 
-// Last few events, kept for troubleshooting (shown nowhere yet; readable
-// from the service worker console or chrome.storage.local).
+// Last few events, kept for troubleshooting (service worker console or
+// chrome.storage.local "log").
 async function log(event) {
   console.log("SwiftDL:", event);
   const { log: entries = [] } = await chrome.storage.local.get("log");
   entries.push(`${new Date().toISOString()} ${event}`);
   await chrome.storage.local.set({ log: entries.slice(-30) });
 }
+
+// ---------- talking to the app ----------
 
 async function cookieHeader(url) {
   try {
@@ -44,10 +46,26 @@ async function sendToApp({ url, referrer, filename }) {
   if (!reply?.ok) throw new Error(reply?.error || "SwiftDL did not accept the download");
 }
 
-function flashBadge(text, color) {
+const ping = () =>
+  chrome.runtime.sendNativeMessage(HOST, { type: "ping" })
+    .then((r) => ({ ok: !!r?.ok, version: r?.version }))
+    .catch((e) => ({ ok: false, error: String(e?.message || e) }));
+
+function flashBadge(text, color, tabId) {
   chrome.action.setBadgeBackgroundColor({ color });
-  chrome.action.setBadgeText({ text });
-  setTimeout(() => chrome.action.setBadgeText({ text: "" }), 2500);
+  chrome.action.setBadgeText({ text, ...(tabId ? { tabId } : {}) });
+  setTimeout(() => refreshBadge(tabId), 2500);
+}
+
+// ---------- catching browser downloads ----------
+
+// Hold Alt while clicking a link to let the browser download it instead.
+let bypassUntil = 0;
+
+async function siteDisabled(url) {
+  const { disabledSites } = await getSettings();
+  const host = hostOf(url);
+  return !!host && disabledSites.includes(host);
 }
 
 chrome.downloads.onCreated.addListener(async (item) => {
@@ -55,10 +73,10 @@ chrome.downloads.onCreated.addListener(async (item) => {
   const url = item.finalUrl || item.url;
   await log(`created #${item.id} state=${item.state} ${url}`);
   if (!settings.enabled || item.state !== "in_progress") return;
-
   // blob:, data: and file: URLs only exist inside the browser.
   if (!/^https?:/i.test(url)) return;
-  if (bypass.delete(url)) return;
+  if (Date.now() < bypassUntil) { bypassUntil = 0; await log(`#${item.id} Alt held: left to the browser`); return; }
+  if (await siteDisabled(item.referrer || url)) return;
   if (settings.minSizeKB > 0 && item.totalBytes > 0 && item.totalBytes < settings.minSizeKB * 1024) return;
 
   // Pause first so the browser doesn't keep downloading while we ask the app.
@@ -68,46 +86,124 @@ chrome.downloads.onCreated.addListener(async (item) => {
     await chrome.downloads.cancel(item.id).catch(() => {});
     await chrome.downloads.erase({ id: item.id }).catch(() => {});
     await log(`#${item.id} handed to SwiftDL`);
-    flashBadge("✓", "#1f9d55");
+    flashBadge("✓", "#2f9e6a");
   } catch (err) {
     await log(`#${item.id} left to the browser: ${err?.message || err}`);
     await chrome.downloads.resume(item.id).catch(() => {});
-    flashBadge("!", "#d23f3f");
+    flashBadge("!", "#dc4b4b");
   }
 });
 
-// Right-click "Download with SwiftDL" on links and media.
+// ---------- media detection ----------
+// Per tab, the video/audio files and streams the page has loaded. Kept in
+// session storage because the service worker can be stopped at any time.
+
+const MEDIA_EXT = /\.(mp4|m4v|webm|mkv|mov|avi|flv|wmv|mp3|m4a|aac|ogg|oga|opus|flac|wav)(?:$|[?#])/i;
+const STREAM_EXT = /\.(m3u8|mpd)(?:$|[?#])/i;
+const SEGMENT = /\.(ts|m4s|aac)(?:$|[?#])|[?&](range|bytestart)=/i;
+const MIN_FILE_BYTES = 512 * 1024;
+const key = (tabId) => `media:${tabId}`;
+
+function classify(url, mime, size) {
+  if (/mpegurl/i.test(mime) || /\.m3u8(?:$|[?#])/i.test(url)) return "hls";
+  if (/dash\+xml/i.test(mime) || /\.mpd(?:$|[?#])/i.test(url)) return "dash";
+  const isMedia = /^(video|audio)\//i.test(mime) || MEDIA_EXT.test(url);
+  if (!isMedia || /mp2t/i.test(mime) || SEGMENT.test(url)) return null;
+  if (size && size < MIN_FILE_BYTES) return null;
+  return "file";
+}
+
+function header(headers, name) {
+  return headers?.find((h) => h.name.toLowerCase() === name)?.value || "";
+}
+
+chrome.webRequest.onResponseStarted.addListener(
+  async (d) => {
+    if (d.tabId < 0 || d.statusCode >= 400) return;
+    const mime = header(d.responseHeaders, "content-type").split(";")[0].trim().toLowerCase();
+    const range = header(d.responseHeaders, "content-range");
+    const size = Number(range.split("/")[1]) || Number(header(d.responseHeaders, "content-length")) || 0;
+    const kind = classify(d.url, mime, size);
+    if (!kind) return;
+    const url = d.url.replace(/([?&])(range|rn|rbuf)=[^&]*/gi, "$1").replace(/[?&]$/, "");
+    const { [key(d.tabId)]: list = [] } = await chrome.storage.session.get(key(d.tabId));
+    if (list.some((m) => m.url === url)) return;
+    list.unshift({ url, kind, mime, size, at: Date.now() });
+    await chrome.storage.session.set({ [key(d.tabId)]: list.slice(0, 25) });
+    refreshBadge(d.tabId);
+  },
+  { urls: ["http://*/*", "https://*/*"], types: ["media", "xmlhttprequest", "other", "object"] },
+  ["responseHeaders"],
+);
+
+async function mediaFor(tabId) {
+  const { [key(tabId)]: list = [] } = await chrome.storage.session.get(key(tabId));
+  return list;
+}
+
+async function refreshBadge(tabId) {
+  if (tabId == null) { chrome.action.setBadgeText({ text: "" }); return; }
+  const files = (await mediaFor(tabId)).filter((m) => m.kind === "file").length;
+  chrome.action.setBadgeBackgroundColor({ color: "#5b5fe6", tabId });
+  chrome.action.setBadgeText({ text: files ? String(files) : "", tabId });
+}
+
+// A new page in the tab starts a fresh list.
+chrome.tabs.onUpdated.addListener((tabId, info) => {
+  if (info.status === "loading" && info.url) chrome.storage.session.remove(key(tabId)).then(() => refreshBadge(tabId));
+});
+chrome.tabs.onRemoved.addListener((tabId) => chrome.storage.session.remove(key(tabId)));
+
+// ---------- right-click menu ----------
+
 function createMenus() {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({ id: "swiftdl-link", title: "Download with SwiftDL", contexts: ["link"] });
     chrome.contextMenus.create({ id: "swiftdl-media", title: "Download with SwiftDL", contexts: ["video", "audio", "image"] });
   });
 }
-chrome.runtime.onInstalled.addListener(createMenus);
-chrome.runtime.onStartup.addListener(createMenus);
+chrome.runtime.onInstalled.addListener(() => { createMenus(); ping(); });
+chrome.runtime.onStartup.addListener(() => { createMenus(); ping(); });
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   const url = info.linkUrl || info.srcUrl;
-  if (!url || !/^https?:/i.test(url)) {
-    flashBadge("!", "#d23f3f");
-    return;
-  }
+  if (!url || !/^https?:/i.test(url)) return flashBadge("!", "#dc4b4b", tab?.id);
   try {
     await sendToApp({ url, referrer: info.pageUrl || tab?.url });
-    flashBadge("✓", "#1f9d55");
+    flashBadge("✓", "#2f9e6a", tab?.id);
   } catch (err) {
-    console.warn("SwiftDL: could not reach the app:", err);
-    flashBadge("!", "#d23f3f");
+    await log(`context menu: could not reach the app: ${err?.message || err}`);
+    flashBadge("!", "#dc4b4b", tab?.id);
   }
 });
 
-// The popup asks whether the app is reachable.
-chrome.runtime.onMessage.addListener((msg, _sender, respond) => {
-  if (msg?.type === "ping") {
-    chrome.runtime
-      .sendNativeMessage(HOST, { type: "ping" })
-      .then((r) => respond({ ok: !!r?.ok, version: r?.version }))
-      .catch((e) => respond({ ok: false, error: String(e?.message || e) }));
-    return true; // async response
-  }
+// ---------- messages from the page button and the popup ----------
+
+chrome.runtime.onMessage.addListener((msg, sender, respond) => {
+  const tabId = msg.tabId ?? sender.tab?.id;
+  const pageUrl = msg.pageUrl || sender.tab?.url || "";
+  (async () => {
+    switch (msg?.type) {
+      case "ping": return ping();
+      case "bypass": bypassUntil = Date.now() + 4000; return { ok: true };
+      case "media": return { items: await mediaFor(tabId), disabled: await siteDisabled(pageUrl) };
+      case "grab":
+        try {
+          await sendToApp({ url: msg.url, referrer: pageUrl, filename: msg.filename });
+          return { ok: true };
+        } catch (e) {
+          return { ok: false, error: String(e?.message || e) };
+        }
+      case "show":
+        return chrome.runtime.sendNativeMessage(HOST, { type: "show" }).catch((e) => ({ ok: false, error: String(e) }));
+      case "toggle-site": {
+        const { disabledSites } = await getSettings();
+        const host = hostOf(pageUrl);
+        const next = disabledSites.includes(host) ? disabledSites.filter((h) => h !== host) : [...disabledSites, host];
+        await chrome.storage.sync.set({ disabledSites: next });
+        return { disabled: next.includes(host) };
+      }
+    }
+  })().then(respond);
+  return true; // async response
 });
