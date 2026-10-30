@@ -14,14 +14,15 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 async function main() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const settings = await chrome.storage.sync.get(DEFAULTS);
+  // Only real websites get the per-site switch, not browser or extension pages.
   let host = "";
-  try { host = new URL(tab.url).hostname.replace(/^www\./, ""); } catch {}
+  try { const u = new URL(tab.url); if (/^https?:$/.test(u.protocol)) host = u.hostname.replace(/^www\./, ""); } catch {}
 
   $("enabled").checked = settings.enabled;
   $("min-size").value = String(settings.minSizeKB);
-  $("site").textContent = host || "this site";
+  $("site").textContent = host;
+  $("site-row").hidden = !host;
   $("site-on").checked = !settings.disabledSites.includes(host);
-  $("site-on").disabled = !host;
 
   $("enabled").onchange = (e) => chrome.storage.sync.set({ enabled: e.target.checked });
   $("min-size").onchange = (e) => chrome.storage.sync.set({ minSizeKB: Number(e.target.value) });
@@ -30,8 +31,10 @@ async function main() {
 
   chrome.runtime.sendMessage({ type: "ping" }).then((r) => {
     $("status").className = `status ${r?.ok ? "ok" : "off"}`;
-    $("status").querySelector("span").textContent = r?.ok ? `Connected` : "Not connected";
+    $("status").querySelector("span").textContent = r?.ok ? "Connected" : "Not connected";
     $("missing").hidden = !!r?.ok;
+    $("main").hidden = !r?.ok;
+    document.querySelector("footer").hidden = !r?.ok;
   });
 
   const { items = [] } = await chrome.runtime.sendMessage({ type: "media", tabId: tab.id, pageUrl: tab.url });
@@ -47,7 +50,7 @@ async function main() {
     return `<div class="m"><span class="tag">${e.toUpperCase()}</span><span class="mt"><b>${audio ? "Audio" : "Video"}${m.size ? ` · ${bytes(m.size)}` : ""}</b><span title="${esc(m.url)}">${esc(new URL(m.url).hostname)}</span></span><button class="dl" data-i="${i}" title="Download with SwiftDL">${DL_ICON}</button></div>`;
   }).join("");
   html += streams.slice(0, 2).map((m) => `<div class="m"><span class="tag stream">${m.kind.toUpperCase()}</span><span class="mt"><b>Streaming video</b><span>Streaming formats aren't supported yet</span></span></div>`).join("");
-  $("media").innerHTML = html || `<div class="empty">No video or audio found on this page yet. If a video is playing, give it a few seconds.</div>`;
+  $("media").innerHTML = html || `<div class="empty">No video or audio yet. If a video is playing, give it a few seconds.</div>`;
   $("media").onclick = async (e) => {
     const b = e.target.closest(".dl");
     if (!b) return;
