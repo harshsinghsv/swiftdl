@@ -139,3 +139,36 @@ pre.cmd { margin: 0; padding: 12px 14px; border-radius: 9px; background: var(--b
   .reveal { opacity: 1; transform: none; transition: none; }
   .bar > i { transition: none; }
 }
+
+/* ---------- v2: hero, frames, platform cards, live demo ---------- */
+.mark { display: inline-block; width: 22px; height: 22px; color: var(--text); background: currentColor; -webkit-mask: url(assets/mark.svg) center / contain no-repeat; mask: url(assets/mark.svg) center / contain no-repeat; }
+.os-logo { display: inline-block; flex: none; background: currentColor; -webkit-mask: var(--src) center / contain no-repeat; mask: var(--src) center / contain no-repeat; }
+.os-windows { --src: url(assets/os/windows.svg); }
+.os-macos { --src: url(assets/os/apple.svg); }
+.os-linux { --src: url(assets/os/linux.svg); }
+
+.hero { position: relative; isolation: isolate; }
+.hero::before { content: ""; position: absolute; inset: -80px 0 auto; height: 720px; z-index: -1; pointer-events: none;
+  background: radial-gradient(ellipse 60% 50% at 50% 0%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%); }
+.title-grad { background: linear-gradient(180deg, var(--text) 30%, color-mix(in srgb, var(--text) 55%, var(--bg))); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+.frame { position: relative; border-radius: 16px; padding: 8px; background: color-mix(in srgb, var(--panel) 70%, transparent); box-shadow: inset 0 0 0 1px var(--border), 0 40px 120px -40px color-mix(in srgb, var(--accent) 25%, transparent); }
+.frame img { display: block; width: 100%; height: auto; border-radius: 10px; box-shadow: 0 0 0 1px var(--border); }
+.fade-bottom { -webkit-mask-image: linear-gradient(180deg, #000 60%, transparent); mask-image: linear-gradient(180deg, #000 60%, transparent); }
+
+.section-title { font-size: clamp(2rem, 4.2vw, 3.25rem); line-height: 1.05; font-weight: 600; letter-spacing: -.035em; }
+
+.platform { display: flex; flex-direction: column; gap: 20px; padding: 28px; border-radius: 16px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--border); transition: box-shadow .2s; }
+.platform:hover { box-shadow: inset 0 0 0 1px var(--border-2); }
+.platform.current { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
+.alt-link { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 0; font-size: 14px; color: var(--text-2); text-decoration: none; border-top: 1px solid var(--border); }
+.alt-link:hover { color: var(--text); }
+.alt-link .ext { font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; font-size: 12.5px; color: var(--faint); }
+
+/* Live demo: one file bar split into parts, one per connection. */
+.demo-bar { position: relative; display: flex; height: 44px; border-radius: 10px; overflow: hidden; background: var(--btn-bg); }
+.demo-seg { position: relative; height: 100%; box-shadow: inset -1px 0 0 var(--bg); }
+.demo-seg > i { position: absolute; inset: 0 auto 0 0; background: var(--accent); }
+.demo-seg.done > i { background: color-mix(in srgb, var(--accent) 70%, var(--text)); }
+.demo-seg.new > i { animation: flash .6s ease-out; }
+@keyframes flash { from { filter: brightness(1.8); } }

@@ -103,7 +103,81 @@ async function hydrateLatest() {
     if (meta && main) meta.textContent = `v${version(latest)} · ${main.ext} · ${fmtSize(main.asset.size)}`;
   });
   document.querySelectorAll("[data-os-icon]").forEach((el) => { el.innerHTML = icon(os); });
+  document.querySelectorAll("[data-os-logo]").forEach((el) => el.classList.add(`os-${os}`));
   return latest;
+}
+
+// Three platform cards with the real OS logos: the recommended file as the
+// button, the other formats listed under it.
+const PLATFORM_SUB = { windows: "Windows 10 and 11", macos: "Apple silicon and Intel", linux: "64-bit, most distributions" };
+function renderPlatforms(el, release) {
+  const here = detectOS();
+  el.innerHTML = ["windows", "macos", "linux"].map((os) => {
+    const files = filesFor(release, os);
+    const main = files.find((f) => f.primary) || files[0];
+    const rest = files.filter((f) => f !== main);
+    return `<div class="platform ${os === here ? "current" : ""}">
+      <div class="flex items-center gap-4">
+        <span class="os-logo os-${os} size-10 text-ink"></span>
+        <div><div class="text-lg font-semibold text-ink">${OS_NAMES[os]}</div><div class="text-[13.5px] text-muted">${PLATFORM_SUB[os]}</div></div>
+      </div>
+      ${main ? `<a class="btn ${os === here ? "primary" : ""} h-11! w-full" href="${main.asset.browser_download_url}">${icon("download")}Download ${main.ext}<span class="ml-1 font-normal opacity-60">${fmtSize(main.asset.size)}</span></a>` : `<a class="btn h-11! w-full" href="${release.html_url}">See files on GitHub</a>`}
+      <div>${rest.map((f) => `<a class="alt-link" href="${f.asset.browser_download_url}"><span>${f.label}</span><span class="ext">${f.ext} · ${fmtSize(f.asset.size)}</span></a>`).join("")}</div>
+    </div>`;
+  }).join("");
+}
+
+// The "how it works" demo: a file split into parts, each part's fill showing
+// its connection's progress. A connection that finishes takes half of the
+// largest part left, like the engine does. Loops forever.
+function runDemo(el) {
+  if (!el) return;
+  const pct = document.getElementById("demo-pct"), conns = document.getElementById("demo-conns"), speed = document.getElementById("demo-speed");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let segs, t;
+  const reset = () => {
+    segs = Array.from({ length: 8 }, (_, i) => ({ start: i / 8, end: (i + 1) / 8, pos: i / 8, rate: .6 + Math.random() * .8 }));
+  };
+  const draw = (fresh) => {
+    segs.sort((a, b) => a.start - b.start);
+    el.innerHTML = segs.map((s) => {
+      const w = (s.end - s.start) * 100, fill = s.end > s.start ? ((s.pos - s.start) / (s.end - s.start)) * 100 : 100;
+      return `<div class="demo-seg ${s.pos >= s.end ? "done" : ""} ${s === fresh ? "new" : ""}" style="width:${w}%"><i style="width:${fill}%"></i></div>`;
+    }).join("");
+    const done = segs.reduce((a, s) => a + (s.pos - s.start), 0);
+    pct.textContent = Math.min(100, Math.floor(done * 100));
+    conns.textContent = segs.filter((s) => s.pos < s.end).length;
+  };
+  const tick = () => {
+    let moved = 0, fresh = null;
+    for (const s of segs) {
+      if (s.pos >= s.end) continue;
+      const step = Math.min(s.end - s.pos, .0011 * s.rate);
+      s.pos += step; moved += step;
+    }
+    const busy = segs.filter((s) => s.pos < s.end);
+    if (busy.length < 8) {
+      const big = busy.sort((a, b) => (b.end - b.pos) - (a.end - a.pos))[0];
+      if (big && big.end - big.pos > .02) {
+        const mid = big.pos + (big.end - big.pos) / 2;
+        fresh = { start: mid, end: big.end, pos: mid, rate: .6 + Math.random() * .8 };
+        big.end = mid;
+        segs = segs.filter((s) => s.end > s.start);
+        segs.push(fresh);
+      }
+    }
+    // Shown as a realistic speed for 8 connections, not the demo's pace.
+    speed.textContent = (moved / (.0011 * 8) * 26).toFixed(1);
+    draw(fresh);
+    if (!busy.length) { clearInterval(t); setTimeout(() => { reset(); draw(); t = setInterval(tick, 50); }, 1600); }
+  };
+  reset(); draw();
+  if (reduce) { segs.forEach((s) => { s.pos = s.start + (s.end - s.start) * .6; }); draw(); return; }
+  // Only animate while visible.
+  new IntersectionObserver(([e]) => {
+    clearInterval(t);
+    if (e.isIntersecting) t = setInterval(tick, 50);
+  }).observe(el);
 }
 
 function initChrome() {
