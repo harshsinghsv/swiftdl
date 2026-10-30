@@ -114,6 +114,8 @@ kbd {
 .ni-icon { width: 16px; height: 16px; display: grid; place-items: center; color: var(--muted); flex: none; }
 .nav-item.on .ni-icon { color: var(--text); }
 .ni-dot { width: 9px; height: 9px; border-radius: 3px; }
+.ni-type { display: grid; place-items: center; color: var(--c); }
+.ni-type svg.ic { width: 16px; height: 16px; stroke-width: 1.7; }
 .ni-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ni-count { font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; }
 .ni-live { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
@@ -249,7 +251,22 @@ button.chip:hover { background: var(--hover); color: var(--text); }
 .cmap-legend { display: flex; gap: 14px; margin-top: 8px; font-size: 11.5px; color: var(--muted); }
 .cmap-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .cmap-legend i { width: 8px; height: 8px; border-radius: 2px; }
-#ins-graph { display: block; width: 100%; height: 92px; }
+#ins-graph { display: block; width: 100%; height: 96px; }
+
+.pieces { display: grid; grid-template-columns: repeat(24, 1fr); gap: 3px; }
+.pieces i { aspect-ratio: 1; border-radius: 2.5px; background: var(--track); transition: background .3s; }
+.pieces i.p { background: color-mix(in srgb, var(--accent) 45%, var(--track)); }
+.pieces i.d { background: var(--accent); }
+.pieces i.l { background: var(--text); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent); animation: piece 1s ease-in-out infinite; }
+@keyframes piece { 50% { opacity: .55; } }
+.pieces.paused i.d { background: var(--amber); }
+.pieces.paused i.p { background: color-mix(in srgb, var(--amber) 45%, var(--track)); }
+.pieces.error i.d, .pieces.error i.p { background: var(--faint); }
+.pieces-legend { display: flex; gap: 14px; margin-top: 10px; font-size: 11.5px; color: var(--muted); }
+.pieces-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.pieces-legend i { width: 9px; height: 9px; border-radius: 2.5px; background: var(--track); }
+.pieces-legend .pl-done { background: var(--accent); }
+.pieces-legend .pl-live { background: var(--text); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent); }
 
 .props { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 0; margin: 0; }
 .props dt, .props dd { height: 32px; display: flex; align-items: center; margin: 0; border-top: 1px solid var(--border); font-size: 12.5px; }

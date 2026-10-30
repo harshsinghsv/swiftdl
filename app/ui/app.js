@@ -37,12 +37,12 @@ const P = {
   bolt: '<path d="M13 3.5 5.5 13.5H11l-1 7 7.5-10H12z"/>',
   hash: '<path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/>',
   keyboard: '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/>',
-  video: '<rect x="3.5" y="6" width="12" height="12" rx="2"/><path d="m15.5 10.5 5-3v9l-5-3"/>',
-  music: '<path d="M9 18V6l10.5-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17" cy="16" r="2.5"/>',
-  app: '<rect x="4" y="4" width="16" height="16" rx="3.5"/><path d="M9 12h6M12 9v6"/>',
-  archive: '<rect x="4" y="3.5" width="16" height="17" rx="2.5"/><path d="M12 3.5v2M12 7.5v2M12 11.5v2"/><rect x="10.5" y="14.5" width="3" height="3.5" rx="1"/>',
-  doc: '<path d="M14 3.5H7.5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V8z"/><path d="M14 3.5V8h4.5M9 13h6M9 16.5h4"/>',
-  image: '<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="m20.5 16-5-5-9.5 8.5"/>',
+  video: '<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M7.5 4.5v15M16.5 4.5v15M3.5 9.5h4M3.5 14.5h4M16.5 9.5h4M16.5 14.5h4"/>',
+  music: '<path d="M9 17.5V6.3l10-1.8v11"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="15.5" r="2.5"/>',
+  app: '<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M3.5 9h17"/><path d="M6.6 6.8h.01M9 6.8h.01" stroke-width="2.2"/>',
+  archive: '<path d="M12 3.3 20 7.4v9.2l-8 4.1-8-4.1V7.4z"/><path d="m4 7.4 8 4.1 8-4.1M12 11.5v9.2M8 5.3l8 4.1"/>',
+  doc: '<path d="M14 3.5H7.5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V8z"/><path d="M14 3.5V8h4.5M9 12.5h6M9 16h6"/>',
+  image: '<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.7"/><path d="m20.5 15.5-4.5-4.5-9.5 8.5"/>',
   file: '<path d="M14 3.5H7.5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V8z"/><path d="M14 3.5V8h4.5"/>',
 };
 const icon = (n) => `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${P[n] || P.file}</svg>`;
@@ -64,18 +64,23 @@ const CATS = {
   Other: { color: "#8b8f98", icon: "file" },
 };
 const cat = (it) => CATS[it.category] || CATS.Other;
+const typeIcon = (name) => `<span class="ni-type" style="--c:${(CATS[name] || CATS.Other).color}">${icon((CATS[name] || CATS.Other).icon)}</span>`;
 const ftile = (it, lg = false) => `<div class="ftile ${lg ? "lg" : ""}" style="--c:${cat(it).color}">${icon(cat(it).icon)}</div>`;
 
-// Linear-style status circle: dashed when queued, a pie that fills while
-// downloading or paused, a filled check when done, a filled cross on error.
+// Status glyph: a progress ring that fills clockwise while downloading
+// (pause bars inside when paused), a dotted ring when queued, and filled
+// badges for done and failed.
 function statusIcon(it) {
   const s = it.status;
-  if (s === "completed") return `<svg class="status" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="var(--green)"/><path d="m5 8.2 2 2 4-4.2" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-  if (s === "error") return `<svg class="status" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="var(--red)"/><path d="m5.6 5.6 4.8 4.8M10.4 5.6l-4.8 4.8" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>`;
-  if (s === "queued") return `<svg class="status" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.25" fill="none" stroke="var(--faint)" stroke-width="1.5" stroke-dasharray="2.2 2.1"/></svg>`;
+  if (s === "completed") return `<svg class="status" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7.25" fill="var(--green)"/><path d="m5.1 8.2 2 2 3.8-4" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  if (s === "error") return `<svg class="status" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7.25" fill="var(--red)"/><path d="M8 4.6v4.2" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/><circle cx="8" cy="11.2" r="1" fill="#fff"/></svg>`;
+  if (s === "queued") return `<svg class="status" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.4" fill="none" stroke="var(--faint)" stroke-width="1.7" stroke-linecap="round" stroke-dasharray="0.1 3.25"/></svg>`;
   const color = s === "paused" ? "var(--amber)" : "var(--accent)";
-  const r = 3, c = 2 * Math.PI * r, p = Math.max(0.04, pct(it) / 100);
-  return `<svg class="status" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.25" fill="none" stroke="${color}" stroke-width="1.5"/><circle cx="8" cy="8" r="${r}" fill="none" stroke="${color}" stroke-width="${r * 2}" stroke-dasharray="${(c * p).toFixed(2)} ${c.toFixed(2)}" transform="rotate(-90 8 8)"/></svg>`;
+  const r = 6.4, c = 2 * Math.PI * r, p = Math.max(0.03, Math.min(1, pct(it) / 100));
+  const inner = s === "paused"
+    ? `<path d="M6.6 6v4M9.4 6v4" stroke="${color}" stroke-width="1.5" stroke-linecap="round"/>`
+    : `<path d="M8 5.4v4.6M6.1 8.3 8 10.2l1.9-1.9" fill="none" stroke="${color}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>`;
+  return `<svg class="status" viewBox="0 0 16 16"><circle cx="8" cy="8" r="${r}" fill="none" stroke="var(--track)" stroke-width="1.7"/><circle cx="8" cy="8" r="${r}" fill="none" stroke="${color}" stroke-width="1.7" stroke-linecap="round" stroke-dasharray="${(c * p).toFixed(2)} ${c.toFixed(2)}" transform="rotate(-90 8 8)"/>${inner}</svg>`;
 }
 
 // ---------- formatting ----------
@@ -159,18 +164,28 @@ function areaChart(canvas, data, { grid = false } = {}) {
   const line = css.getPropertyValue("--border").trim();
   const faint = css.getPropertyValue("--faint").trim();
   const max = Math.max(1, ...data) * 1.2;
+  // With a scale, labels get their own margin on the right so the graph
+  // never draws over them.
+  const gutter = grid ? 58 : 0;
+  const pw = w - gutter, top = grid ? 6 : 2, bottom = grid ? 6 : 2;
+  const yOf = (v) => h - bottom - (v / max) * (h - top - bottom);
   if (grid) {
-    ctx.strokeStyle = line; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
-    ctx.fillStyle = faint; ctx.font = `500 10px ${css.getPropertyValue("--font")}`;
-    for (const f of [0.33, 0.66]) {
-      const y = Math.round(h * f) + 0.5;
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
-      if (data.some((v) => v > 0)) ctx.fillText(speed(max * (1 - f)), 2, y - 4);
+    ctx.lineWidth = 1;
+    ctx.font = `500 10.5px ${css.getPropertyValue("--font")}`;
+    ctx.textBaseline = "middle";
+    const hasData = data.some((v) => v > 0);
+    for (const frac of [1 / 1.2, 0.5 / 1.2, 0]) {
+      const y = Math.round(yOf(max * frac)) + 0.5;
+      ctx.strokeStyle = line;
+      ctx.setLineDash(frac ? [3, 3] : []);
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(pw, y); ctx.stroke();
+      ctx.fillStyle = faint;
+      if (hasData || !frac) ctx.fillText(frac ? speed(max * frac) : "0", pw + 8, y);
     }
     ctx.setLineDash([]);
   }
   const n = HISTORY, span = Math.max(Math.min(data.length, n), 30) - 1;
-  const pts = data.slice(-n).map((v, i, a) => [w - (a.length - 1 - i) * (w / span), h - 2 - (v / max) * (h - 6)]);
+  const pts = data.slice(-n).map((v, i, a) => [pw - (a.length - 1 - i) * (pw / span), yOf(v)]);
   if (pts.length < 2) return;
   const path = new Path2D();
   pts.forEach(([x, y], i) => {
@@ -178,7 +193,7 @@ function areaChart(canvas, data, { grid = false } = {}) {
     else { const [px, py] = pts[i - 1], cx = (px + x) / 2; path.bezierCurveTo(cx, py, cx, y, x, y); }
   });
   const area = new Path2D(path);
-  area.lineTo(pts.at(-1)[0], h); area.lineTo(pts[0][0], h); area.closePath();
+  area.lineTo(pts.at(-1)[0], h - bottom); area.lineTo(pts[0][0], h - bottom); area.closePath();
   const g = ctx.createLinearGradient(0, 0, 0, h);
   g.addColorStop(0, accent + "40"); g.addColorStop(1, accent + "00");
   ctx.fillStyle = g; ctx.fill(area);
@@ -197,7 +212,7 @@ function renderNav() {
   const failed = count(VIEWS.failed.test);
   if (failed || state.view === "failed") html += item("failed", "Failed", icon("alert"), failed);
   html += `<button class="nav-sec ${state.typesOpen ? "" : "closed"}" data-toggle="types">Types ${icon("chevDown")}</button>`;
-  if (state.typesOpen) for (const [name, c] of Object.entries(CATS)) html += item(name, name, `<span class="ni-dot" style="background:${c.color}"></span>`, count((i) => i.category === name));
+  if (state.typesOpen) for (const name of Object.keys(CATS)) html += item(name, name, typeIcon(name), count((i) => i.category === name));
   if ($("nav").innerHTML !== html) $("nav").innerHTML = html;
 
   const active = state.items.filter((i) => i.status === "downloading");
@@ -217,7 +232,7 @@ function renderNav() {
 // ---------- header ----------
 function renderHeader(list) {
   const v = VIEWS[state.view];
-  $("h-icon").innerHTML = v ? icon(v.icon) : `<span class="ni-dot" style="background:${CATS[state.view].color}"></span>`;
+  $("h-icon").innerHTML = v ? icon(v.icon) : typeIcon(state.view);
   $("h-name").textContent = v ? v.name : state.view;
   $("h-count").textContent = list.length || "";
   $("btn-pause-all").hidden = !list.some(isActive);
@@ -260,7 +275,7 @@ function renderList() {
     let h = headEls.get(g.s);
     if (!h) { h = document.createElement("div"); h.className = "ghead"; headEls.set(g.s, h); }
     const right = g.s === "downloading" ? speed(g.items.reduce((s, i) => s + (i.speed || 0), 0)) : g.s === "completed" ? bytes(g.items.reduce((s, i) => s + (i.size || 0), 0)) : "";
-    const html = `${statusIcon(g.s === "downloading" ? { status: "downloading", size: 2, downloaded: 1 } : g.s === "paused" ? { status: "paused", size: 2, downloaded: 1 } : { status: g.s })}<span>${g.title}</span><span class="gc">${g.items.length}</span><span class="gr">${right}</span>`;
+    const html = `${statusIcon({ status: g.s, size: 4, downloaded: 3 })}<span>${g.title}</span><span class="gc">${g.items.length}</span><span class="gr">${right}</span>`;
     if (h.innerHTML !== html) h.innerHTML = html;
     nodes.push(h);
     for (const it of g.items) {
@@ -284,6 +299,37 @@ function renderList() {
   return list;
 }
 
+// ---------- piece map ----------
+// The file split into PIECES equal blocks, like a torrent client's piece
+// view. "d" = on disk, "p" = partly there, "l" = a connection is writing
+// into it right now, "" = still missing.
+const PIECES = 96;
+function pieceStates(it) {
+  const size = it.size || 0;
+  const rem = (it.remaining || []).filter(([a, b]) => b > a);
+  if (!size || it.status === "completed") return Array(PIECES).fill(it.status === "completed" ? "d" : "");
+  if (!rem.length) {
+    const full = Math.floor((pct(it) / 100) * PIECES);
+    return Array.from({ length: PIECES }, (_, i) => (i < full ? "d" : ""));
+  }
+  const cell = size / PIECES;
+  const missing = new Float64Array(PIECES);
+  const live = new Set();
+  for (const [a, b] of rem) {
+    if (it.status === "downloading" && a > 0) live.add(Math.min(PIECES - 1, Math.floor(a / cell)));
+    const last = Math.min(PIECES - 1, Math.floor((b - 1) / cell));
+    for (let i = Math.floor(a / cell); i <= last; i++) {
+      const lo = i * cell;
+      missing[i] += Math.max(0, Math.min(b, lo + cell) - Math.max(a, lo));
+    }
+  }
+  return Array.from({ length: PIECES }, (_, i) => {
+    if (live.has(i)) return "l";
+    const have = 1 - missing[i] / cell;
+    return have > 0.98 ? "d" : have > 0.02 ? "p" : "";
+  });
+}
+
 // ---------- inspector ----------
 let insKey = null;
 function renderInspector() {
@@ -300,8 +346,9 @@ function renderInspector() {
         <div class="ins-top">${ftile(it, true)}<div class="ins-title">${esc(it.filename)}</div><button class="sq-btn" data-ins="close" title="Close (Esc)">${icon("x")}</button></div>
         <div class="chips" id="ins-chips"></div>
         <div class="ins-sec"><div class="ins-sec-head">Progress<span id="ins-pct"></span></div><div class="big-stats" id="ins-stats"></div></div>
-        ${hasMap ? `<div class="ins-sec"><div class="ins-sec-head">Connections<span id="ins-conn"></span></div><div class="cmap" id="ins-map"><div class="fill"></div></div>
-          <div class="cmap-legend"><span><i style="background:var(--accent)"></i>Downloaded</span><span><i style="background:var(--text);width:2px"></i>Active connection</span><span><i style="background:var(--track)"></i>Remaining</span></div></div>` : ""}
+        ${hasMap ? `<div class="ins-sec"><div class="ins-sec-head">Pieces<span id="ins-conn"></span></div>
+          <div class="pieces" id="ins-map">${'<i></i>'.repeat(PIECES)}</div>
+          <div class="pieces-legend"><span><i class="pl-done"></i>Downloaded</span><span><i class="pl-live"></i>Downloading now</span><span><i class="pl-rest"></i>Remaining</span></div></div>` : ""}
         <div class="ins-sec" id="ins-graph-sec"><div class="ins-sec-head">Speed<span id="ins-peak"></span></div><canvas id="ins-graph"></canvas></div>
         <div class="ins-sec"><div class="ins-sec-head">Details</div><dl class="props" id="ins-props"></dl></div>
       </div>
@@ -320,21 +367,13 @@ function renderInspector() {
 
   if ($("ins-map")) {
     const m = $("ins-map");
-    m.className = `cmap ${it.status === "paused" ? "paused" : it.status === "error" ? "error" : ""}`;
-    const size = it.size, rem = (it.remaining || []).filter(([a, b]) => b > a).sort((x, y) => x[0] - y[0]);
-    const runs = [], heads = [];
-    if (!rem.length) runs.push([0, pct(it)]);
-    else {
-      let cur = 0;
-      for (const [a, b] of rem) { if (a > cur) runs.push([cur / size * 100, a / size * 100]); if (a > 0 && dl) heads.push(a / size * 100); cur = Math.max(cur, b); }
-      if (cur < size) runs.push([cur / size * 100, 100]);
-    }
-    const stops = runs.flatMap(([a, b]) => [`transparent ${a}%`, `#000 ${a}%`, `#000 ${b}%`, `transparent ${b}%`]);
-    const fill = m.querySelector(".fill");
-    fill.style.webkitMaskImage = fill.style.maskImage = stops.length ? `linear-gradient(90deg, ${stops.join(",")})` : "linear-gradient(transparent,transparent)";
-    m.querySelectorAll(".head").forEach((h) => h.remove());
-    fill.insertAdjacentHTML("afterend", heads.map((h) => `<i class="head" style="left:${h}%"></i>`).join(""));
-    $("ins-conn").textContent = dl ? `${it.connections} active` : `${rem.length} part${rem.length === 1 ? "" : "s"} remaining`;
+    m.className = `pieces ${it.status === "paused" ? "paused" : it.status === "error" ? "error" : ""}`;
+    const states = pieceStates(it);
+    [...m.children].forEach((cell, i) => { if (cell.className !== states[i]) cell.className = states[i]; });
+    const done = states.filter((s) => s === "d").length;
+    $("ins-conn").textContent = dl
+      ? `${it.connections} connection${it.connections === 1 ? "" : "s"} · ${done} of ${PIECES}`
+      : `${done} of ${PIECES} pieces`;
   }
   const hist = state.speedHist.get(it.id) || [];
   $("ins-graph-sec").hidden = !hist.some((v) => v > 0);
@@ -550,7 +589,7 @@ function paletteItems(q) {
   ].filter((a) => match(a.label));
   const views = [
     ...Object.entries(VIEWS).map(([k, v]) => ({ icon: v.icon, label: `Go to ${v.name}`, run: () => { state.view = k; render(); } })),
-    ...Object.keys(CATS).map((c) => ({ dot: CATS[c].color, label: `Go to ${c}`, run: () => { state.view = c; render(); } })),
+    ...Object.keys(CATS).map((c) => ({ type: c, label: `Go to ${c}`, run: () => { state.view = c; render(); } })),
   ].filter((a) => match(a.label));
   const dls = state.items.filter((i) => q && (i.filename.toLowerCase().includes(q) || i.url.toLowerCase().includes(q))).slice(0, 8)
     .map((i) => ({ status: i, label: i.filename, sub: STATUS[i.status], run: () => { state.view = "all"; select(i.id); } }));
@@ -569,7 +608,7 @@ function renderPalette() {
   $("pal-list").innerHTML = selectable.length ? pal.items.map((i) => {
     if (i.title) return `<div class="pal-sec">${i.title}</div>`;
     n++;
-    const ic = i.status ? statusIcon(i.status) : i.dot ? `<span class="ni-dot" style="background:${i.dot}"></span>` : icon(i.icon);
+    const ic = i.status ? statusIcon(i.status) : i.type ? typeIcon(i.type) : icon(i.icon);
     return `<button class="pal-item ${n === pal.sel ? "on" : ""}" data-n="${n}"><span class="pi-ic">${ic}</span><span class="pi-label">${esc(i.label)}${i.sub ? `<span class="pi-sub">${i.sub}</span>` : ""}</span>${i.keys ? `<span class="pi-right">${i.keys.map((k) => `<kbd>${k}</kbd>`).join("")}</span>` : ""}</button>`;
   }).join("") : `<div class="pal-empty">No results for “${esc(q)}”</div>`;
   $("pal-list").querySelector(".pal-item.on")?.scrollIntoView({ block: "nearest" });
