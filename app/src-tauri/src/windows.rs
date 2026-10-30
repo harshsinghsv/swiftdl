@@ -29,6 +29,9 @@ pub fn polish(window: &WebviewWindow) {
     let _ = window;
 }
 
+/// Card width plus the transparent margin the page uses for its shadow.
+const WINDOW_WIDTH: f64 = 520.0 + 2.0 * 16.0;
+
 /// Opens `download.html?{query}` in a window called `label`, or brings an
 /// existing one forward.
 pub fn open(app: &AppHandle, label: &str, query: &str, title: &str) -> tauri::Result<()> {
@@ -37,16 +40,18 @@ pub fn open(app: &AppHandle, label: &str, query: &str, title: &str) -> tauri::Re
         let _ = w.set_focus();
         return Ok(());
     }
-    let window = WebviewWindowBuilder::new(app, label, WebviewUrl::App(format!("download.html?{query}").into()))
+    // Transparent and frameless: the page draws the whole window (rounded
+    // card and shadow), so no native frame, border or unpainted edge shows.
+    WebviewWindowBuilder::new(app, label, WebviewUrl::App(format!("download.html?{query}").into()))
         .title(title)
-        .inner_size(560.0, 360.0)
+        .inner_size(WINDOW_WIDTH, 360.0)
         .resizable(false)
         .maximizable(false)
         .decorations(false)
-        .shadow(true)
+        .transparent(true)
+        .shadow(false)
         .center()
         .focused(true)
         .build()?;
-    polish(&window);
     Ok(())
 }

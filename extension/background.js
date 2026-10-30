@@ -144,7 +144,7 @@ async function mediaFor(tabId) {
 async function refreshBadge(tabId) {
   if (tabId == null) { chrome.action.setBadgeText({ text: "" }); return; }
   const files = (await mediaFor(tabId)).filter((m) => m.kind === "file").length;
-  chrome.action.setBadgeBackgroundColor({ color: "#5b5fe6", tabId });
+  chrome.action.setBadgeBackgroundColor({ color: "#0a84ff", tabId });
   chrome.action.setBadgeText({ text: files ? String(files) : "", tabId });
 }
 

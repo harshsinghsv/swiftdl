@@ -337,24 +337,27 @@ function renderInspector() {
     insKey = key;
     const hasMap = it.status !== "completed" && it.size;
     panel.innerHTML = `<div class="ins-scroll">
-        <div class="ins-top">${ftile(it, true)}<div class="ins-title">${esc(it.filename)}</div><button class="sq-btn" data-ins="close" title="Close (Esc)">${icon("x")}</button></div>
-        <div class="chips" id="ins-chips"></div>
-        <div class="ins-sec"><div class="ins-sec-head">Progress<span id="ins-pct"></span></div><div class="big-stats" id="ins-stats"></div></div>
+        <div class="ins-top"><span class="ins-glyph">${icon(cat(it).icon)}</span><div class="ins-head"><div class="ins-title">${esc(it.filename)}</div><div class="ins-meta" id="ins-chips"></div></div><button class="sq-btn" data-ins="close" title="Close (Esc)">${icon("x")}</button></div>
+        <div class="ins-sec"><div class="ins-sec-head">Progress<span id="ins-pct"></span></div><div class="ins-bar" id="ins-bar"><i></i></div><dl class="props" id="ins-stats"></dl></div>
         ${hasMap ? `<div class="ins-sec"><div class="ins-sec-head">Connections<span id="ins-conn"></span></div><div id="ins-map"></div></div>` : ""}
         <div class="ins-sec" id="ins-graph-sec"><div class="ins-sec-head">Speed<span id="ins-peak"></span></div><canvas id="ins-graph"></canvas></div>
         <div class="ins-sec"><div class="ins-sec-head">Details</div><dl class="props" id="ins-props"></dl></div>
       </div>
       <div class="ins-foot" id="ins-foot"></div>`;
   }
-  const statusColor = { downloading: "", queued: "", paused: "warn", completed: "ok", error: "" }[it.status];
-  const chips = `<span class="chip ${statusColor}">${statusIcon(it)}<span>${STATUS[it.status]}</span></span><span class="chip"><i class="dot" style="background:${cat(it).color}"></i><span>${esc(it.category)}</span></span><span class="chip">${icon("globe")}<span>${esc(host(it.url))}</span></span>`;
-  if ($("ins-chips").innerHTML !== chips) $("ins-chips").innerHTML = chips;
+  const dotColor = { downloading: "var(--accent)", queued: "var(--faint)", paused: "var(--amber)", completed: "var(--green)", error: "var(--red)" }[it.status];
+  const meta = `<span class="dot" style="background:${dotColor}"></span><span>${STATUS[it.status]}</span><span>·</span><span>${esc(it.category)}</span><span>·</span><span class="trunc">${esc(host(it.url))}</span>`;
+  if ($("ins-chips").innerHTML !== meta) $("ins-chips").innerHTML = meta;
 
   $("ins-pct").textContent = it.size ? `${Math.floor(pct(it))}%` : "";
-  const stat = (label, val) => { const [v, u] = Array.isArray(val) ? val : [val, ""]; return `<div><span>${label}</span><b>${v}${u ? `<small>${u}</small>` : ""}</b></div>`; };
+  const bar = $("ins-bar");
+  bar.className = `ins-bar ${it.status}`;
+  bar.firstElementChild.style.width = `${pct(it)}%`;
+  const row = (k, v) => `<dt>${k}</dt><dd><span>${v}</span></dd>`;
   const stats = it.status === "completed"
-    ? stat("Size", parts(it.size)) + stat("Finished", when(it.completedAt) || "—") + stat("Type", ext(it.filename) || "—")
-    : stat("Downloaded", parts(it.downloaded)) + (dl ? stat("Speed", it.speed > 0 ? [parts(it.speed)[0], parts(it.speed)[1] + "/s"] : "—") + stat("Time left", dur(eta(it))) : stat("Size", parts(it.size)) + stat("Progress", it.size ? [Math.floor(pct(it)), "%"] : "—"));
+    ? row("Size", bytes(it.size)) + row("Finished", when(it.completedAt) || "—")
+    : row("Downloaded", it.size ? `${bytes(it.downloaded)} of ${bytes(it.size)}` : bytes(it.downloaded)) +
+      (dl ? row("Speed", speed(it.speed)) + row("Time left", dur(eta(it))) : "");
   if ($("ins-stats").innerHTML !== stats) $("ins-stats").innerHTML = stats;
 
   if ($("ins-map")) {
@@ -374,11 +377,11 @@ function renderInspector() {
     ${it.error ? `<dt>Error</dt><dd><span style="color:var(--red)" title="${esc(it.error)}">${esc(it.error)}</span></dd>` : ""}`;
   if ($("ins-props").innerHTML !== props) $("ins-props").innerHTML = props;
 
-  const primary = it.status === "completed" ? `<button class="btn primary" data-ins="open">${icon("open")}Open</button>`
-    : it.status === "error" ? `<button class="btn primary" data-ins="resume">${icon("retry")}Retry</button>`
-    : isActive(it) ? `<button class="btn" data-ins="pause">${icon("pause")}Pause</button>`
-    : `<button class="btn primary" data-ins="resume">${icon("play")}Resume</button>`;
-  const foot = `${primary}<button class="btn" data-ins="folder">${icon("folder")}Show in folder</button><button class="btn icon" data-ins="more" title="More">${icon("more")}</button>`;
+  const primary = it.status === "completed" ? `<button class="btn primary" data-ins="open">Open</button>`
+    : it.status === "error" ? `<button class="btn primary" data-ins="resume">Retry</button>`
+    : isActive(it) ? `<button class="btn" data-ins="pause">Pause</button>`
+    : `<button class="btn primary" data-ins="resume">Resume</button>`;
+  const foot = `<button class="btn" data-ins="folder">Show in folder</button>${primary}<button class="btn icon" data-ins="more" title="More">${icon("more")}</button>`;
   if ($("ins-foot").innerHTML !== foot) $("ins-foot").innerHTML = foot;
 }
 

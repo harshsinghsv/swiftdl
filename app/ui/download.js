@@ -44,7 +44,7 @@ const catOf = (name) => {
   if (/^(jpe?g|png|gif|webp|svg|bmp|heic|avif)$/.test(e)) return "Images";
   return "Other";
 };
-const ftile = (cat) => `<div class="ftile" style="--c:${(CATS[cat] || CATS.Other).color}">${icon((CATS[cat] || CATS.Other).icon)}</div>`;
+const glyph = (cat) => `<span class="glyph">${icon((CATS[cat] || CATS.Other).icon)}</span>`;
 const UNITS = ["B", "KB", "MB", "GB", "TB"];
 function bytes(n) {
   if (n == null || !isFinite(n)) return "—";
@@ -74,8 +74,9 @@ const view = $("view");
 // The window grows and shrinks to fit what it shows.
 const fit = () => {
   if (!win || !LogicalSize) return;
-  const h = Math.ceil($("root").getBoundingClientRect().height);
-  win.setSize(new LogicalSize(560, Math.min(760, h)));
+  // The card plus the 16px transparent margin on each side (for its shadow).
+  const h = Math.ceil($("root").getBoundingClientRect().height) + 32;
+  win.setSize(new LogicalSize(552, Math.min(780, h)));
 };
 new ResizeObserver(fit).observe($("root"));
 const setTitle = (t) => { $("w-title").textContent = t; document.title = t; win?.setTitle(t); };
@@ -101,18 +102,18 @@ async function confirmView(token) {
 
   const dirFor = (cat) => (settings.sortIntoCategories && cat !== "Other" ? `${settings.downloadDir}\\${cat}` : settings.downloadDir);
   view.innerHTML = `
-    <div class="d-head"><span id="c-tile">${ftile("Other")}</span><div class="d-name"><input id="c-name" spellcheck="false" placeholder="Getting file details…"><div class="d-sub" id="c-sub">${esc(host(inc.url))}</div></div></div>
-    <div class="form">
+    <div class="d-head"><span id="c-tile">${glyph("Other")}</span><div class="d-name"><input id="c-name" spellcheck="false" placeholder="Getting file details…"><div class="d-sub"><span class="st">${esc(host(inc.url))}</span></div></div></div>
+    <div class="kv">
       <span class="k">Address</span><span class="v"><span title="${esc(inc.url)}">${esc(inc.url)}</span></span>
-      <span class="k">Category</span><span class="v"><select id="c-cat">${Object.keys(CATS).map((c) => `<option>${c}</option>`).join("")}</select></span>
-      <span class="k">Save to</span><span class="v"><span class="path" id="c-dir" title=""></span><button class="btn sm" id="c-browse">Change…</button></span>
       <span class="k">Size</span><span class="v" id="c-size"><span class="spinner"></span><span class="muted">Checking…</span></span>
+      <span class="k">Category</span><span class="v"><select id="c-cat">${Object.keys(CATS).map((c) => `<option>${c}</option>`).join("")}</select></span>
+      <span class="k">Save to</span><span class="v"><span class="path" id="c-dir" title=""></span><button class="btn sm" id="c-browse">Change</button></span>
     </div>
     <div class="d-foot">
       <button class="btn" id="c-later">Download later</button>
       <span class="grow"></span>
       <button class="btn" id="c-cancel">Cancel</button>
-      <button class="btn primary" id="c-start" disabled>${icon("download")}Start download</button>
+      <button class="btn primary" id="c-start" disabled>Start download</button>
     </div>`;
   const setDir = (d) => { dir = d; $("c-dir").textContent = d; $("c-dir").title = d; };
   setDir(dir);
@@ -123,16 +124,15 @@ async function confirmView(token) {
     const suggested = /\.[a-z0-9]{2,5}$/i.test(inc.filename || "") ? inc.filename.split(/[\\/]/).pop() : "";
     $("c-name").value = suggested || info.filename;
     $("c-cat").value = info.category;
-    $("c-tile").innerHTML = ftile(info.category);
+    $("c-tile").innerHTML = glyph(info.category);
     setDir(info.dir);
-    $("c-size").innerHTML = `<span class="size-big">${info.size != null ? bytes(info.size) : "Unknown size"}</span><span class="muted">·</span>` +
-      (info.resumable ? `<span style="color:var(--green)">Resumable · ${settings.connections} connections</span>` : `<span style="color:var(--amber)">Can't resume · 1 connection</span>`);
+    $("c-size").innerHTML = `<span>${info.size != null ? bytes(info.size) : "Unknown size"}</span><span class="muted">${info.resumable ? `Resumable · ${settings.connections} connections` : "Can't resume · 1 connection"}</span>`;
     $("c-start").disabled = false;
   } catch (e) {
     $("c-name").value = inc.filename || "download";
-    $("c-size").innerHTML = `<span style="color:var(--red)">Couldn't reach the file: ${esc(String(e))}</span>`;
+    $("c-size").innerHTML = `<span class="err">Couldn't reach the file: ${esc(String(e))}</span>`;
   }
-  $("c-cat").onchange = () => { $("c-tile").innerHTML = ftile($("c-cat").value); if (!dirTouched) setDir(dirFor($("c-cat").value)); };
+  $("c-cat").onchange = () => { $("c-tile").innerHTML = glyph($("c-cat").value); if (!dirTouched) setDir(dirFor($("c-cat").value)); };
   $("c-browse").onclick = async () => { const d = await invoke("pick_folder", { start: dir }); if (d) { setDir(d); dirTouched = true; } };
   $("c-cancel").onclick = () => { invoke("forget_confirm", { token }); $("w-close").click(); };
   const add = async (start) => {
@@ -180,17 +180,17 @@ function render() {
   if (layout !== key) {
     layout = key;
     const buttons = {
-      run: `<button class="btn" data-a="pause">${icon("pause")}Pause</button><button class="btn" data-a="cancel">Cancel</button>`,
-      paused: `<button class="btn" data-a="cancel">Cancel</button><button class="btn primary" data-a="resume">${icon("play")}Resume</button>`,
-      done: `<button class="btn" data-a="close">Close</button><button class="btn" data-a="folder">${icon("folder")}Show in folder</button><button class="btn primary" data-a="open">${icon("open")}Open</button>`,
-      error: `<button class="btn" data-a="close">Close</button><button class="btn primary" data-a="resume">${icon("retry")}Retry</button>`,
+      run: `<button class="btn" data-a="cancel">Cancel</button><button class="btn" data-a="pause">Pause</button>`,
+      paused: `<button class="btn" data-a="cancel">Cancel</button><button class="btn primary" data-a="resume">Resume</button>`,
+      done: `<button class="btn" data-a="folder">Show in folder</button><button class="btn" data-a="close">Close</button><button class="btn primary" data-a="open">Open</button>`,
+      error: `<button class="btn" data-a="close">Close</button><button class="btn primary" data-a="resume">Retry</button>`,
     }[state];
     view.innerHTML = `
-      <div class="d-head">${ftile(cat)}<div class="d-name"><b title="${esc(it.filename)}">${esc(it.filename)}</b><div class="d-sub" id="p-sub"></div></div></div>
-      <div class="p-top"><div class="p-pct" id="p-pct"></div><div class="p-speed" id="p-speed"></div></div>
-      <div class="p-bar" id="p-bar"><i></i></div>
-      <div class="p-stats" id="p-stats"></div>
-      ${showDetails ? `<div class="conn"><div class="conn-head">Connections<span id="p-conn-n"></span></div><div class="lanes" id="p-lanes"></div>
+      <div class="d-head">${glyph(cat)}<div class="d-name"><b title="${esc(it.filename)}">${esc(it.filename)}</b><div class="d-sub" id="p-sub"></div></div></div>
+      <div class="p-line"><div class="p-bar" id="p-bar"><i></i></div><span class="p-pct" id="p-pct"></span></div>
+      <div class="p-meta"><span id="p-left"></span><span id="p-right"></span></div>
+      <div class="kv" id="p-kv"></div>
+      ${showDetails ? `<div class="conn"><div class="conn-head"><b>Connections</b><span id="p-conn-n"></span></div><div class="lanes" id="p-lanes"></div>
         <div class="cscroll"><table class="ctable"><thead><tr><th>#</th><th>Downloaded</th><th>Progress</th><th>Status</th></tr></thead><tbody id="p-rows"></tbody></table></div></div>` : ""}
       <div class="d-foot">
         ${state === "run" || state === "paused" ? `<button class="ghost-btn" data-a="details">${icon(showDetails ? "chevUp" : "chevDown")}${showDetails ? "Hide details" : "Show details"}</button>` : ""}
@@ -198,27 +198,26 @@ function render() {
       </div>`;
   }
 
-  const dirName = it.path.split(/[\\/]/).slice(-2, -1)[0] || "—";
+  const dir = it.path.replace(/[\\/][^\\/]*$/, "");
   const status = {
-    run: [it.connections ? `Receiving data · ${it.connections} connection${it.connections === 1 ? "" : "s"}` : "Connecting…", "var(--accent)"],
+    run: [it.connections ? `Downloading · ${it.connections} connection${it.connections === 1 ? "" : "s"}` : "Connecting…", "var(--accent)"],
     paused: [it.status === "queued" ? "Waiting in queue" : "Paused", "var(--amber)"],
     done: ["Completed", "var(--green)"],
     error: [it.error || "Failed", "var(--red)"],
   }[state];
-  setTitle(state === "done" ? `Download complete · ${it.filename}` : state === "error" ? `Download failed · ${it.filename}` : `${Math.floor(pct)}% · ${it.filename}`);
-  $("p-sub").innerHTML = `<span class="st" style="color:${status[1]}" title="${esc(status[0])}">${esc(status[0])}</span> · ${esc(host(it.url))}`;
-  $("p-pct").innerHTML = it.size || state === "done" ? `${Math.floor(pct)}<small>%</small>` : bytes(it.downloaded);
-  $("p-speed").innerHTML = state === "run" ? `<b>${speed(it.speed)}</b>${dur(eta)} left`
-    : "";
+  setTitle(state === "done" ? "Download complete" : state === "error" ? "Download failed" : `${Math.floor(pct)}% · ${it.filename}`);
+  $("p-sub").innerHTML = `<span class="dot" style="background:${status[1]}"></span><span class="st" title="${esc(status[0])}">${esc(status[0])}</span><span>·</span><span>${esc(host(it.url))}</span>`;
+  $("p-pct").textContent = it.size || state === "done" ? `${Math.floor(pct)}%` : "";
+  $("p-left").textContent = state === "done" ? bytes(it.size) : it.size ? `${bytes(it.downloaded)} of ${bytes(it.size)}` : bytes(it.downloaded);
+  $("p-right").textContent = state === "run" ? `${speed(it.speed)} · ${dur(eta)} left` : state === "done" ? when(it.completedAt) : "";
   const bar = $("p-bar");
   bar.className = `p-bar ${state} ${!it.size && state === "run" ? "indet" : ""}`;
   bar.firstElementChild.style.width = `${pct}%`;
-  const cell = (k, v) => `<div><span>${k}</span><b title="${esc(String(v).replace(/<[^>]+>/g, ""))}">${v}</b></div>`;
-  const stats = state === "done"
-    ? cell("File size", bytes(it.size)) + cell("Saved to", esc(dirName)) + cell("Finished", when(it.completedAt) || "—")
-    : cell("File size", bytes(it.size)) + cell("Downloaded", bytes(it.downloaded)) + cell("Transfer rate", state === "run" ? speed(it.speed) : "—") +
-      cell("Time left", state === "run" ? dur(eta) : "—") + cell("Resume", it.resumable ? "Supported" : "No") + cell("Saved to", esc(dirName));
-  if ($("p-stats").innerHTML !== stats) $("p-stats").innerHTML = stats;
+  const row = (k, v, cls = "") => `<span class="k">${k}</span><span class="v"><span class="${cls}" title="${esc(v)}">${esc(v)}</span></span>`;
+  const kv = row("Location", dir, "path") +
+    (state === "done" ? "" : row("Resume", it.resumable ? "Supported" : "Not supported by this server")) +
+    row("Address", it.url);
+  if ($("p-kv").innerHTML !== kv) $("p-kv").innerHTML = kv;
 
   if (showDetails) {
     const size = it.size || 1;
