@@ -89,27 +89,13 @@ body {
 .h-sec .dim, .h-hero .dim { color: var(--faint); }
 .lede { color: var(--muted); font-size: 17px; line-height: 1.6; }
 
-/* Stage: the backdrop the app mockups sit on. A smooth surface lit from
-   the top, a faint cool tint below, and a very fine grain so it reads as a
-   material rather than a flat fill. No image files. */
-.stage {
-  --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .07 0'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>");
-  position: relative; overflow: hidden; isolation: isolate;
-  background:
-    var(--grain),
-    radial-gradient(70% 55% at 50% -5%, rgba(255, 255, 255, .09), transparent 70%),
-    radial-gradient(60% 50% at 85% 110%, rgba(10, 132, 255, .09), transparent 70%),
-    radial-gradient(50% 45% at 10% 100%, rgba(140, 150, 175, .06), transparent 70%),
-    linear-gradient(180deg, #121317, #0c0d10);
-}
-.stage::before { content: ""; position: absolute; inset: 0 0 auto; height: 1px; z-index: -1; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .14), transparent); }
-.stage.light {
-  background:
-    var(--grain),
-    radial-gradient(80% 60% at 50% 0%, rgba(255, 255, 255, .16), transparent 70%),
-    radial-gradient(60% 50% at 50% 115%, rgba(10, 132, 255, .08), transparent 70%),
-    linear-gradient(180deg, #1d1f24, #111216);
-}
+/* Stage: the backdrop the app mockups sit on, a soft photo-like image of
+   lit satin (rendered by tools/render_backdrops.py). The colour underneath
+   shows while it loads. */
+.stage { position: relative; overflow: hidden; isolation: isolate; background: #15171b url(assets/bg/backdrop-graphite.webp) center / cover no-repeat; }
+.stage.light { background-color: #8a8c92; background-image: url(assets/bg/backdrop-silver.webp); }
+.stage.blue { background-color: #121a2a; background-image: url(assets/bg/backdrop-blue.webp); }
+.stage::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), inset 0 -60px 80px -40px rgba(10, 10, 11, .55); }
 
 /* The segment strip: SwiftDL's motif, a file split into parts that fill
    in one after another. Used as a section divider. */
