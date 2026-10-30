@@ -43,7 +43,7 @@ jobs:
           - **Windows:** `SwiftDL_*_x64-setup.exe` (no admin rights needed)
           - **macOS:** `SwiftDL_*_universal.dmg`
           - **Linux:** `.AppImage`, `.deb` or `.rpm`
-          - **Browser extension:** after installing, Chrome, Edge and Brave offer it on their next start. To install it by hand, unzip `swiftdl-extension.zip`, open `chrome://extensions`, turn on Developer mode and click *Load unpacked*.
+          - **Browser extension:** included with the app. Open SwiftDL and click *Add the extension* for a short guide (Chrome, Edge, Brave and Vivaldi). `swiftdl-extension.zip` has the same files.
           EOF
       - name: Create draft release
         id: release

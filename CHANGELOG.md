@@ -6,6 +6,8 @@ uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-30
+
 ### Added
 - **YouTube and other video sites.** The video button, the popup and the New
   download window offer each quality, from 4K down to audio only. These sites
@@ -20,12 +22,22 @@ uses [Semantic Versioning](https://semver.org/).
   the copy SwiftDL installs, with a button to open that folder, instead of
   store buttons that led nowhere. The automatic-offer switch is hidden until
   the listing exists.
+- **Simpler extension popup.** A compact menu in the app's style: the status
+  under the name, single-line settings, and the video list only when the page
+  has something to download.
+- The New download window comes to the front instead of flashing in the
+  taskbar.
 - The README now points at the installed extension folder rather than the zip.
 
 ### Fixed
 - Settings → Browser showed every browser as needing the extension even when
   it was connected. SwiftDL now records which browser the extension talked to
   from, and marks that browser as connected.
+- Contacts that didn't come from a browser (such as a test) no longer count
+  as the extension being connected.
+- The extension popup no longer shows "SwiftDL isn't installed" while it is
+  connected.
+- The download window's shadow no longer shows as a faint box around it.
 
 ## [0.2.0] - 2026-10-30
 
@@ -80,6 +92,7 @@ uses [Semantic Versioning](https://semver.org/).
 - GitHub Actions for CI and tagged releases (Windows, macOS, Linux and the
   extension zip).
 
-[Unreleased]: https://github.com/harshsinghsv/swiftdl/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/harshsinghsv/swiftdl/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/harshsinghsv/swiftdl/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/harshsinghsv/swiftdl/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/harshsinghsv/swiftdl/releases/tag/v0.1.0
