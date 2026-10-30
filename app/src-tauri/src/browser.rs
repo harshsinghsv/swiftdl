@@ -53,16 +53,51 @@ fn now_ms() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
 }
 
-/// Called by the native host on every message from the extension.
-pub fn mark_extension_seen() {
+fn read_seen() -> serde_json::Value {
+    std::fs::read_to_string(data_dir().join("extension.json"))
+        .ok()
+        .and_then(|t| serde_json::from_str(&t).ok())
+        .unwrap_or_else(|| json!({}))
+}
+
+/// Called by the native host on every message from the extension, with the
+/// browser that launched it when that could be worked out.
+pub fn mark_extension_seen(browser: Option<&str>) {
     let dir = data_dir();
     let _ = std::fs::create_dir_all(&dir);
-    let _ = std::fs::write(dir.join("extension.json"), json!({ "lastSeen": now_ms() }).to_string());
+    let now = now_ms();
+    let mut seen = read_seen();
+    seen["lastSeen"] = json!(now);
+    if let Some(b) = browser {
+        if !seen["browsers"].is_object() {
+            seen["browsers"] = json!({});
+        }
+        seen["browsers"][b] = json!(now);
+    }
+    let _ = std::fs::write(dir.join("extension.json"), seen.to_string());
 }
 
 pub fn extension_last_seen() -> Option<u64> {
-    let text = std::fs::read_to_string(data_dir().join("extension.json")).ok()?;
-    serde_json::from_str::<serde_json::Value>(&text).ok()?["lastSeen"].as_u64()
+    read_seen()["lastSeen"].as_u64()
+}
+
+/// Maps a browser executable path to one of our browser ids.
+pub fn browser_from_exe(path: &str) -> Option<&'static str> {
+    let p = path.to_lowercase().replace('\\', "/");
+    let name = p.rsplit('/').next().unwrap_or(&p);
+    if name.starts_with("brave") {
+        Some("brave")
+    } else if name.starts_with("msedge") || name.starts_with("microsoft edge") {
+        Some("edge")
+    } else if name.starts_with("vivaldi") {
+        Some("vivaldi")
+    } else if p.contains("chromium") {
+        Some("chromium")
+    } else if name.starts_with("chrome") || name.starts_with("google chrome") {
+        Some("chrome")
+    } else {
+        None
+    }
 }
 
 // ---------- native messaging host ----------
@@ -242,6 +277,8 @@ pub struct BrowserStatus {
     installed: bool,
     /// The browser will prompt to enable the extension from the Web Store.
     auto_offer: bool,
+    /// Last time the extension in this browser talked to the app.
+    last_seen: Option<u64>,
 }
 
 #[derive(Serialize)]
@@ -256,13 +293,20 @@ pub struct IntegrationStatus {
 }
 
 pub fn status() -> IntegrationStatus {
+    let seen = read_seen();
     IntegrationStatus {
         store_available: STORE_PUBLISHED,
         browsers: BROWSERS
             .iter()
-            .map(|b| BrowserStatus { id: b.id, name: b.name, installed: browser_exe(b.id).is_some(), auto_offer: b.external })
+            .map(|b| BrowserStatus {
+                id: b.id,
+                name: b.name,
+                installed: browser_exe(b.id).is_some(),
+                auto_offer: b.external,
+                last_seen: seen["browsers"][b.id].as_u64(),
+            })
             .collect(),
-        last_seen: extension_last_seen(),
+        last_seen: seen["lastSeen"].as_u64(),
         store_url: store_url(),
     }
 }

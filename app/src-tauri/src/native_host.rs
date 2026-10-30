@@ -47,7 +47,7 @@ fn handle(msg: &[u8]) -> Value {
     let Ok(v) = serde_json::from_slice::<Value>(msg) else {
         return json!({ "ok": false, "error": "invalid JSON" });
     };
-    crate::browser::mark_extension_seen();
+    crate::browser::mark_extension_seen(caller_browser());
     let reply = |r: io::Result<()>| match r {
         Ok(()) => json!({ "ok": true }),
         Err(e) => json!({ "ok": false, "error": e.to_string() }),
@@ -104,6 +104,115 @@ mod windows_handles {
                     SetHandleInformation(h, HANDLE_FLAG_INHERIT, 0);
                 }
             }
+        }
+    }
+}
+
+/// The browser that launched this host, found by walking up the process tree.
+/// On Windows the browser starts hosts through `cmd.exe`, so it is usually
+/// the grandparent rather than the parent.
+fn caller_browser() -> Option<&'static str> {
+    let mut pid = std::process::id();
+    for _ in 0..4 {
+        pid = parent_pid(pid)?;
+        if let Some(b) = process_path(pid).as_deref().and_then(crate::browser::browser_from_exe) {
+            return Some(b);
+        }
+    }
+    None
+}
+
+#[cfg(windows)]
+fn parent_pid(pid: u32) -> Option<u32> {
+    process_tree::entries().into_iter().find(|e| e.0 == pid).map(|e| e.1).filter(|&p| p != 0)
+}
+
+#[cfg(windows)]
+fn process_path(pid: u32) -> Option<String> {
+    process_tree::image_path(pid)
+}
+
+#[cfg(unix)]
+fn ps(pid: u32, field: &str) -> Option<String> {
+    let out = Command::new("ps").args(["-o", field, "-p", &pid.to_string()]).output().ok()?;
+    let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    (!s.is_empty()).then_some(s)
+}
+
+#[cfg(unix)]
+fn parent_pid(pid: u32) -> Option<u32> {
+    ps(pid, "ppid=")?.parse().ok().filter(|&p| p > 1)
+}
+
+#[cfg(unix)]
+fn process_path(pid: u32) -> Option<String> {
+    std::fs::read_link(format!("/proc/{pid}/exe"))
+        .ok()
+        .map(|p| p.to_string_lossy().into_owned())
+        .or_else(|| ps(pid, "comm="))
+}
+
+#[cfg(windows)]
+mod process_tree {
+    use std::ffi::c_void;
+
+    #[repr(C)]
+    struct ProcessEntry32W {
+        size: u32,
+        usage: u32,
+        pid: u32,
+        heap_id: usize,
+        module_id: u32,
+        threads: u32,
+        parent_pid: u32,
+        pri_class_base: i32,
+        flags: u32,
+        exe_file: [u16; 260],
+    }
+
+    const TH32CS_SNAPPROCESS: u32 = 0x2;
+    const PROCESS_QUERY_LIMITED_INFORMATION: u32 = 0x1000;
+
+    unsafe extern "system" {
+        fn CreateToolhelp32Snapshot(flags: u32, pid: u32) -> *mut c_void;
+        fn Process32FirstW(snap: *mut c_void, entry: *mut ProcessEntry32W) -> i32;
+        fn Process32NextW(snap: *mut c_void, entry: *mut ProcessEntry32W) -> i32;
+        fn OpenProcess(access: u32, inherit: i32, pid: u32) -> *mut c_void;
+        fn QueryFullProcessImageNameW(process: *mut c_void, flags: u32, name: *mut u16, size: *mut u32) -> i32;
+        fn CloseHandle(handle: *mut c_void) -> i32;
+    }
+
+    /// (pid, parent pid) for every running process.
+    pub fn entries() -> Vec<(u32, u32)> {
+        let mut out = Vec::new();
+        unsafe {
+            let snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+            if snap.is_null() || snap as isize == -1 {
+                return out;
+            }
+            let mut e: ProcessEntry32W = std::mem::zeroed();
+            e.size = std::mem::size_of::<ProcessEntry32W>() as u32;
+            let mut ok = Process32FirstW(snap, &mut e);
+            while ok != 0 {
+                out.push((e.pid, e.parent_pid));
+                ok = Process32NextW(snap, &mut e);
+            }
+            CloseHandle(snap);
+        }
+        out
+    }
+
+    pub fn image_path(pid: u32) -> Option<String> {
+        unsafe {
+            let h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
+            if h.is_null() {
+                return None;
+            }
+            let mut buf = [0u16; 1024];
+            let mut len = buf.len() as u32;
+            let ok = QueryFullProcessImageNameW(h, 0, buf.as_mut_ptr(), &mut len);
+            CloseHandle(h);
+            (ok != 0).then(|| String::from_utf16_lossy(&buf[..len as usize]))
         }
     }
 }

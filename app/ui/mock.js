@@ -141,11 +141,11 @@
       browsers: [
         { id: "chrome", name: "Chrome", installed: true, autoOffer: true },
         { id: "edge", name: "Edge", installed: true, autoOffer: true },
-        { id: "brave", name: "Brave", installed: false, autoOffer: true },
+        { id: "brave", name: "Brave", installed: true, autoOffer: true, lastSeen: Date.now() - 16 * 60000 },
         { id: "vivaldi", name: "Vivaldi", installed: false, autoOffer: false },
         { id: "chromium", name: "Chromium", installed: false, autoOffer: false },
       ],
-      lastSeen: null,
+      lastSeen: Date.now() - 16 * 60000,
       storeUrl: "https://chromewebstore.google.com/detail/knmfjbmojepkdiflnckpfjimfmjfcbgh",
       storeAvailable: false,
     }),

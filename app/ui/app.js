@@ -437,10 +437,17 @@ function renderBrowserPanel() {
   const store = i.storeAvailable;
   const hint = store ? "Add it to a browser below, then open that browser once" : "Follow the steps below, then open the browser once";
   $("ext-status").innerHTML = `<span class="dot"></span><div class="sr-text"><b>${i.lastSeen ? "Extension connected" : "Extension not connected yet"}</b><span>${i.lastSeen ? `Last active ${when(i.lastSeen).toLowerCase()}` : hint}</span></div>`;
-  $("browser-list").innerHTML = [...i.browsers].sort((a, b) => b.installed - a.installed).map((b) => `<div class="set-row">
-      <span class="bmono ${b.installed ? "" : "off"}">${icon("globe")}</span>
-      <div class="sr-text"><b>${b.name}</b><span>${b.installed ? (store && b.autoOffer ? "Installed · asks to enable the extension on next start" : "Installed") : "Not installed"}</span></div>
-      ${b.installed && store ? `<button type="button" class="btn sm" data-store="${b.id}">Add extension</button>` : ""}</div>`).join("");
+  const rank = (b) => (b.lastSeen ? 2 : b.installed ? 1 : 0);
+  $("browser-list").innerHTML = [...i.browsers].sort((a, b) => rank(b) - rank(a)).map((b) => {
+    const sub = b.lastSeen ? `Extension connected · last active ${when(b.lastSeen).toLowerCase()}`
+      : !b.installed ? "Not installed"
+      : store && b.autoOffer ? "Installed · asks to enable the extension on next start" : "Installed";
+    return `<div class="set-row">
+      <span class="bmono ${b.installed || b.lastSeen ? "" : "off"}">${icon("globe")}</span>
+      <div class="sr-text"><b>${b.name}</b><span>${sub}</span></div>
+      ${b.lastSeen ? `<span class="b-ok"><span class="dot"></span>Connected</span>`
+        : b.installed && store ? `<button type="button" class="btn sm" data-store="${b.id}">Add extension</button>` : ""}</div>`;
+  }).join("");
   // No store listing yet: show the manual steps up front, and hide the
   // automatic offer, which only works once the extension is on the store.
   const manual = document.querySelector(".manual");

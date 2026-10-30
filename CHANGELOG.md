@@ -14,6 +14,11 @@ uses [Semantic Versioning](https://semver.org/).
   the listing exists.
 - The README now points at the installed extension folder rather than the zip.
 
+### Fixed
+- Settings → Browser showed every browser as needing the extension even when
+  it was connected. SwiftDL now records which browser the extension talked to
+  from, and marks that browser as connected.
+
 ## [0.2.0] - 2026-10-30
 
 ### Added

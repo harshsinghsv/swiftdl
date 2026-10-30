@@ -243,6 +243,8 @@ kbd {
 .ext-status.ok .dot { background: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 20%, transparent); }
 .ext-status b { font-weight: 600; }
 .ext-status span { color: var(--muted); font-size: 12.5px; }
+.b-ok { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12.5px; font-weight: 550; padding-right: 4px; }
+.b-ok .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
 .manual summary { cursor: default; color: var(--muted); font-weight: 550; font-size: 12.5px; padding: 4px 2px 10px; list-style: none; display: flex; align-items: center; gap: 6px; }
 .manual summary::-webkit-details-marker { display: none; }
 .manual summary::before { content: "›"; display: inline-block; transition: transform .15s; font-size: 14px; }
