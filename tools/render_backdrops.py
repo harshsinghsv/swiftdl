@@ -1,24 +1,24 @@
-"""Renders soft, photographic 'silk' backdrops for the SwiftDL site.
+"""Renders the dark 'smoke' backdrops behind the site's app mockups.
 
-Smooth noise, warped twice, is turned into long folds with a sine; the folds
-are shaded as a surface lit from the top left, so the result reads like a
-photo of draped satin or smoke. Everything stays in floating point, so there
-is no banding.
+Mostly black, with soft grey ribbons of smoke curling through it. Smooth
+noise is warped and swirled, then light is drawn where a sine of it peaks,
+at two widths (a broad soft glow and a brighter edge), and masked so only
+some areas catch the light. The film grain is added by the site's CSS, which
+keeps these files small.
 
     python tools/render_backdrops.py site/assets/bg
 """
 import sys
 import numpy as np
+from PIL import Image
 from scipy.ndimage import gaussian_filter, map_coordinates, zoom
 
-W, H = 2400, 1400
+W, H = 2400, 1360
 
 
-def smooth_noise(rng, cells_y, cells_x, sigma=1.0):
-    g = rng.standard_normal((cells_y + 4, cells_x + 4))
-    g = gaussian_filter(g, sigma)
-    up = zoom(g, (H / cells_y, W / cells_x), order=3)
-    return up[:H, :W]
+def smooth_noise(rng, cy, cx, sigma=1.0):
+    g = gaussian_filter(rng.standard_normal((cy + 4, cx + 4)), sigma)
+    return zoom(g, (H / cy, W / cx), order=3)[:H, :W]
 
 
 def fbm(rng, cells, octaves=3, gain=0.5):
@@ -31,34 +31,42 @@ def fbm(rng, cells, octaves=3, gain=0.5):
     return out / total
 
 
-def render(seed, tint, lift, freq, light):
-    rng = np.random.default_rng(seed)
+def smoke(rng, curls, freq):
+    """One layer of smoke ribbons, 0..1."""
     yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
-    # Two rounds of warping bend straight bands into flowing folds.
-    f = fbm(rng, 3, 3)
-    wx, wy = fbm(rng, 2, 2), fbm(rng, 2, 2)
-    f = map_coordinates(f, [np.clip(yy + wy * 520, 0, H - 1), np.clip(xx + wx * 520, 0, W - 1)], order=1)
-    diag = (xx * 0.6 + yy * 0.8) / W
-    field = f * 1.0 + diag * 1.4
-    folds = np.sin(field * freq)
-    folds = gaussian_filter(folds, 3)
-    # Shade the folds as a lit surface.
-    gy, gx = np.gradient(folds)
-    shade = -gx * light[0] - gy * light[1]
-    shade = shade / (np.abs(shade).max() + 1e-6)
-    v = 0.5 + 0.38 * shade + 0.12 * folds
-    # A soft key light from the upper middle, falling off to the edges.
-    key = np.exp(-(((xx / W - 0.45) / 0.55) ** 2 + ((yy / H - 0.15) / 0.75) ** 2))
-    v = np.clip(v * (0.35 + 0.75 * key) * lift, 0, 1)
-    rgb = np.stack([v * tint[0], v * tint[1], v * tint[2]], -1)
-    rgb += (rng.random((H, W, 1)) - 0.5) * 0.03
-    from PIL import Image
-    return Image.fromarray((np.clip(rgb, 0, 1) * 255).astype(np.uint8)).crop((0, 0, W, H - 110))
+    # Swirl around a few centres so the bands curl like smoke.
+    ax, ay = xx.copy(), yy.copy()
+    for cx, cy, k, r in curls:
+        dx, dy = ax - cx * W, ay - cy * H
+        d2 = (dx * dx + dy * dy) / (r * W) ** 2
+        a = k * np.exp(-d2)
+        ca, sa = np.cos(a), np.sin(a)
+        ax, ay = cx * W + dx * ca - dy * sa, cy * H + dx * sa + dy * ca
+    wx, wy = fbm(rng, 2, 3), fbm(rng, 2, 3)
+    ax = np.clip(ax + wx * 300, 0, W - 1)
+    ay = np.clip(ay + wy * 300, 0, H - 1)
+    f = map_coordinates(fbm(rng, 3, 3), [ay, ax], order=1) + (ax * 0.55 + ay * 0.35) / W * 2.2
+    s = np.sin(f * freq)
+    glow = np.exp(-(1 - s) * 1.3)   # the ribbon
+    edge = np.exp(-(1 - s) * 7.0)   # its brighter edge
+    # Only some regions catch the light, like smoke in a beam.
+    mask = np.clip(fbm(rng, 2, 2) * 1.6 + 0.5, 0.12, 1)
+    return (0.55 * glow + 0.45 * edge) * mask
+
+
+def render(seed, tint, curls_a, curls_b, brightness):
+    rng = np.random.default_rng(seed)
+    v = np.maximum(smoke(rng, curls_a, 19.0), 0.75 * smoke(rng, curls_b, 13.0))
+    v = gaussian_filter(v, 3)
+    v = np.clip(v * brightness * 0.85, 0, 1) ** 1.7
+    rgb = np.stack([v * t for t in tint], -1) + 0.025
+    return Image.fromarray((np.clip(rgb, 0, 1) * 255).astype(np.uint8))
 
 
 if __name__ == "__main__":
     out = sys.argv[1]
-    render(5, (0.92, 0.93, 0.96), 1.1, 9, (1.0, 0.8)).save(f"{out}/backdrop-silver.webp", quality=84, method=6)
-    render(23, (0.55, 0.6, 0.7), 0.75, 7, (0.9, 1.0)).save(f"{out}/backdrop-graphite.webp", quality=82, method=6)
-    render(41, (0.32, 0.42, 0.62), 0.8, 8, (1.0, 0.6)).save(f"{out}/backdrop-blue.webp", quality=82, method=6)
+    silver = (0.88, 0.89, 0.92)
+    render(7, silver, [(0.35, 0.45, 2.2, 0.35), (0.72, 0.55, -1.8, 0.3)], [(0.6, 0.3, -1.6, 0.4)], 1.0).save(f"{out}/backdrop-silver.webp", quality=84, method=6)
+    render(19, (0.72, 0.74, 0.78), [(0.6, 0.4, -2.4, 0.4)], [(0.25, 0.7, 1.8, 0.35)], 0.8).save(f"{out}/backdrop-graphite.webp", quality=84, method=6)
+    render(31, (0.45, 0.58, 0.85), [(0.4, 0.6, 2.0, 0.38), (0.8, 0.3, 1.5, 0.25)], [(0.6, 0.5, -2.0, 0.4)], 0.95).save(f"{out}/backdrop-blue.webp", quality=84, method=6)
     print("ok")

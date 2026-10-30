@@ -89,13 +89,17 @@ body {
 .h-sec .dim, .h-hero .dim { color: var(--faint); }
 .lede { color: var(--muted); font-size: 17px; line-height: 1.6; }
 
-/* Stage: the backdrop the app mockups sit on, a soft photo-like image of
-   lit satin (rendered by tools/render_backdrops.py). The colour underneath
-   shows while it loads. */
-.stage { position: relative; overflow: hidden; isolation: isolate; background: #15171b url(assets/bg/backdrop-graphite.webp) center / cover no-repeat; }
-.stage.light { background-color: #8a8c92; background-image: url(assets/bg/backdrop-silver.webp); }
-.stage.blue { background-color: #121a2a; background-image: url(assets/bg/backdrop-blue.webp); }
-.stage::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), inset 0 -60px 80px -40px rgba(10, 10, 11, .55); }
+/* Stage: the backdrop the app mockups sit on: dark smoke ribbons
+   (rendered by tools/render_backdrops.py) under a rough film grain, like a
+   photo. The grain is an SVG noise tile, so the images stay small. */
+.stage { position: relative; overflow: hidden; isolation: isolate; background: #0b0b0c url(assets/bg/backdrop-graphite.webp) center / cover no-repeat; }
+.stage.light { background-image: url(assets/bg/backdrop-silver.webp); }
+.stage.blue { background-image: url(assets/bg/backdrop-blue.webp); }
+.stage::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: .5; mix-blend-mode: screen;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.95' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .5 -.12'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>");
+}
+.stage::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06); }
 
 /* The segment strip: SwiftDL's motif, a file split into parts that fill
    in one after another. Used as a section divider. */
