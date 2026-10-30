@@ -44,6 +44,7 @@
       </header>
       <div class="body">
         <div class="list" id="list">
+          <div class="onboard" id="onboard" hidden></div>
           <div id="rows"></div>
           <div class="empty" id="empty" hidden>
             <div class="empty-icon"><i data-icon="download"></i></div>
@@ -118,6 +119,10 @@
             <label class="set-row"><div class="sr-text"><b>Confirm browser downloads</b><span>Show New download before a download from the browser starts</span></div><span class="switch"><input type="checkbox" id="set-ask"><i></i></span></label>
             <label class="set-row"><div class="sr-text"><b>Notifications</b><span>Notify me when a download finishes</span></div><span class="switch"><input type="checkbox" id="set-notify"><i></i></span></label>
           </div>
+          <div class="set-group">
+            <label class="set-row"><div class="sr-text"><b>Show a window for each download</b><span>Progress, connections and a "Download complete" summary</span></div><span class="switch"><input type="checkbox" id="set-progress-win"><i></i></span></label>
+            <label class="set-row"><div class="sr-text"><b>Keep running in the tray</b><span>Closing the window keeps downloads and browser integration going</span></div><span class="switch"><input type="checkbox" id="set-tray"><i></i></span></label>
+          </div>
         </section>
         <section data-panel="speed" hidden>
           <h2>Speed</h2>
@@ -134,12 +139,20 @@
         </section>
         <section data-panel="browser" hidden>
           <h2>Browser extension</h2>
-          <p class="lead">Catch downloads in Chrome, Edge, Brave and Vivaldi and hand them to SwiftDL, with your cookies, so downloads that need a login keep working.</p>
-          <div class="set-group steps">
-            <div class="set-row"><span class="step">1</span><div class="sr-text"><b>Open the extensions page</b><span><code>chrome://extensions</code> or <code>edge://extensions</code></span></div></div>
-            <div class="set-row"><span class="step">2</span><div class="sr-text"><b>Turn on Developer mode</b><span>Top-right corner of the page</span></div></div>
-            <div class="set-row"><span class="step">3</span><div class="sr-text"><b>Load unpacked</b><span>Choose the SwiftDL extension folder</span></div><button type="button" class="btn sm" id="set-ext-folder">Open folder</button></div>
+          <p class="lead">The extension sends browser downloads to SwiftDL, with your cookies so downloads behind a login work, and adds a download button to videos.</p>
+          <div class="ext-status" id="ext-status"></div>
+          <div class="set-group" id="browser-list"></div>
+          <div class="set-group">
+            <label class="set-row"><div class="sr-text"><b>Offer the extension automatically</b><span>Supported browsers ask once, the next time they start</span></div><span class="switch"><input type="checkbox" id="set-offer"><i></i></span></label>
           </div>
+          <details class="manual">
+            <summary>Install manually</summary>
+            <div class="set-group steps">
+              <div class="set-row"><span class="step">1</span><div class="sr-text"><b>Open the extensions page</b><span><code>chrome://extensions</code> or <code>edge://extensions</code></span></div></div>
+              <div class="set-row"><span class="step">2</span><div class="sr-text"><b>Turn on Developer mode</b><span>Top-right corner of the page</span></div></div>
+              <div class="set-row"><span class="step">3</span><div class="sr-text"><b>Load unpacked</b><span>Choose the SwiftDL extension folder</span></div><button type="button" class="btn sm" id="set-ext-folder">Open folder</button></div>
+            </div>
+          </details>
         </section>
         <section data-panel="about" hidden>
           <div class="about"><img src="logo.svg" alt="" width="64" height="64"><h2>SwiftDL</h2><p id="version"></p><p class="muted">Fast, resumable downloads with many connections at once.<br>Free and open source.</p></div>

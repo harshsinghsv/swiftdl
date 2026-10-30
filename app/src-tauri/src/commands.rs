@@ -117,6 +117,37 @@ pub fn open_extension_folder(m: Mgr) -> Result<(), String> {
     m.app_handle().opener().open_path(dir.to_string_lossy(), None::<&str>).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+pub fn get_item(m: Mgr, id: u64) -> Option<Item> {
+    m.item(id)
+}
+
+/// The browser download a "New download" window was opened for.
+#[tauri::command]
+pub fn confirm_info(m: Mgr, token: u64) -> Option<Incoming> {
+    m.confirm_info(token)
+}
+
+#[tauri::command]
+pub fn forget_confirm(m: Mgr, token: u64) {
+    m.forget_confirm(token);
+}
+
+#[tauri::command]
+pub fn show_main(m: Mgr) {
+    crate::show_main_window(m.app_handle());
+}
+
+#[tauri::command]
+pub fn integration_status() -> crate::browser::IntegrationStatus {
+    crate::browser::status()
+}
+
+#[tauri::command]
+pub fn open_store(m: Mgr, browser: String) -> Result<(), String> {
+    crate::browser::open_store_in(m.app_handle(), &browser).map_err(|e| format!("{e:#}"))
+}
+
 /// Runs off the main thread (async command), so the blocking picker is safe.
 #[tauri::command]
 pub async fn pick_folder(m: Mgr<'_>, start: Option<PathBuf>) -> Result<Option<PathBuf>, String> {

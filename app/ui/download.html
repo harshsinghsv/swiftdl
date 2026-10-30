@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SwiftDL</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="download.css">
+</head>
+<body class="dlw">
+  <div id="root">
+    <div class="w-bar" data-tauri-drag-region>
+      <img src="logo.svg" alt="" width="16" height="16" data-tauri-drag-region>
+      <span class="w-title" id="w-title" data-tauri-drag-region>SwiftDL</span>
+      <button class="w-btn" id="w-min" title="Minimize"><svg viewBox="0 0 10 10"><path d="M1 5h8"/></svg></button>
+      <button class="w-btn close" id="w-close" title="Close"><svg viewBox="0 0 10 10"><path d="M2 2l6 6M8 2 2 8"/></svg></button>
+    </div>
+    <main id="view"></main>
+  </div>
+  <script src="mock.js"></script>
+  <script type="module" src="download.js"></script>
+</body>
+</html>

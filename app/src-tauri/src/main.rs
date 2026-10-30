@@ -6,9 +6,12 @@ mod commands;
 mod manager;
 mod native_host;
 mod settings;
+mod windows;
 
 use manager::DownloadManager;
 use std::sync::Arc;
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager};
 
 pub fn show_main_window(app: &AppHandle) {
@@ -17,6 +20,33 @@ pub fn show_main_window(app: &AppHandle) {
         let _ = w.show();
         let _ = w.set_focus();
     }
+}
+
+/// SwiftDL lives in the tray like IDM: closing the main window keeps
+/// downloads (and browser integration) running.
+fn build_tray(app: &AppHandle) -> tauri::Result<()> {
+    let open = MenuItem::with_id(app, "open", "Open SwiftDL", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit SwiftDL", true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&open, &PredefinedMenuItem::separator(app)?, &quit])?;
+    let mut tray = TrayIconBuilder::with_id("main").tooltip("SwiftDL").menu(&menu).show_menu_on_left_click(false);
+    if let Some(icon) = app.default_window_icon() {
+        tray = tray.icon(icon.clone());
+    }
+    tray.on_menu_event(|app, event| match event.id().as_ref() {
+        "open" => show_main_window(app),
+        "quit" => {
+            app.state::<Arc<DownloadManager>>().save();
+            app.exit(0);
+        }
+        _ => {}
+    })
+    .on_tray_icon_event(|tray, event| {
+        if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {
+            show_main_window(tray.app_handle());
+        }
+    })
+    .build(app)?;
+    Ok(())
 }
 
 fn main() {
@@ -46,11 +76,23 @@ fn main() {
             if let Err(e) = browser::register(&data_dir) {
                 eprintln!("browser integration not registered: {e:#}");
             }
-            mgr.start_ticker();
-            if let Some(inc) = native_host::parse_add_arg(&args) {
-                mgr.incoming(inc);
+            if let Err(e) = browser::offer_extension(mgr.settings().offer_extension) {
+                eprintln!("could not offer the browser extension: {e:#}");
             }
-            app.manage(mgr);
+            app.manage(mgr.clone());
+            if let Some(main) = app.get_webview_window("main") {
+                windows::polish(&main);
+            }
+            if let Err(e) = build_tray(app.handle()) {
+                eprintln!("tray icon not available: {e:#}");
+            }
+            mgr.start_ticker();
+            // Launched by the browser extension: show only the small
+            // download window, like IDM. Otherwise open the main window.
+            match native_host::parse_add_arg(&args) {
+                Some(inc) => mgr.incoming(inc),
+                None => show_main_window(app.handle()),
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -68,11 +110,23 @@ fn main() {
             commands::extension_dir,
             commands::open_extension_folder,
             commands::pick_folder,
+            commands::integration_status,
+            commands::open_store,
+            commands::get_item,
+            commands::confirm_info,
+            commands::forget_confirm,
+            commands::show_main,
         ])
-        .on_window_event(|window, event| {
-            if let tauri::WindowEvent::Destroyed = event {
-                window.app_handle().state::<Arc<DownloadManager>>().save();
+        .on_window_event(|window, event| match event {
+            tauri::WindowEvent::CloseRequested { api, .. } if window.label() == "main" => {
+                let mgr = window.app_handle().state::<Arc<DownloadManager>>();
+                mgr.save();
+                if mgr.settings().close_to_tray {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
             }
+            _ => {}
         })
         .run(tauri::generate_context!())
         .expect("error while running SwiftDL");

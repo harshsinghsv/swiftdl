@@ -1,0 +1,52 @@
+//! Small per-download windows, like IDM's: "New download" when the browser
+//! hands over a file, then live progress, then "Download complete".
+
+use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+
+/// Frameless windows on Windows 11 get a 1px light border from the system,
+/// which looks like a white frame in dark mode. Ask for no border and
+/// rounded corners; the shadow stays.
+pub fn polish(window: &WebviewWindow) {
+    #[cfg(windows)]
+    {
+        use std::ffi::c_void;
+        #[link(name = "dwmapi")]
+        unsafe extern "system" {
+            fn DwmSetWindowAttribute(hwnd: *mut c_void, attr: u32, value: *const c_void, size: u32) -> i32;
+        }
+        const DWMWA_WINDOW_CORNER_PREFERENCE: u32 = 33;
+        const DWMWA_BORDER_COLOR: u32 = 34;
+        const DWMWCP_ROUND: u32 = 2;
+        const DWMWA_COLOR_NONE: u32 = 0xFFFF_FFFE;
+        if let Ok(hwnd) = window.hwnd() {
+            unsafe {
+                DwmSetWindowAttribute(hwnd.0, DWMWA_WINDOW_CORNER_PREFERENCE, (&DWMWCP_ROUND as *const u32).cast(), 4);
+                DwmSetWindowAttribute(hwnd.0, DWMWA_BORDER_COLOR, (&DWMWA_COLOR_NONE as *const u32).cast(), 4);
+            }
+        }
+    }
+    #[cfg(not(windows))]
+    let _ = window;
+}
+
+/// Opens `download.html?{query}` in a window called `label`, or brings an
+/// existing one forward.
+pub fn open(app: &AppHandle, label: &str, query: &str, title: &str) -> tauri::Result<()> {
+    if let Some(w) = app.get_webview_window(label) {
+        let _ = w.unminimize();
+        let _ = w.set_focus();
+        return Ok(());
+    }
+    let window = WebviewWindowBuilder::new(app, label, WebviewUrl::App(format!("download.html?{query}").into()))
+        .title(title)
+        .inner_size(560.0, 360.0)
+        .resizable(false)
+        .maximizable(false)
+        .decorations(false)
+        .shadow(true)
+        .center()
+        .focused(true)
+        .build()?;
+    polish(&window);
+    Ok(())
+}

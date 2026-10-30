@@ -47,6 +47,10 @@ pub struct Item {
     /// when the server can't do ranges.
     #[serde(default)]
     pub remaining: Vec<(u64, u64)>,
+    /// Live `(start, pos, end)` per connection segment, for the download
+    /// window's connection view.
+    #[serde(default, skip_deserializing)]
+    pub segments: Vec<(u64, u64, u64)>,
     /// Bytes per second, smoothed. Live only, not meaningful on disk.
     #[serde(default, skip_deserializing)]
     pub speed: f64,
@@ -71,6 +75,14 @@ pub struct Incoming {
 }
 
 impl Incoming {
+    /// A usable file name sent by the extension (e.g. a video page's title),
+    /// if it has an extension; otherwise the server's name is better.
+    pub fn suggested_name(&self) -> Option<String> {
+        let name: String = self.filename.as_deref()?.chars().map(|c| if "<>:\"/\\|?*".contains(c) || c.is_control() { '_' } else { c }).collect();
+        let name = name.trim().trim_end_matches('.').to_string();
+        Path::new(&name).extension().is_some().then_some(name)
+    }
+
     pub fn headers(&self) -> Vec<(String, String)> {
         let mut h = vec![];
         if let Some(c) = self.cookies.as_ref().filter(|c| !c.is_empty()) {
@@ -96,6 +108,10 @@ pub struct AddRequest {
     pub headers: Vec<(String, String)>,
     /// False adds it paused ("Download later").
     pub start: bool,
+    /// Label of the window this was added from (the "New download"
+    /// window), which then becomes the download's progress window.
+    #[serde(default)]
+    pub window: Option<String>,
 }
 
 struct Running {
@@ -111,6 +127,11 @@ struct Inner {
     settings: Settings,
     running: HashMap<u64, Running>,
     pending: Vec<Incoming>,
+    /// Downloads caught from the browser, waiting in a "New download" window.
+    confirms: HashMap<u64, Incoming>,
+    next_confirm: u64,
+    /// Download id -> label of the window showing its progress.
+    windows: HashMap<u64, String>,
     next_id: u64,
     dirty: bool,
 }
@@ -151,6 +172,9 @@ impl DownloadManager {
                 settings,
                 running: HashMap::new(),
                 pending: vec![],
+                confirms: HashMap::new(),
+                next_confirm: 1,
+                windows: HashMap::new(),
                 next_id,
                 dirty: false,
             }),
@@ -205,9 +229,13 @@ impl DownloadManager {
                 resumable: true,
                 headers: req.headers,
                 remaining: vec![],
+                segments: vec![],
                 speed: 0.0,
                 connections: 0,
             });
+            if let Some(label) = req.window {
+                g.windows.insert(id, label);
+            }
             id
         };
         self.changed();
@@ -269,6 +297,9 @@ impl DownloadManager {
 
     pub fn set_settings(self: &Arc<Self>, settings: Settings) {
         self.limiter.set_rate(settings.speed_limit_kib * 1024);
+        if let Err(e) = crate::browser::offer_extension(settings.offer_extension) {
+            eprintln!("could not update browser extension offer: {e:#}");
+        }
         self.inner.lock().unwrap().settings = settings;
         self.save();
         self.schedule();
@@ -278,29 +309,74 @@ impl DownloadManager {
         self.inner.lock().unwrap().items.iter().find(|i| i.id == id).cloned()
     }
 
-    /// A download arrived from the browser extension.
+    /// A download arrived from the browser extension. Like IDM, it gets its
+    /// own small "New download" window rather than the main window.
     pub fn incoming(self: &Arc<Self>, inc: Incoming) {
         if self.settings().ask_before_download {
-            self.inner.lock().unwrap().pending.push(inc.clone());
-            let _ = self.app.emit("incoming", inc);
-            crate::show_main_window(&self.app);
+            let token = {
+                let mut g = self.inner.lock().unwrap();
+                let token = g.next_confirm;
+                g.next_confirm += 1;
+                g.confirms.insert(token, inc);
+                token
+            };
+            if let Err(e) = crate::windows::open(&self.app, &format!("new-{token}"), &format!("confirm={token}"), "New download") {
+                eprintln!("could not open the New download window: {e:#}");
+            }
             return;
         }
         // No dialog: probe for the real file name, then start right away.
         let this = self.clone();
         tauri::async_runtime::spawn(async move {
             let headers = inc.headers();
-            let filename = match swiftdl_engine::probe(&this.client, &inc.url, &to_header_map(&headers)).await {
-                Ok(remote) => remote.filename,
-                Err(_) => inc.filename.clone().unwrap_or_else(|| "download.bin".into()),
-            };
+            let probed = swiftdl_engine::probe(&this.client, &inc.url, &to_header_map(&headers)).await.ok().map(|r| r.filename);
+            let filename = inc.suggested_name().or(probed).unwrap_or_else(|| "download.bin".into());
             let dir = this.default_dir(category_for(&filename));
-            this.add(AddRequest { url: inc.url, filename, dir, headers, start: true });
+            this.add(AddRequest { url: inc.url, filename, dir, headers, start: true, window: None });
         });
     }
 
     pub fn take_pending(&self) -> Vec<Incoming> {
         std::mem::take(&mut self.inner.lock().unwrap().pending)
+    }
+
+    /// What a "New download" window was opened for.
+    pub fn confirm_info(&self, token: u64) -> Option<Incoming> {
+        self.inner.lock().unwrap().confirms.get(&token).cloned()
+    }
+
+    pub fn forget_confirm(&self, token: u64) {
+        self.inner.lock().unwrap().confirms.remove(&token);
+    }
+
+    /// Opens (or keeps) the progress window for each newly started
+    /// download, unless the user turned that off.
+    fn open_progress_windows(&self, ids: &[u64]) {
+        use tauri::Manager as _;
+        let to_open: Vec<(u64, String)> = {
+            let mut g = self.inner.lock().unwrap();
+            if !g.settings.show_progress_window {
+                return;
+            }
+            let missing: Vec<u64> = ids
+                .iter()
+                .copied()
+                .filter(|id| g.windows.get(id).is_none_or(|label| self.app.get_webview_window(label).is_none()))
+                .collect();
+            missing
+                .into_iter()
+                .map(|id| {
+                    g.windows.insert(id, format!("dl-{id}"));
+                    let title = g.items.iter().find(|i| i.id == id).map(|i| i.filename.clone()).unwrap_or_default();
+                    (id, title)
+                })
+                .collect()
+        };
+        for (id, title) in to_open {
+            if let Err(e) = crate::windows::open(&self.app, &format!("dl-{id}"), &format!("id={id}"), &title) {
+                eprintln!("could not open the download window: {e:#}");
+            }
+        }
     }
 
     /// Starts queued downloads until `max_concurrent` are running.
@@ -344,6 +420,7 @@ impl DownloadManager {
         if to_start.is_empty() {
             return;
         }
+        self.open_progress_windows(&to_start.iter().map(|t| t.0).collect::<Vec<_>>());
         for (id, req, progress, cancel) in to_start {
             let this = self.clone();
             tauri::async_runtime::spawn(async move {
@@ -376,6 +453,7 @@ impl DownloadManager {
                         }
                         item.resumable = r.progress.resumable.load(Ordering::Relaxed);
                         item.remaining = r.progress.remaining.lock().unwrap().clone();
+                        item.segments = r.progress.segments.lock().unwrap().clone();
                     }
                     item.speed = 0.0;
                     item.connections = 0;
@@ -433,6 +511,7 @@ impl DownloadManager {
                     item.speed = r.speed;
                     item.connections = r.progress.connections.load(Ordering::Relaxed);
                     item.remaining = r.progress.remaining.lock().unwrap().clone();
+                    item.segments = r.progress.segments.lock().unwrap().clone();
                 }
             }
             let active = !running.is_empty();

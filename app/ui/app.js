@@ -299,35 +299,29 @@ function renderList() {
   return list;
 }
 
-// ---------- piece map ----------
-// The file split into PIECES equal blocks, like a torrent client's piece
-// view. "d" = on disk, "p" = partly there, "l" = a connection is writing
-// into it right now, "" = still missing.
-const PIECES = 96;
-function pieceStates(it) {
-  const size = it.size || 0;
-  const rem = (it.remaining || []).filter(([a, b]) => b > a);
-  if (!size || it.status === "completed") return Array(PIECES).fill(it.status === "completed" ? "d" : "");
-  if (!rem.length) {
-    const full = Math.floor((pct(it) / 100) * PIECES);
-    return Array.from({ length: PIECES }, (_, i) => (i < full ? "d" : ""));
+// ---------- connection slots ----------
+// Same view as the download window: each connection's part of the file is
+// a rounded slot, filled as far as that connection has got. When nothing is
+// running (no live segments) it falls back to a single bar.
+function renderLanes(el, it) {
+  const size = it.size || 1;
+  const segs = (it.segments || []).filter(([s, , e]) => e > s);
+  const paused = it.status !== "downloading";
+  if (!segs.length) {
+    const html = `<div class="lanes-empty ${paused ? "paused" : ""}"><i style="width:${pct(it)}%"></i></div>`;
+    if (el.innerHTML !== html) el.innerHTML = html;
+    return 0;
   }
-  const cell = size / PIECES;
-  const missing = new Float64Array(PIECES);
-  const live = new Set();
-  for (const [a, b] of rem) {
-    if (it.status === "downloading" && a > 0) live.add(Math.min(PIECES - 1, Math.floor(a / cell)));
-    const last = Math.min(PIECES - 1, Math.floor((b - 1) / cell));
-    for (let i = Math.floor(a / cell); i <= last; i++) {
-      const lo = i * cell;
-      missing[i] += Math.max(0, Math.min(b, lo + cell) - Math.max(a, lo));
-    }
+  if (el.firstElementChild?.className !== `lanes ${paused ? "paused" : ""}` || el.firstElementChild.children.length !== segs.length) {
+    el.innerHTML = `<div class="lanes ${paused ? "paused" : ""}">${segs.map(() => `<span class="slot"><i></i></span>`).join("")}</div>`;
   }
-  return Array.from({ length: PIECES }, (_, i) => {
-    if (live.has(i)) return "l";
-    const have = 1 - missing[i] / cell;
-    return have > 0.98 ? "d" : have > 0.02 ? "p" : "";
+  segs.forEach(([s, p, e], i) => {
+    const slot = el.firstElementChild.children[i];
+    slot.style.left = `calc(${(s / size) * 100}% + 1px)`;
+    slot.style.width = `calc(${((e - s) / size) * 100}% - 2px)`;
+    slot.firstElementChild.style.width = `${((p - s) / Math.max(1, e - s)) * 100}%`;
   });
+  return segs.filter(([, p, e]) => p < e).length;
 }
 
 // ---------- inspector ----------
@@ -346,9 +340,7 @@ function renderInspector() {
         <div class="ins-top">${ftile(it, true)}<div class="ins-title">${esc(it.filename)}</div><button class="sq-btn" data-ins="close" title="Close (Esc)">${icon("x")}</button></div>
         <div class="chips" id="ins-chips"></div>
         <div class="ins-sec"><div class="ins-sec-head">Progress<span id="ins-pct"></span></div><div class="big-stats" id="ins-stats"></div></div>
-        ${hasMap ? `<div class="ins-sec"><div class="ins-sec-head">Pieces<span id="ins-conn"></span></div>
-          <div class="pieces" id="ins-map">${'<i></i>'.repeat(PIECES)}</div>
-          <div class="pieces-legend"><span><i class="pl-done"></i>Downloaded</span><span><i class="pl-live"></i>Downloading now</span><span><i class="pl-rest"></i>Remaining</span></div></div>` : ""}
+        ${hasMap ? `<div class="ins-sec"><div class="ins-sec-head">Connections<span id="ins-conn"></span></div><div id="ins-map"></div></div>` : ""}
         <div class="ins-sec" id="ins-graph-sec"><div class="ins-sec-head">Speed<span id="ins-peak"></span></div><canvas id="ins-graph"></canvas></div>
         <div class="ins-sec"><div class="ins-sec-head">Details</div><dl class="props" id="ins-props"></dl></div>
       </div>
@@ -366,14 +358,8 @@ function renderInspector() {
   if ($("ins-stats").innerHTML !== stats) $("ins-stats").innerHTML = stats;
 
   if ($("ins-map")) {
-    const m = $("ins-map");
-    m.className = `pieces ${it.status === "paused" ? "paused" : it.status === "error" ? "error" : ""}`;
-    const states = pieceStates(it);
-    [...m.children].forEach((cell, i) => { if (cell.className !== states[i]) cell.className = states[i]; });
-    const done = states.filter((s) => s === "d").length;
-    $("ins-conn").textContent = dl
-      ? `${it.connections} connection${it.connections === 1 ? "" : "s"} · ${done} of ${PIECES}`
-      : `${done} of ${PIECES} pieces`;
+    const active = renderLanes($("ins-map"), it);
+    $("ins-conn").textContent = dl ? `${active || it.connections} active` : it.status === "paused" ? "Paused" : "";
   }
   const hist = state.speedHist.get(it.id) || [];
   $("ins-graph-sec").hidden = !hist.some((v) => v > 0);
@@ -395,6 +381,48 @@ function renderInspector() {
   const foot = `${primary}<button class="btn" data-ins="folder">${icon("folder")}Show in folder</button><button class="btn icon" data-ins="more" title="More">${icon("more")}</button>`;
   if ($("ins-foot").innerHTML !== foot) $("ins-foot").innerHTML = foot;
 }
+
+// ---------- browser integration ----------
+async function loadIntegration() {
+  try { state.integration = await invoke("integration_status"); } catch { state.integration = null; }
+  renderOnboard();
+  if ($("dlg-settings").open) renderBrowserPanel();
+}
+const installedBrowsers = () => (state.integration?.browsers || []).filter((b) => b.installed);
+function renderOnboard() {
+  const card = $("onboard");
+  const i = state.integration;
+  const show = i && !i.lastSeen && !state.settings?.onboardingDismissed && installedBrowsers().length > 0;
+  card.hidden = !show;
+  if (!show) return;
+  const html = `<span class="ob-icon">${icon("globe")}</span>
+    <span class="ob-text"><b>Connect your browser</b>Catch downloads automatically and get a download button on videos</span>
+    <span class="ob-actions">${installedBrowsers().slice(0, 3).map((b) => `<button class="link-btn" data-store="${b.id}">Add to ${b.name}</button>`).join("")}<button class="sq-btn" data-dismiss title="Dismiss">${icon("x")}</button></span>`;
+  if (card.innerHTML !== html) card.innerHTML = html;
+}
+$("onboard").addEventListener("click", async (e) => {
+  const s = e.target.closest("[data-store]");
+  if (s) return openStore(s.dataset.store);
+  if (e.target.closest("[data-dismiss]")) {
+    await saveSettings({ ...state.settings, onboardingDismissed: true });
+    renderOnboard();
+  }
+});
+async function openStore(browser) {
+  await call("open_store", { browser });
+  toast("Opened the extension page. Click “Add to browser” there.", "ok");
+}
+function renderBrowserPanel() {
+  const i = state.integration;
+  if (!i) return;
+  $("ext-status").className = `ext-status ${i.lastSeen ? "ok" : ""}`;
+  $("ext-status").innerHTML = `<span class="dot"></span><div class="sr-text"><b>${i.lastSeen ? "Extension connected" : "Extension not connected yet"}</b><span>${i.lastSeen ? `Last active ${when(i.lastSeen).toLowerCase()}` : "Add it to a browser below, then open that browser once"}</span></div>`;
+  $("browser-list").innerHTML = [...i.browsers].sort((a, b) => b.installed - a.installed).map((b) => `<div class="set-row">
+      <span class="bmono ${b.installed ? "" : "off"}">${icon("globe")}</span>
+      <div class="sr-text"><b>${b.name}</b><span>${b.installed ? (b.autoOffer ? "Installed · asks to enable the extension on next start" : "Installed") : "Not installed"}</span></div>
+      ${b.installed ? `<button type="button" class="btn sm" data-store="${b.id}">Add extension</button>` : ""}</div>`).join("");
+}
+$("browser-list").addEventListener("click", (e) => { const b = e.target.closest("[data-store]"); if (b) openStore(b.dataset.store); });
 
 function render() {
   if (state.selected != null && !byId(state.selected)) state.selected = null;
@@ -646,6 +674,7 @@ function openComposer(incoming = null) {
   const dlg = $("dlg-add");
   if (dlg.open) return;
   add.headers = incoming?.headers || [];
+  add.suggest = incoming?.filename || "";
   add.dirTouched = false;
   add.info = null;
   add.dir = state.settings?.downloadDir || "";
@@ -686,7 +715,9 @@ async function probe() {
     if (seq !== add.seq) return;
     add.info = info;
     if (!add.dirTouched) add.dir = info.dir;
-    $("add-filename").value = info.filename;
+    // A name from the extension (e.g. the video page's title) beats a
+    // generic server name like "videoplayback".
+    $("add-filename").value = /\.[a-z0-9]{2,5}$/i.test(add.suggest) ? add.suggest : info.filename;
     $("add-tile").innerHTML = ftile(info);
     $("add-sub").textContent = host(url);
     $("add-file").hidden = false;
@@ -725,7 +756,7 @@ function nextPending() {
   if (inc.cookies) headers.push(["Cookie", inc.cookies]);
   if (inc.referrer) headers.push(["Referer", inc.referrer]);
   if (inc.userAgent) headers.push(["User-Agent", inc.userAgent]);
-  openComposer({ url: inc.url, headers });
+  openComposer({ url: inc.url, headers, filename: inc.filename });
 }
 
 // ---------- settings ----------
@@ -736,6 +767,10 @@ function openSettings(tab = "general") {
   $("set-sort").checked = s.sortIntoCategories;
   $("set-ask").checked = s.askBeforeDownload;
   $("set-notify").checked = s.notifyOnComplete;
+  $("set-offer").checked = s.offerExtension;
+  $("set-progress-win").checked = s.showProgressWindow;
+  $("set-tray").checked = s.closeToTray;
+  loadIntegration();
   $("set-conns").value = s.connections;
   $("set-concurrent").value = s.maxConcurrent;
   setLimitKib = s.speedLimitKib;
@@ -776,6 +811,10 @@ $("form-settings").addEventListener("submit", async (e) => {
     speedLimitKib: setLimitKib,
     askBeforeDownload: $("set-ask").checked,
     notifyOnComplete: $("set-notify").checked,
+    offerExtension: $("set-offer").checked,
+    showProgressWindow: $("set-progress-win").checked,
+    closeToTray: $("set-tray").checked,
+    onboardingDismissed: state.settings.onboardingDismissed,
   });
   $("dlg-settings").close();
   toast("Settings saved", "ok");
@@ -805,6 +844,8 @@ async function boot() {
   $("version").textContent = `Version ${s.version}`;
   ingest(s.items);
   nextPending();
+  loadIntegration();
+  setInterval(loadIntegration, 15000);
   await listen("downloads", (e) => ingest(e.payload));
   await listen("incoming", () => invoke("get_state").then((s) => { state.pending.push(...s.pending); nextPending(); }));
   setInterval(() => {

@@ -17,6 +17,14 @@ pub struct Settings {
     /// Show the Add dialog for downloads caught from the browser.
     pub ask_before_download: bool,
     pub notify_on_complete: bool,
+    /// Ask installed browsers to offer the extension (they prompt once).
+    pub offer_extension: bool,
+    /// The user closed the "connect your browser" card.
+    pub onboarding_dismissed: bool,
+    /// Open a small progress window for each download as it starts.
+    pub show_progress_window: bool,
+    /// Closing the main window keeps SwiftDL running in the tray.
+    pub close_to_tray: bool,
 }
 
 impl Default for Settings {
@@ -29,6 +37,10 @@ impl Default for Settings {
             sort_into_categories: true,
             ask_before_download: true,
             notify_on_complete: true,
+            offer_extension: true,
+            onboarding_dismissed: false,
+            show_progress_window: true,
+            close_to_tray: true,
         }
     }
 }

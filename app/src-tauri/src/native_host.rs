@@ -47,12 +47,15 @@ fn handle(msg: &[u8]) -> Value {
     let Ok(v) = serde_json::from_slice::<Value>(msg) else {
         return json!({ "ok": false, "error": "invalid JSON" });
     };
+    crate::browser::mark_extension_seen();
+    let reply = |r: io::Result<()>| match r {
+        Ok(()) => json!({ "ok": true }),
+        Err(e) => json!({ "ok": false, "error": e.to_string() }),
+    };
     match v["type"].as_str() {
         Some("ping") => json!({ "ok": true, "version": env!("CARGO_PKG_VERSION") }),
-        Some("download") if v["url"].is_string() => match launch_app(&["--add", &URL_SAFE_NO_PAD.encode(msg)]) {
-            Ok(()) => json!({ "ok": true }),
-            Err(e) => json!({ "ok": false, "error": e.to_string() }),
-        },
+        Some("download") if v["url"].is_string() => reply(launch_app(&["--add", &URL_SAFE_NO_PAD.encode(msg)])),
+        Some("show") => reply(launch_app(&[])),
         _ => json!({ "ok": false, "error": "unknown message" }),
     }
 }

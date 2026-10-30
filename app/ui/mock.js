@@ -11,6 +11,7 @@
   let settings = {
     downloadDir: "C:\\Users\\you\\Downloads", connections: 8, maxConcurrent: 3, speedLimitKib: 0,
     sortIntoCategories: true, askBeforeDownload: true, notifyOnComplete: true,
+    offerExtension: true, onboardingDismissed: false, showProgressWindow: true, closeToTray: true,
   };
   const catFor = (name) => {
     const ext = (name.split(".").pop() || "").toLowerCase();
@@ -30,7 +31,7 @@
     const chunk = size / n, segs = [];
     for (let i = 0; i < n; i++) {
       const start = Math.floor(i * chunk), end = i === n - 1 ? size : Math.floor((i + 1) * chunk);
-      segs.push({ pos: Math.floor(start + (end - start) * doneFrac * (0.6 + Math.random() * 0.8)), end, rate: 0.6 + Math.random() * 0.8 });
+      segs.push({ start, pos: Math.floor(start + (end - start) * doneFrac * (0.6 + Math.random() * 0.8)), end, rate: 0.6 + Math.random() * 0.8 });
       segs.at(-1).pos = Math.min(segs.at(-1).pos, end);
     }
     return segs;
@@ -51,6 +52,7 @@
     const segs = sims.get(it.id);
     if (!segs) return;
     it.remaining = segs.filter((s) => s.pos < s.end).map((s) => [s.pos, s.end]);
+    it.segments = segs.map((s) => [s.start, s.pos, s.end]).sort((a, b) => a[0] - b[0]);
     it.downloaded = it.size - it.remaining.reduce((a, [p, e]) => a + (e - p), 0);
   }
 
@@ -98,7 +100,7 @@
         const big = busy.sort((a, b) => (b.end - b.pos) - (a.end - a.pos))[0];
         if (!big || big.end - big.pos < 4 * MB) break;
         const mid = Math.floor(big.pos + (big.end - big.pos) / 2);
-        const s = { pos: mid, end: big.end, rate: 0.6 + Math.random() * 0.8 };
+        const s = { start: mid, pos: mid, end: big.end, rate: 0.6 + Math.random() * 0.8 };
         big.end = mid; segs.push(s); busy.push(s);
       }
       const inst = got * 2;
@@ -134,6 +136,21 @@
     pick_folder: () => "C:\\Users\\you\\Desktop",
     open_file: () => {}, open_folder: () => {}, open_url: () => {}, open_extension_folder: () => {},
     default_dir: ({ filename }) => dirFor(catFor(filename)),
+    integration_status: () => ({
+      browsers: [
+        { id: "chrome", name: "Chrome", installed: true, autoOffer: true },
+        { id: "edge", name: "Edge", installed: true, autoOffer: true },
+        { id: "brave", name: "Brave", installed: false, autoOffer: true },
+        { id: "vivaldi", name: "Vivaldi", installed: false, autoOffer: false },
+        { id: "chromium", name: "Chromium", installed: false, autoOffer: false },
+      ],
+      lastSeen: null,
+      storeUrl: "https://chromewebstore.google.com/detail/knmfjbmojepkdiflnckpfjimfmjfcbgh",
+    }),
+    open_store: () => {},
+    get_item: ({ id }) => JSON.parse(JSON.stringify(items.find((i) => i.id === id) || null)),
+    confirm_info: () => ({ url: "https://cdn.example.net/releases/Obsidian-2.4.1-setup.exe", filename: "", referrer: "https://obsidian.example.net/download" }),
+    forget_confirm: () => {}, show_main: () => {},
   };
 
   window.__TAURI__ = {
