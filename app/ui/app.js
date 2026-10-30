@@ -436,7 +436,9 @@ function renderBrowserPanel() {
   $("ext-status").className = `ext-status ${i.lastSeen ? "ok" : ""}`;
   const store = i.storeAvailable;
   const hint = store ? "Add it to a browser below, then open that browser once" : "Follow the steps below, then open the browser once";
-  $("ext-status").innerHTML = `<span class="dot"></span><div class="sr-text"><b>${i.lastSeen ? "Extension connected" : "Extension not connected yet"}</b><span>${i.lastSeen ? `Last active ${when(i.lastSeen).toLowerCase()}` : hint}</span></div>`;
+  const where = i.browsers.filter((b) => b.lastSeen).map((b) => b.name);
+  const title = where.length ? `Extension connected in ${where.join(", ").replace(/, ([^,]*)$/, " and $1")}` : "Extension not connected yet";
+  $("ext-status").innerHTML = `<span class="dot"></span><div class="sr-text"><b>${title}</b><span>${i.lastSeen ? `Last active ${when(i.lastSeen).toLowerCase()}` : hint}</span></div>`;
   const rank = (b) => (b.lastSeen ? 2 : b.installed ? 1 : 0);
   $("browser-list").innerHTML = [...i.browsers].sort((a, b) => rank(b) - rank(a)).map((b) => {
     const sub = b.lastSeen ? `Extension connected · last active ${when(b.lastSeen).toLowerCase()}`

@@ -306,7 +306,9 @@ pub fn status() -> IntegrationStatus {
                 last_seen: seen["browsers"][b.id].as_u64(),
             })
             .collect(),
-        last_seen: seen["lastSeen"].as_u64(),
+        // Only contacts traced to a browser count, so a test or a host run
+        // by something else doesn't show the extension as connected.
+        last_seen: BROWSERS.iter().filter_map(|b| seen["browsers"][b.id].as_u64()).max(),
         store_url: store_url(),
     }
 }
