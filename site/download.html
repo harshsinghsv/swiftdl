@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Download SwiftDL · Windows, macOS and Linux</title>
+  <meta name="description" content="Download SwiftDL for Windows, macOS and Linux. Every version, straight from GitHub Releases.">
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;550;600;650&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="site.css">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
+  <style type="text/tailwindcss">
+    @theme inline {
+      --color-bg: var(--bg); --color-panel: var(--panel); --color-elev: var(--elev);
+      --color-line: var(--border); --color-ink: var(--text); --color-ink-2: var(--text-2);
+      --color-muted: var(--muted); --color-faint: var(--faint); --color-accent: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header sticky top-0 z-50">
+    <nav class="mx-auto flex h-16 max-w-6xl items-center gap-8 px-4 sm:px-6">
+      <a href="index.html" class="flex items-center gap-2.5 font-semibold tracking-tight text-ink no-underline">
+        <img src="assets/logo.svg" alt="" width="26" height="26">SwiftDL
+      </a>
+      <div class="hidden items-center gap-6 md:flex">
+        <a class="nav-link" href="index.html#features">Features</a>
+        <a class="nav-link" href="index.html#how">How it works</a>
+        <a class="nav-link" href="index.html#extension">Extension</a>
+        <a class="nav-link" href="download.html" aria-current="page">Download</a>
+        <a class="nav-link" href="changelog.html">Changelog</a>
+      </div>
+      <div class="ml-auto flex items-center gap-2">
+        <a class="btn sm" href="https://github.com/harshsinghsv/swiftdl" target="_blank" rel="noopener"><span data-icon="github" class="size-4"></span><span class="hidden sm:inline">GitHub</span></a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="mx-auto max-w-4xl px-4 pb-24 sm:px-6">
+    <section class="pt-14 text-center sm:pt-20">
+      <img class="mx-auto" src="assets/logo.svg" alt="" width="72" height="72">
+      <h1 class="display mt-6 text-4xl font-semibold text-ink sm:text-5xl">Download SwiftDL</h1>
+      <p class="mt-4 text-muted"><span data-version>v0.2.0</span> · <span id="released">Released October 30, 2026</span> · <a class="text-ink-2 hover:text-ink" href="changelog.html">What's new</a></p>
+    </section>
+
+    <section class="mt-12">
+      <div class="flex justify-center">
+        <div class="inline-flex gap-1 rounded-[10px] p-1 shadow-[inset_0_0_0_1px_var(--border)]" role="tablist" aria-label="Platform">
+          <button class="tab inline-flex items-center gap-2" role="tab" data-tab="windows"><span data-icon="windows" class="size-4"></span>Windows</button>
+          <button class="tab inline-flex items-center gap-2" role="tab" data-tab="macos"><span data-icon="macos" class="size-4"></span>macOS</button>
+          <button class="tab inline-flex items-center gap-2" role="tab" data-tab="linux"><span data-icon="linux" class="size-4"></span>Linux</button>
+        </div>
+      </div>
+
+      <div class="card mt-6 overflow-hidden" id="files" role="tabpanel"></div>
+      <p class="mt-3 text-center text-[13px] text-faint" id="req"></p>
+
+      <div class="mt-8 grid gap-4 sm:grid-cols-2" id="help"></div>
+    </section>
+
+    <section id="verify" class="reveal mt-20 scroll-mt-20">
+      <h2 class="text-xl font-semibold text-ink">About the security warning</h2>
+      <p class="mt-3 text-muted">SwiftDL's installers aren't code-signed yet, because signing certificates cost money every year. So the first time you open SwiftDL, your system may warn you that it doesn't recognise the publisher.</p>
+      <div class="mt-6 grid gap-4 sm:grid-cols-2">
+        <div class="card p-5"><h3 class="font-semibold text-ink">Windows</h3><p class="mt-1.5 text-[14px] text-muted">If SmartScreen says "Windows protected your PC", choose <b class="font-medium text-ink-2">More info</b>, then <b class="font-medium text-ink-2">Run anyway</b>.</p></div>
+        <div class="card p-5"><h3 class="font-semibold text-ink">macOS</h3><p class="mt-1.5 text-[14px] text-muted">If macOS says it can't verify the developer, right-click SwiftDL in Applications and choose <b class="font-medium text-ink-2">Open</b>, then <b class="font-medium text-ink-2">Open</b> again.</p></div>
+      </div>
+      <p class="mt-4 text-[14px] text-muted">Only download SwiftDL from this site or <a class="text-accent" href="https://github.com/harshsinghsv/swiftdl/releases" target="_blank" rel="noopener">GitHub Releases</a>. Every file is built from the public source code by <a class="text-accent" href="https://github.com/harshsinghsv/swiftdl/actions/workflows/release.yml" target="_blank" rel="noopener">GitHub Actions</a>.</p>
+    </section>
+
+    <section class="reveal mt-20">
+      <div class="card flex flex-col gap-4 p-6 sm:flex-row sm:items-center">
+        <span data-icon="puzzle" class="size-6 text-muted"></span>
+        <div class="flex-1">
+          <h2 class="font-semibold text-ink">Browser extension</h2>
+          <p class="mt-1 text-[14px] text-muted">Included with the app: open SwiftDL and click <b class="font-medium text-ink-2">Add the extension</b> for a short guide. Works in Chrome, Edge, Brave and Vivaldi.</p>
+        </div>
+        <a class="btn sm" id="ext-zip" href="https://github.com/harshsinghsv/swiftdl/releases/latest">Download .zip</a>
+      </div>
+    </section>
+
+    <section class="reveal mt-20">
+      <div class="flex items-baseline justify-between">
+        <h2 class="text-xl font-semibold text-ink">All versions</h2>
+        <a class="text-sm text-muted hover:text-ink" href="https://github.com/harshsinghsv/swiftdl/releases" target="_blank" rel="noopener">On GitHub</a>
+      </div>
+      <div class="mt-5" id="versions"><p class="text-muted">Loading releases…</p></div>
+    </section>
+
+    <section class="reveal mt-20">
+      <h2 class="text-xl font-semibold text-ink">Build from source</h2>
+      <p class="mt-3 text-muted">You need Rust and the <a class="text-accent" href="https://v2.tauri.app/start/prerequisites/" target="_blank" rel="noopener">Tauri prerequisites</a> for your system.</p>
+      <pre class="cmd mono mt-4"><code>git clone https://github.com/harshsinghsv/swiftdl
+cd swiftdl/app/src-tauri
+cargo install tauri-cli --version "^2"
+cargo tauri build</code></pre>
+    </section>
+  </main>
+
+  <footer class="border-t hairline">
+    <div class="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 text-sm sm:flex-row sm:items-center sm:px-6">
+      <div class="flex items-center gap-2.5 text-muted"><img src="assets/logo.svg" alt="" width="20" height="20"><span>SwiftDL · MIT licensed · <span data-year>2026</span></span></div>
+      <div class="flex flex-wrap gap-x-6 gap-y-2 sm:ml-auto">
+        <a class="nav-link" href="index.html">Home</a>
+        <a class="nav-link" href="changelog.html">Changelog</a>
+        <a class="nav-link" href="https://github.com/harshsinghsv/swiftdl" target="_blank" rel="noopener">GitHub</a>
+        <a class="nav-link" href="https://github.com/harshsinghsv/swiftdl/issues" target="_blank" rel="noopener">Report a bug</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="site.js"></script>
+  <script>
+    const REQS = {
+      windows: "Windows 10 and 11, 64-bit. The installer adds Microsoft WebView2 if it's missing.",
+      macos: "macOS 10.13 or later. One download for Apple silicon and Intel.",
+      linux: "64-bit x86. Needs WebKitGTK 4.1, already installed on most desktops.",
+    };
+    const HELP = {
+      windows: [
+        ["Install", "Run the installer. It installs for your user only, so it doesn't ask for admin rights, and opens SwiftDL when it's done."],
+        ["Uninstall", "Settings → Apps → Installed apps → SwiftDL → Uninstall. Its browser registrations are removed too."],
+      ],
+      macos: [
+        ["Install", "Open the .dmg and drag SwiftDL into Applications. The first time, right-click it and choose Open."],
+        ["Uninstall", "Quit SwiftDL from the menu bar, then move it from Applications to the Bin."],
+      ],
+      linux: [
+        ["AppImage", '<pre class="cmd mono mt-2"><code>chmod +x SwiftDL_*.AppImage\n./SwiftDL_*.AppImage</code></pre>'],
+        ["Debian / Fedora", '<pre class="cmd mono mt-2"><code>sudo apt install ./SwiftDL_*.deb\nsudo dnf install ./SwiftDL-*.rpm</code></pre>'],
+      ],
+    };
+
+    function fileRow(f, featured) {
+      return `<div class="dl-row">
+        <div class="min-w-0 flex-1">
+          <div class="flex flex-wrap items-center gap-x-2 gap-y-1"><span class="font-semibold text-ink">${f.label}</span><span class="mono text-[13px] text-faint">${f.ext}</span>${featured ? '<span class="rounded-full px-2 py-px text-[11.5px] font-medium text-accent shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--accent)_35%,transparent)]">Recommended</span>' : ""}</div>
+          <p class="mt-0.5 text-[13.5px] text-muted">${f.note.replace(/^Recommended\.\s*/, "")}</p>
+        </div>
+        <span class="hidden text-[13px] text-faint sm:block">${fmtSize(f.asset.size)}</span>
+        <a class="btn ${featured ? "primary" : ""} sm" href="${f.asset.browser_download_url}">${icon("download")}<span class="hidden sm:inline">Download</span></a>
+      </div>`;
+    }
+
+    function versionBlock(r, i) {
+      const groups = ["windows", "macos", "linux"].map((os) => {
+        const files = filesFor(r, os);
+        if (!files.length) return "";
+        return `<div><div class="mb-2 text-[12px] font-medium text-faint">${OS_NAMES[os]}</div>${files.map((f) =>
+          `<a class="flex items-center justify-between gap-3 rounded-md py-1.5 text-[13.5px] text-ink-2 hover:text-ink" href="${f.asset.browser_download_url}"><span class="truncate">${f.label} <span class="mono text-faint">${f.ext}</span></span><span class="flex-none text-faint">${fmtSize(f.asset.size)}</span></a>`).join("")}</div>`;
+      }).join("");
+      return `<details class="faq"${i === 0 ? " open" : ""}>
+        <summary><span class="flex flex-wrap items-baseline gap-x-3"><span class="text-ink">${esc(r.name || r.tag_name)}</span><span class="text-[13px] font-normal text-faint">${fmtDate(r.published_at)}</span>${i === 0 ? '<span class="text-[12px] font-medium text-accent">Latest</span>' : ""}</span></summary>
+        <div class="grid gap-6 pb-6 sm:grid-cols-3">${groups}</div>
+        <div class="-mt-2 flex gap-4 pb-6 text-[13px]"><a class="text-muted hover:text-ink" href="changelog.html#${r.tag_name}">Release notes</a><a class="text-muted hover:text-ink" href="${r.html_url}" target="_blank" rel="noopener">View on GitHub</a></div>
+      </details>`;
+    }
+
+    (async () => {
+      const releases = await getReleases();
+      const latest = releases[0];
+      document.querySelectorAll("[data-version]").forEach((el) => { el.textContent = `v${version(latest)}`; });
+      document.getElementById("released").textContent = `Released ${fmtDate(latest.published_at)}`;
+      const zip = latest.assets.find((a) => /extension\.zip$/i.test(a.name));
+      if (zip) document.getElementById("ext-zip").href = zip.browser_download_url;
+
+      const show = (os, fromClick) => {
+        document.querySelectorAll("[data-tab]").forEach((t) => t.setAttribute("aria-selected", String(t.dataset.tab === os)));
+        const files = filesFor(latest, os);
+        document.getElementById("files").innerHTML = files.length
+          ? files.map((f) => fileRow(f, f.primary)).join("")
+          : `<div class="dl-row text-muted">No ${OS_NAMES[os]} build in this release. <a class="text-accent" href="${latest.html_url}">See all files</a></div>`;
+        document.getElementById("req").textContent = REQS[os];
+        document.getElementById("help").innerHTML = HELP[os].map(([t, d]) => `<div class="card p-5"><h3 class="font-semibold text-ink">${t}</h3>${d.startsWith("<") ? d : `<p class="mt-1.5 text-[14px] text-muted">${d}</p>`}</div>`).join("");
+        if (fromClick) history.replaceState(null, "", `#${os}`);
+      };
+      document.querySelectorAll("[data-tab]").forEach((t) => t.addEventListener("click", () => show(t.dataset.tab, true)));
+      const fromHash = location.hash.slice(1);
+      show(OS_NAMES[fromHash] ? fromHash : detectOS());
+
+      document.getElementById("versions").innerHTML = releases.map(versionBlock).join("");
+    })();
+  </script>
+</body>
+</html>

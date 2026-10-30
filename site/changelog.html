@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Changelog · SwiftDL</title>
+  <meta name="description" content="Every SwiftDL release and what changed in it.">
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;550;600;650&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="site.css">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+  <style type="text/tailwindcss">
+    @theme inline {
+      --color-bg: var(--bg); --color-panel: var(--panel); --color-elev: var(--elev);
+      --color-line: var(--border); --color-ink: var(--text); --color-ink-2: var(--text-2);
+      --color-muted: var(--muted); --color-faint: var(--faint); --color-accent: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header sticky top-0 z-50">
+    <nav class="mx-auto flex h-16 max-w-6xl items-center gap-8 px-4 sm:px-6">
+      <a href="index.html" class="flex items-center gap-2.5 font-semibold tracking-tight text-ink no-underline">
+        <img src="assets/logo.svg" alt="" width="26" height="26">SwiftDL
+      </a>
+      <div class="hidden items-center gap-6 md:flex">
+        <a class="nav-link" href="index.html#features">Features</a>
+        <a class="nav-link" href="index.html#how">How it works</a>
+        <a class="nav-link" href="index.html#extension">Extension</a>
+        <a class="nav-link" href="download.html">Download</a>
+        <a class="nav-link" href="changelog.html" aria-current="page">Changelog</a>
+      </div>
+      <div class="ml-auto flex items-center gap-2">
+        <a class="btn sm hidden sm:inline-flex" href="https://github.com/harshsinghsv/swiftdl" target="_blank" rel="noopener"><span data-icon="github" class="size-4"></span>GitHub</a>
+        <a class="btn sm primary" href="download.html">Download</a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="mx-auto max-w-5xl px-4 pb-24 sm:px-6">
+    <section class="pt-14 sm:pt-20">
+      <h1 class="display text-4xl font-semibold text-ink sm:text-5xl">Changelog</h1>
+      <p class="mt-4 text-muted">Every release of SwiftDL and what changed. Subscribe with the <a class="text-accent" href="https://github.com/harshsinghsv/swiftdl/releases.atom">releases feed</a>, or watch the repository on GitHub.</p>
+    </section>
+
+    <div class="mt-14 grid gap-12 md:grid-cols-[180px_minmax(0,1fr)]">
+      <aside class="hidden md:block">
+        <nav class="sticky top-24 space-y-1 text-sm" id="toc"></nav>
+      </aside>
+      <div id="releases"><p class="text-muted">Loading releases…</p></div>
+    </div>
+  </main>
+
+  <footer class="border-t hairline">
+    <div class="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 text-sm sm:flex-row sm:items-center sm:px-6">
+      <div class="flex items-center gap-2.5 text-muted"><img src="assets/logo.svg" alt="" width="20" height="20"><span>SwiftDL · MIT licensed · <span data-year>2026</span></span></div>
+      <div class="flex flex-wrap gap-x-6 gap-y-2 sm:ml-auto">
+        <a class="nav-link" href="index.html">Home</a>
+        <a class="nav-link" href="download.html">Download</a>
+        <a class="nav-link" href="https://github.com/harshsinghsv/swiftdl" target="_blank" rel="noopener">GitHub</a>
+        <a class="nav-link" href="https://github.com/harshsinghsv/swiftdl/issues" target="_blank" rel="noopener">Report a bug</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="site.js"></script>
+  <script>
+    // Release notes come from GitHub as markdown. Notes published before the
+    // site existed may repeat the version as a heading; that line is dropped.
+    const render = (md) => {
+      const body = (md || "").replace(/^##\s*\[?v?\d+\.\d+\.\d+.*$/m, "").trim();
+      return body && window.marked ? marked.parse(body, { gfm: true }) : `<p>${esc(body) || "No notes for this release."}</p>`;
+    };
+
+    (async () => {
+      const releases = await getReleases();
+      document.getElementById("toc").innerHTML = releases.map((r, i) =>
+        `<a class="flex items-center justify-between rounded-md px-2 py-1.5 ${i ? "text-muted" : "text-ink"} hover:text-ink" href="#${r.tag_name}"><span>${esc(r.tag_name)}</span>${i ? "" : '<span class="text-[11.5px] text-accent">Latest</span>'}</a>`).join("");
+      document.getElementById("releases").innerHTML = releases.map((r, i) => `
+        <article id="${r.tag_name}" class="scroll-mt-24 ${i ? "mt-14 border-t hairline pt-14" : ""}">
+          <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h2 class="text-2xl font-semibold tracking-tight text-ink">${esc(r.name || r.tag_name)}</h2>
+            ${i ? "" : '<span class="text-[12.5px] font-medium text-accent">Latest</span>'}
+          </div>
+          <p class="mt-1 text-sm text-faint">${fmtDate(r.published_at)}</p>
+          <div class="notes mt-6">${render(r.body)}</div>
+          <div class="mt-6 flex flex-wrap gap-2">
+            <a class="btn sm" href="download.html">Download</a>
+            <a class="btn sm" href="${r.html_url}" target="_blank" rel="noopener">View on GitHub</a>
+          </div>
+        </article>`).join("");
+      if (location.hash) document.querySelector(location.hash)?.scrollIntoView();
+    })();
+  </script>
+</body>
+</html>

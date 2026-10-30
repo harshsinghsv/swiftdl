@@ -1,0 +1,141 @@
+/* SwiftDL site: the same tokens as the app (app/ui/styles.css), so the site
+   looks like the product. Tailwind handles layout; this file holds the
+   colours and the few components every page shares. */
+:root {
+  --bg: #ffffff;
+  --panel: #f6f6f8;
+  --elev: #ffffff;
+  --border: rgba(15, 15, 25, .08);
+  --border-2: rgba(15, 15, 25, .13);
+  --text: #17171c;
+  --text-2: #3c3d45;
+  --muted: #6c6e78;
+  --faint: #a2a4ad;
+  --accent: #007aff;
+  --primary-bg: #18181b;
+  --primary-text: #ffffff;
+  --btn-bg: rgba(15, 15, 25, .055);
+  --btn-hover: rgba(15, 15, 25, .09);
+  --green: #23864f;
+  --shot-shadow: 0 0 0 1px rgba(15, 15, 25, .08), 0 24px 64px -16px rgba(15, 15, 25, .22);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #090a0c;
+    --panel: #101114;
+    --elev: #16171b;
+    --border: rgba(255, 255, 255, .07);
+    --border-2: rgba(255, 255, 255, .12);
+    --text: #eef0f3;
+    --text-2: #c7cad1;
+    --muted: #8a8e98;
+    --faint: #5c6069;
+    --accent: #0a84ff;
+    --primary-bg: #eceef1;
+    --primary-text: #0e0f12;
+    --btn-bg: rgba(255, 255, 255, .07);
+    --btn-hover: rgba(255, 255, 255, .11);
+    --green: #3fa877;
+    --shot-shadow: 0 0 0 1px rgba(255, 255, 255, .08), 0 32px 80px -20px rgba(0, 0, 0, .8);
+    color-scheme: dark;
+  }
+}
+
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 450 15px/1.6 "Inter", "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  letter-spacing: -.006em;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv11", "ss01";
+}
+::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.display { font-family: "Inter Display", "Inter", "Segoe UI Variable Display", "Segoe UI", -apple-system, system-ui, sans-serif; letter-spacing: -.03em; }
+.mono { font-family: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace; font-size: .92em; letter-spacing: 0; }
+
+/* Buttons: neutral, like the app. The primary is the inverted text colour. */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 40px; padding: 0 16px; border-radius: 9px;
+  background: var(--btn-bg); color: var(--text);
+  font-weight: 550; font-size: 14px; white-space: nowrap; text-decoration: none;
+  transition: background .12s, opacity .12s;
+}
+.btn:hover { background: var(--btn-hover); }
+.btn.primary { background: var(--primary-bg); color: var(--primary-text); }
+.btn.primary:hover { opacity: .88; }
+.btn.sm { height: 32px; padding: 0 12px; font-size: 13px; border-radius: 8px; }
+.btn svg { width: 16px; height: 16px; flex: none; }
+[data-icon], [data-os-icon] { display: inline-flex; flex: none; }
+[data-icon] svg, [data-os-icon] svg { width: 100%; height: 100%; }
+
+/* Header */
+.nav-link { color: var(--muted); font-size: 14px; font-weight: 500; text-decoration: none; transition: color .12s; }
+.nav-link:hover, .nav-link[aria-current="page"] { color: var(--text); }
+.site-header { background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: saturate(1.6) blur(14px); -webkit-backdrop-filter: saturate(1.6) blur(14px); border-bottom: 1px solid transparent; transition: border-color .2s; }
+.site-header.scrolled { border-bottom-color: var(--border); }
+
+/* Screenshots */
+.shot { display: block; width: 100%; height: auto; border-radius: 12px; box-shadow: var(--shot-shadow); }
+.shot-light { display: none; }
+@media (prefers-color-scheme: light) { .shot-dark { display: none; } .shot-light { display: block; } }
+
+/* Cards and rows */
+.card { background: var(--panel); border-radius: 14px; box-shadow: inset 0 0 0 1px var(--border); }
+.hairline { border-color: var(--border); }
+.eyebrow { font-size: 13px; font-weight: 550; color: var(--accent); }
+.muted { color: var(--muted); }
+kbd { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: 5px; font: 500 12px/1 inherit; background: var(--btn-bg); color: var(--text-2); }
+.chip { display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-radius: 999px; font-size: 13px; color: var(--muted); box-shadow: inset 0 0 0 1px var(--border-2); text-decoration: none; transition: color .12s; }
+.chip:hover { color: var(--text); }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+
+/* Benchmark bars */
+.bar { height: 8px; border-radius: 4px; background: var(--btn-bg); overflow: hidden; }
+.bar > i { display: block; height: 100%; border-radius: 4px; background: var(--accent); transform-origin: left; transform: scaleX(0); transition: transform 1.2s cubic-bezier(.2, .8, .2, 1); }
+.bar.on > i { transform: scaleX(var(--w)); }
+
+/* FAQ */
+details.faq { border-top: 1px solid var(--border); }
+details.faq:last-child { border-bottom: 1px solid var(--border); }
+details.faq summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; font-weight: 550; cursor: pointer; }
+details.faq summary::-webkit-details-marker { display: none; }
+details.faq summary::after { content: ""; width: 8px; height: 8px; border: solid var(--muted); border-width: 0 1.5px 1.5px 0; transform: rotate(45deg) translateY(-3px); transition: transform .2s; flex: none; }
+details.faq[open] summary::after { transform: rotate(225deg) translateY(-1px); }
+details.faq p { margin: -4px 0 20px; color: var(--muted); max-width: 64ch; }
+
+/* Download rows */
+.dl-row { display: flex; align-items: center; gap: 16px; padding: 16px 20px; }
+.dl-row + .dl-row { border-top: 1px solid var(--border); }
+.tab { height: 34px; padding: 0 14px; border-radius: 8px; font-weight: 550; font-size: 14px; color: var(--muted); background: none; border: 0; cursor: pointer; transition: color .12s, background .12s; }
+.tab:hover { color: var(--text); }
+.tab[aria-selected="true"] { background: var(--btn-bg); color: var(--text); }
+pre.cmd { margin: 0; padding: 12px 14px; border-radius: 9px; background: var(--bg); box-shadow: inset 0 0 0 1px var(--border); overflow-x: auto; font-size: 13px; line-height: 1.6; }
+
+/* Release notes rendered from GitHub (markdown) */
+.notes { color: var(--text-2); font-size: 14.5px; }
+.notes h3 { margin: 24px 0 8px; font-size: 13px; font-weight: 600; color: var(--muted); text-transform: none; }
+.notes h2 { margin: 24px 0 8px; font-size: 16px; font-weight: 600; color: var(--text); }
+.notes p { margin: 8px 0; }
+.notes ul { margin: 8px 0; padding-left: 18px; list-style: disc; }
+.notes ol { margin: 8px 0; padding-left: 20px; list-style: decimal; }
+.notes li { margin: 6px 0; }
+.notes li::marker { color: var(--faint); }
+.notes strong { color: var(--text); font-weight: 600; }
+.notes a { color: var(--accent); text-decoration: none; }
+.notes a:hover { text-decoration: underline; }
+.notes code { padding: 1px 5px; border-radius: 5px; background: var(--btn-bg); font-size: .9em; }
+.notes > :first-child { margin-top: 0; }
+
+/* Reveal on scroll */
+.reveal { opacity: 0; transform: translateY(12px); transition: opacity .7s ease, transform .7s cubic-bezier(.2, .8, .2, 1); }
+.reveal.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .bar > i { transition: none; }
+}
