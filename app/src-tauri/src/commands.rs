@@ -158,3 +158,20 @@ pub async fn pick_folder(m: Mgr<'_>, start: Option<PathBuf>) -> Result<Option<Pa
     }
     Ok(dialog.blocking_pick_folder().and_then(|p| p.into_path().ok()))
 }
+
+#[tauri::command]
+pub fn is_media_url(url: String) -> bool {
+    crate::media::is_media_url(url.trim())
+}
+
+#[tauri::command]
+pub async fn probe_media(m: Mgr<'_>, url: String, cookies: Option<String>) -> Result<crate::media::MediaInfo, String> {
+    crate::media::probe(m.client(), url.trim(), cookies).await.map_err(|e| format!("{e:#}"))
+}
+
+/// A video-site link pasted into the main window: choose its quality in a
+/// "New download" window, like a link caught from the browser.
+#[tauri::command]
+pub fn open_new_download(m: Mgr, url: String) {
+    m.new_download_window(Incoming { url: url.trim().to_string(), filename: None, referrer: None, cookies: None, user_agent: None });
+}

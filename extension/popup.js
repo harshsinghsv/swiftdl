@@ -9,6 +9,7 @@ const bytes = (n) => {
   while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
   return `${n < 10 && i ? n.toFixed(1) : Math.round(n)} ${u[i]}`;
 };
+const VIDEO_SITE = /(^|\.)(youtube\.com|youtube-nocookie\.com|vimeo\.com|x\.com|twitter\.com|reddit\.com|instagram\.com|tiktok\.com|facebook\.com|twitch\.tv|dailymotion\.com|bilibili\.com)$/i;
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
 async function main() {
@@ -49,13 +50,18 @@ async function main() {
     return `<div class="m"><span class="tag">${e.toUpperCase()}</span><span class="mt"><b>${audio ? "Audio" : "Video"}</b><span title="${esc(m.url)}">${m.size ? bytes(m.size) : esc(new URL(m.url).hostname)}</span></span><button class="dl" data-i="${i}" title="Download with SwiftDL">${DL_ICON}</button></div>`;
   }).join("");
   html += streams.slice(0, 2).map((m) => `<div class="m"><span class="tag stream">${m.kind.toUpperCase()}</span><span class="mt"><b>Stream</b><span>Not supported yet</span></span></div>`).join("");
+  // Video sites go through SwiftDL's quality picker, whatever the page loaded.
+  if (host && VIDEO_SITE.test(host)) {
+    html = `<div class="m"><span class="tag">PAGE</span><span class="mt"><b>This video</b><span>Choose the quality in SwiftDL</span></span><button class="dl" data-page title="Download with SwiftDL">${DL_ICON}</button></div>`;
+  }
   $("media").innerHTML = html;
   $("found").hidden = !html;
   $("media").onclick = async (e) => {
     const b = e.target.closest(".dl");
     if (!b) return;
-    const m = files[Number(b.dataset.i)];
-    const r = await chrome.runtime.sendMessage({ type: "grab", url: m.url, filename: `${title}.${ext(m)}`, tabId: tab.id, pageUrl: tab.url });
+    const m = b.hasAttribute("data-page") ? { url: tab.url } : files[Number(b.dataset.i)];
+    const name = b.hasAttribute("data-page") ? title : `${title}.${ext(m)}`;
+    const r = await chrome.runtime.sendMessage({ type: "grab", url: m.url, filename: name, tabId: tab.id, pageUrl: tab.url });
     b.innerHTML = r?.ok ? CHECK : DL_ICON;
     b.classList.toggle("done", !!r?.ok);
   };

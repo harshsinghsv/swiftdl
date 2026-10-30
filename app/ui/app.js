@@ -744,6 +744,12 @@ async function probe() {
   const url = $("add-url").value.trim();
   if (!/^https?:\/\/\S+/i.test(url)) { add.info = null; $("add-file").hidden = true; renderChips(); url ? setState("error", "Links start with http:// or https://") : setState("idle"); return; }
   const seq = ++add.seq;
+  // Video sites (YouTube and others) need a quality: their own window.
+  if (await invoke("is_media_url", { url }).catch(() => false)) {
+    $("dlg-add").close();
+    invoke("open_new_download", { url });
+    return;
+  }
   setState("loading");
   try {
     const info = await invoke("probe_url", { url, headers: add.headers });

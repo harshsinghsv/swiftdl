@@ -4,6 +4,7 @@
 mod browser;
 mod commands;
 mod manager;
+mod media;
 mod native_host;
 mod settings;
 mod windows;
@@ -98,6 +99,9 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             commands::get_state,
             commands::probe_url,
+            commands::probe_media,
+            commands::is_media_url,
+            commands::open_new_download,
             commands::default_dir,
             commands::add_download,
             commands::pause,

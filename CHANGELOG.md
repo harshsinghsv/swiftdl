@@ -6,6 +6,14 @@ uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **YouTube and other video sites.** The video button, the popup and the New
+  download window offer each quality, from 4K down to audio only. These sites
+  go through yt-dlp, with ffmpeg joining video and audio; both are fetched on
+  first use (ffmpeg comes from the system on macOS and Linux) and yt-dlp is
+  checked for updates daily. The download window shows yt-dlp's progress and
+  steps such as merging.
+
 ### Changed
 - **Adding the extension is a guided step.** Until the extension is on the
   Chrome Web Store, *Add the extension* opens a four-step guide that points at

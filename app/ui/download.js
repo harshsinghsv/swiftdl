@@ -99,6 +99,7 @@ async function confirmView(token) {
   if (inc.referrer) headers.push(["Referer", inc.referrer]);
   if (inc.userAgent) headers.push(["User-Agent", inc.userAgent]);
   let dir = settings.downloadDir, dirTouched = false, info = null;
+  if (await invoke("is_media_url", { url: inc.url })) return mediaView(token, inc, settings, headers);
 
   const dirFor = (cat) => (settings.sortIntoCategories && cat !== "Other" ? `${settings.downloadDir}\\${cat}` : settings.downloadDir);
   view.innerHTML = `
@@ -149,6 +150,73 @@ async function confirmView(token) {
   document.addEventListener("keydown", (e) => { if (e.key === "Enter" && !$("c-start").disabled && !e.target.matches("select")) { e.preventDefault(); $("c-start").click(); } });
 }
 
+// ---------- New download from a video site (YouTube and others) ----------
+// These go through yt-dlp: the page is probed for its qualities, and the
+// chosen one becomes the download's format.
+const safeName = (s) => s.replace(/[<>:"/\\|?*\u0000-\u001f]+/g, " ").replace(/\s+/g, " ").trim().replace(/[. ]+$/, "").slice(0, 150) || "video";
+async function mediaView(token, inc, settings, headers) {
+  let dir = settings.downloadDir, dirTouched = false, info = null;
+  const dirFor = (cat) => (settings.sortIntoCategories && cat !== "Other" ? `${settings.downloadDir}\\${cat}` : settings.downloadDir);
+  view.innerHTML = `
+    <div class="d-head"><span id="c-tile">${glyph("Video")}</span><div class="d-name"><input id="c-name" spellcheck="false" placeholder="Getting video details…"><div class="d-sub"><span class="st">${esc(host(inc.url))}</span></div></div></div>
+    <div class="kv">
+      <span class="k">Address</span><span class="v"><span title="${esc(inc.url)}">${esc(inc.url)}</span></span>
+      <span class="k">Quality</span><span class="v" id="c-q"><span class="spinner"></span><span class="muted">Getting video details…</span></span>
+      <span class="k">Save to</span><span class="v"><span class="path" id="c-dir" title=""></span><button class="btn sm" id="c-browse">Change</button></span>
+    </div>
+    <p class="muted note" id="c-first" hidden>Setting up video downloads. This happens once.</p>
+    <div class="d-foot">
+      <button class="btn" id="c-later" disabled>Download later</button>
+      <span class="grow"></span>
+      <button class="btn" id="c-cancel">Cancel</button>
+      <button class="btn primary" id="c-start" disabled>Start download</button>
+    </div>`;
+  const setDir = (d) => { dir = d; $("c-dir").textContent = d; $("c-dir").title = d; };
+  setDir(dirFor("Video"));
+  const slow = setTimeout(() => { $("c-first").hidden = false; }, 4000);
+  const quality = () => info.qualities[Number($("c-qs").value) || 0];
+  const applyQuality = () => {
+    const q = quality(), cat = q.ext === "mp4" || q.ext === "webm" ? "Video" : "Music";
+    $("c-name").value = $("c-name").value.replace(/\.[a-z0-9]{2,4}$/i, "") + `.${q.ext}`;
+    $("c-tile").innerHTML = glyph(cat);
+    if (!dirTouched) setDir(dirFor(cat));
+  };
+  try {
+    info = await invoke("probe_media", { url: inc.url, cookies: inc.cookies || null });
+    $("c-name").value = `${safeName(info.title)}.${info.qualities[0].ext}`;
+    $("c-q").innerHTML = `<select id="c-qs">${info.qualities.map((q, i) => `<option value="${i}">${esc(q.label)}${q.size ? ` · ${bytes(q.size)}` : ""}</option>`).join("")}</select>`;
+    // Default to the best quality up to 1080p: 4K files are huge, and
+    // they're one click away.
+    const preferred = info.qualities.findIndex((q) => /^\d+p/.test(q.label) && parseInt(q.label) <= 1080);
+    $("c-qs").value = String(Math.max(0, preferred));
+    $("c-qs").onchange = applyQuality;
+    applyQuality();
+    $("c-start").disabled = $("c-later").disabled = false;
+    $("c-start").focus();
+  } catch (e) {
+    $("c-name").value = "";
+    $("c-q").innerHTML = `<span class="err">${esc(String(e))}</span>`;
+  } finally {
+    clearTimeout(slow);
+    $("c-first").hidden = true;
+  }
+  $("c-browse").onclick = async () => { const d = await invoke("pick_folder", { start: dir }); if (d) { setDir(d); dirTouched = true; } };
+  $("c-cancel").onclick = () => { invoke("forget_confirm", { token }); $("w-close").click(); };
+  const add = async (start) => {
+    const filename = safeName($("c-name").value);
+    if (!filename || !info) return;
+    const q = quality();
+    const id = await invoke("add_download", { req: { url: inc.url, filename, dir, headers, start, window: win?.label, format: q.format, size: q.size ?? null } });
+    invoke("forget_confirm", { token });
+    if (!start) { $("w-close").click(); return; }
+    history.replaceState(null, "", `?id=${id}`);
+    progressView(id);
+  };
+  $("c-later").onclick = () => add(false);
+  $("c-start").onclick = () => add(true);
+  document.addEventListener("keydown", (e) => { if (e.key === "Enter" && !$("c-start").disabled && !e.target.matches("select")) { e.preventDefault(); $("c-start").click(); } });
+}
+
 // ---------- progress / complete ----------
 let current = null, details = false, armedTimer = 0, unlisten = null;
 async function progressView(id) {
@@ -175,7 +243,8 @@ function render() {
   // buttons change, so finishing a download feels like the same window.
   const state = it.status === "completed" ? "done" : it.status === "error" ? "error" : it.status === "downloading" ? "run" : "paused";
   const paused = state === "paused";
-  const showDetails = details && (state === "run" || state === "paused");
+  const media = !!it.format;
+  const showDetails = details && !media && (state === "run" || state === "paused");
   const key = `${state}:${showDetails}`;
   if (layout !== key) {
     layout = key;
@@ -193,14 +262,14 @@ function render() {
       ${showDetails ? `<div class="conn"><div class="conn-head"><b>Connections</b><span id="p-conn-n"></span></div><div class="lanes" id="p-lanes"></div>
         <div class="cscroll"><table class="ctable"><thead><tr><th>#</th><th>Downloaded</th><th>Progress</th><th>Status</th></tr></thead><tbody id="p-rows"></tbody></table></div></div>` : ""}
       <div class="d-foot">
-        ${state === "run" || state === "paused" ? `<button class="ghost-btn" data-a="details">${icon(showDetails ? "chevUp" : "chevDown")}${showDetails ? "Hide details" : "Show details"}</button>` : ""}
+        ${!media && (state === "run" || state === "paused") ? `<button class="ghost-btn" data-a="details">${icon(showDetails ? "chevUp" : "chevDown")}${showDetails ? "Hide details" : "Show details"}</button>` : ""}
         <span class="grow"></span>${buttons}
       </div>`;
   }
 
   const dir = it.path.replace(/[\\/][^\\/]*$/, "");
   const status = {
-    run: [it.connections ? `Downloading · ${it.connections} connection${it.connections === 1 ? "" : "s"}` : "Connecting…", "var(--accent)"],
+    run: [it.note || (media ? (it.downloaded ? "Downloading" : "Starting…") : it.connections ? `Downloading · ${it.connections} connection${it.connections === 1 ? "" : "s"}` : "Connecting…"), "var(--accent)"],
     paused: [it.status === "queued" ? "Waiting in queue" : "Paused", "var(--amber)"],
     done: ["Completed", "var(--green)"],
     error: [it.error || "Failed", "var(--red)"],
@@ -215,7 +284,7 @@ function render() {
   bar.firstElementChild.style.width = `${pct}%`;
   const row = (k, v, cls = "") => `<span class="k">${k}</span><span class="v"><span class="${cls}" title="${esc(v)}">${esc(v)}</span></span>`;
   const kv = row("Location", dir, "path") +
-    (state === "done" ? "" : row("Resume", it.resumable ? "Supported" : "Not supported by this server")) +
+    (state === "done" ? "" : media ? row("Quality", qualityLabel(it.format)) : row("Resume", it.resumable ? "Supported" : "Not supported by this server")) +
     row("Address", it.url);
   if ($("p-kv").innerHTML !== kv) $("p-kv").innerHTML = kv;
 
@@ -241,6 +310,11 @@ function render() {
       return `<tr><td>${n + 1}</td><td>${bytes(p - s)}</td><td><span class="mini"><i style="width:${frac * 100}%"></i></span></td><td class="${done ? "ok" : paused ? "" : "live"}">${done ? "Done" : paused ? "Paused" : "Receiving data…"}</td></tr>`;
     }).join("") || `<tr><td colspan="4" class="muted">Connection details appear once the download starts.</td></tr>`;
   }
+}
+
+function qualityLabel(format) {
+  const h = /height=(\d+)/.exec(format || "");
+  return h ? `${h[1]}p` : /^ba/.test(format || "") ? "Audio only" : "Best available";
 }
 
 view.addEventListener("click", async (e) => {

@@ -151,8 +151,17 @@
     }),
     open_store: () => {},
     get_item: ({ id }) => JSON.parse(JSON.stringify(items.find((i) => i.id === id) || null)),
-    confirm_info: () => ({ url: "https://cdn.example.net/releases/Obsidian-2.4.1-setup.exe", filename: "", referrer: "https://obsidian.example.net/download" }),
+    confirm_info: () => (location.search.includes("yt") ? { url: "https://www.youtube.com/watch?v=aqz-KE-bpKQ", filename: "" } : { url: "https://cdn.example.net/releases/Obsidian-2.4.1-setup.exe", filename: "", referrer: "https://obsidian.example.net/download" }),
     forget_confirm: () => {}, show_main: () => {},
+    is_media_url: ({ url }) => /(^|\.)(youtube\.com|youtu\.be|vimeo\.com)\//.test(url.replace(/^https?:\/\//, "").replace(/^www\./, "")),
+    open_new_download: () => {},
+    probe_media: async () => {
+      await new Promise((r) => setTimeout(r, 900));
+      return { title: "Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film", site: "Youtube", duration: 634, qualities: [
+        { label: "2160p60", format: "bv*[height=2160]+ba", ext: "mp4", size: 1.9 * GB }, { label: "1440p60", format: "bv*[height=1440]+ba", ext: "mp4", size: 980 * MB },
+        { label: "1080p60", format: "bv*[height=1080]+ba", ext: "mp4", size: 412 * MB }, { label: "720p60", format: "bv*[height=720]+ba", ext: "mp4", size: 198 * MB },
+        { label: "Audio only", format: "ba[ext=m4a]/ba", ext: "m4a", size: 9.8 * MB }] };
+    },
   };
 
   window.__TAURI__ = {

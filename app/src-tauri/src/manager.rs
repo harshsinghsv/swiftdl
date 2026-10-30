@@ -56,6 +56,13 @@ pub struct Item {
     pub speed: f64,
     #[serde(default, skip_deserializing)]
     pub connections: usize,
+    /// yt-dlp format for downloads from video sites (YouTube and others),
+    /// which go through yt-dlp instead of the engine.
+    #[serde(default)]
+    pub format: Option<String>,
+    /// Live status text, such as "Merging video and audio".
+    #[serde(default, skip_deserializing)]
+    pub note: Option<String>,
 }
 
 /// A download sent by the browser extension, waiting for the user to
@@ -112,6 +119,12 @@ pub struct AddRequest {
     /// window), which then becomes the download's progress window.
     #[serde(default)]
     pub window: Option<String>,
+    /// yt-dlp format, for a video-site download (see `Item::format`).
+    #[serde(default)]
+    pub format: Option<String>,
+    /// Expected size, when known up front (video qualities).
+    #[serde(default)]
+    pub size: Option<u64>,
 }
 
 struct Running {
@@ -120,6 +133,7 @@ struct Running {
     progress: Arc<Progress>,
     last: (u64, Instant),
     speed: f64,
+    note: crate::media::Note,
 }
 
 struct Inner {
@@ -220,7 +234,7 @@ impl DownloadManager {
                 filename: path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or(filename.clone()),
                 category: category_for(&filename).to_string(),
                 path,
-                size: None,
+                size: req.size,
                 downloaded: 0,
                 status: if req.start { Status::Queued } else { Status::Paused },
                 error: None,
@@ -232,6 +246,8 @@ impl DownloadManager {
                 segments: vec![],
                 speed: 0.0,
                 connections: 0,
+                format: req.format,
+                note: None,
             });
             if let Some(label) = req.window {
                 g.windows.insert(id, label);
@@ -312,17 +328,9 @@ impl DownloadManager {
     /// A download arrived from the browser extension. Like IDM, it gets its
     /// own small "New download" window rather than the main window.
     pub fn incoming(self: &Arc<Self>, inc: Incoming) {
-        if self.settings().ask_before_download {
-            let token = {
-                let mut g = self.inner.lock().unwrap();
-                let token = g.next_confirm;
-                g.next_confirm += 1;
-                g.confirms.insert(token, inc);
-                token
-            };
-            if let Err(e) = crate::windows::open(&self.app, &format!("new-{token}"), &format!("confirm={token}"), "New download") {
-                eprintln!("could not open the New download window: {e:#}");
-            }
+        // Video sites always ask: there's a quality to choose.
+        if self.settings().ask_before_download || crate::media::is_media_url(&inc.url) {
+            self.new_download_window(inc);
             return;
         }
         // No dialog: probe for the real file name, then start right away.
@@ -332,8 +340,22 @@ impl DownloadManager {
             let probed = swiftdl_engine::probe(&this.client, &inc.url, &to_header_map(&headers)).await.ok().map(|r| r.filename);
             let filename = inc.suggested_name().or(probed).unwrap_or_else(|| "download.bin".into());
             let dir = this.default_dir(category_for(&filename));
-            this.add(AddRequest { url: inc.url, filename, dir, headers, start: true, window: None });
+            this.add(AddRequest { url: inc.url, filename, dir, headers, start: true, window: None, format: None, size: None });
         });
+    }
+
+    /// Opens a "New download" window for `inc`.
+    pub fn new_download_window(&self, inc: Incoming) {
+        let token = {
+            let mut g = self.inner.lock().unwrap();
+            let token = g.next_confirm;
+            g.next_confirm += 1;
+            g.confirms.insert(token, inc);
+            token
+        };
+        if let Err(e) = crate::windows::open(&self.app, &format!("new-{token}"), &format!("confirm={token}"), "New download") {
+            eprintln!("could not open the New download window: {e:#}");
+        }
     }
 
     pub fn take_pending(&self) -> Vec<Incoming> {
@@ -381,7 +403,7 @@ impl DownloadManager {
 
     /// Starts queued downloads until `max_concurrent` are running.
     fn schedule(self: &Arc<Self>) {
-        let to_start: Vec<(u64, Request, Arc<Progress>, CancellationToken)> = {
+        let to_start: Vec<(u64, Request, Option<String>, Arc<Progress>, crate::media::Note, CancellationToken)> = {
             let mut g = self.inner.lock().unwrap();
             let Inner { items, running, settings, .. } = &mut *g;
             let free = settings.max_concurrent.max(1).saturating_sub(running.len());
@@ -402,7 +424,9 @@ impl DownloadManager {
                     };
                     let progress = Arc::new(Progress::default());
                     progress.downloaded.store(item.downloaded, Ordering::Relaxed);
+                    progress.total.store(item.size.unwrap_or(0), Ordering::Relaxed);
                     let cancel = CancellationToken::new();
+                    let note = crate::media::Note::default();
                     running.insert(
                         id,
                         Running {
@@ -411,9 +435,10 @@ impl DownloadManager {
                             progress: progress.clone(),
                             last: (item.downloaded, Instant::now()),
                             speed: 0.0,
+                            note: note.clone(),
                         },
                     );
-                    (id, req, progress, cancel)
+                    (id, req, item.format.clone(), progress, note, cancel)
                 })
                 .collect()
         };
@@ -421,10 +446,17 @@ impl DownloadManager {
             return;
         }
         self.open_progress_windows(&to_start.iter().map(|t| t.0).collect::<Vec<_>>());
-        for (id, req, progress, cancel) in to_start {
+        for (id, req, format, progress, note, cancel) in to_start {
             let this = self.clone();
             tauri::async_runtime::spawn(async move {
-                let result = swiftdl_engine::run(&this.client, &req, progress, cancel, this.limiter.clone()).await;
+                let result = match format {
+                    Some(format) => {
+                        let cookies = req.headers.get("cookie").and_then(|v| v.to_str().ok()).map(str::to_string);
+                        let job = crate::media::Job { url: req.url.clone(), format, dest: req.dest.clone(), cookies };
+                        crate::media::run(&this.client, job, progress, note, cancel).await
+                    }
+                    None => swiftdl_engine::run(&this.client, &req, progress, cancel, this.limiter.clone()).await,
+                };
                 this.finish(id, result);
             });
         }
@@ -457,6 +489,7 @@ impl DownloadManager {
                     }
                     item.speed = 0.0;
                     item.connections = 0;
+                    item.note = None;
                     match result {
                         Ok(Outcome::Completed) => {
                             item.status = Status::Completed;
@@ -512,6 +545,7 @@ impl DownloadManager {
                     item.connections = r.progress.connections.load(Ordering::Relaxed);
                     item.remaining = r.progress.remaining.lock().unwrap().clone();
                     item.segments = r.progress.segments.lock().unwrap().clone();
+                    item.note = r.note.lock().unwrap().clone();
                 }
             }
             let active = !running.is_empty();
@@ -580,6 +614,7 @@ pub fn category_for(filename: &str) -> &'static str {
 }
 
 fn remove_temp_files(path: &Path) {
+    crate::media::cleanup(path);
     let _ = std::fs::remove_file(swiftdl_engine::part_path(path));
     let mut state = path.as_os_str().to_owned();
     state.push(".swiftdl");

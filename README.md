@@ -144,9 +144,9 @@ When the server limits each connection, which many do, yes, by roughly the numbe
 </details>
 
 <details>
-<summary><b>Can it download videos from YouTube or Netflix?</b></summary>
+<summary><b>Can it download videos from YouTube?</b></summary>
 
-Not yet. Those sites stream video in small pieces (HLS or DASH), which needs stream support in the engine. The video button handles regular video and audio files, and marks streams as not yet supported. DRM-protected video will never be supported.
+Yes, and from Vimeo, X, Reddit and other video sites. Click the **Download video** button on the player (or paste the link into **New download**) and pick a quality, from 4K down to audio only. These sites don't serve a plain file, so SwiftDL uses [yt-dlp](https://github.com/yt-dlp/yt-dlp) for them, plus ffmpeg to join the video and audio. Both are downloaded the first time you need them (on macOS and Linux, install ffmpeg with Homebrew or your package manager), and yt-dlp is kept up to date. Only download what you have the right to. DRM-protected video, like Netflix, will never be supported.
 </details>
 
 <details>

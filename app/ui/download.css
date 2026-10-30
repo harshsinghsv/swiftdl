@@ -78,3 +78,4 @@ body.dlw { overflow: hidden; --win-edge: rgba(0, 0, 0, .1); }
 
 .d-foot { display: flex; align-items: center; gap: 8px; margin-top: 20px; }
 .d-foot .btn.armed { background: var(--red); color: #fff; }
+.note { margin: 14px 0 0; font-size: 12px; }

@@ -77,10 +77,6 @@ pub fn mark_extension_seen(browser: Option<&str>) {
     let _ = std::fs::write(dir.join("extension.json"), seen.to_string());
 }
 
-pub fn extension_last_seen() -> Option<u64> {
-    read_seen()["lastSeen"].as_u64()
-}
-
 /// Maps a browser executable path to one of our browser ids.
 pub fn browser_from_exe(path: &str) -> Option<&'static str> {
     let p = path.to_lowercase().replace('\\', "/");
