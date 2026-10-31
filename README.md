@@ -117,7 +117,7 @@ SwiftDL checks the file before downloading: its real name, size, type and whethe
 - **Tidy by default.** Files are sorted into Video, Music, Programs, Compressed and Documents folders.
 - **Command palette.** Press <kbd>Ctrl</kbd> <kbd>K</kbd> to find a download or run any action.
 - **Lives in the tray.** Close the window and downloads keep going.
-- **Light and dark**, following your system.
+- **Light and dark.** Follows your system, or pick one in Settings.
 
 <div align="center">
 <img src="docs/assets/app-light.png" alt="SwiftDL in light mode" width="1000" />

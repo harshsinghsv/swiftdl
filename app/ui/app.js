@@ -801,9 +801,25 @@ function nextPending() {
 }
 
 // ---------- settings ----------
-let setDir = "", setLimitKib = 0;
+let setDir = "", setLimitKib = 0, setThemeChoice = "system";
+function renderThemeChoice() {
+  $("set-theme").querySelectorAll("[data-v]").forEach((b) => b.classList.toggle("on", b.dataset.v === setThemeChoice));
+}
+// Picking a theme previews it at once; Cancel puts the saved one back.
+$("set-theme").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-v]");
+  if (!b) return;
+  setThemeChoice = b.dataset.v;
+  renderThemeChoice();
+  window.setTheme(setThemeChoice);
+});
+const restoreTheme = () => window.setTheme(state.settings.theme);
+$("dlg-settings").addEventListener("cancel", restoreTheme); // Escape
+$("dlg-settings").addEventListener("close", restoreTheme);
 function openSettings(tab = "general") {
   const s = state.settings;
+  setThemeChoice = s.theme || "system";
+  renderThemeChoice();
   setDir = s.downloadDir; $("set-dir").textContent = setDir;
   $("set-sort").checked = s.sortIntoCategories;
   $("set-ask").checked = s.askBeforeDownload;
@@ -838,7 +854,7 @@ document.querySelectorAll(".stepper").forEach((st) => st.addEventListener("click
   input.value = Math.min(+input.max, Math.max(+input.min, (+input.value || 0) + Number(b.dataset.d)));
 }));
 $("set-browse").onclick = async () => { const d = await call("pick_folder", { start: setDir || null }); if (d) { setDir = d; $("set-dir").textContent = d; } };
-$("set-cancel").onclick = () => $("dlg-settings").close();
+$("set-cancel").onclick = () => { restoreTheme(); $("dlg-settings").close(); };
 $("set-ext-folder").onclick = () => call("open_extension_folder");
 async function saveSettings(s) { await call("set_settings", { settings: s }); state.settings = s; render(); }
 $("form-settings").addEventListener("submit", async (e) => {
@@ -856,6 +872,7 @@ $("form-settings").addEventListener("submit", async (e) => {
     showProgressWindow: $("set-progress-win").checked,
     closeToTray: $("set-tray").checked,
     onboardingDismissed: state.settings.onboardingDismissed,
+    theme: setThemeChoice,
   });
   $("dlg-settings").close();
   toast("Settings saved", "ok");
@@ -881,6 +898,7 @@ async function boot() {
   hydrate();
   const s = await invoke("get_state");
   state.settings = s.settings;
+  window.setTheme(s.settings.theme);
   state.pending = s.pending;
   $("version").textContent = `Version ${s.version}`;
   ingest(s.items);

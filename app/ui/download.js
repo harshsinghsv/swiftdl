@@ -342,5 +342,9 @@ view.addEventListener("click", async (e) => {
   }
 });
 
+// Theme: the saved choice, and any change made in Settings while open.
+invoke("get_state").then((s) => window.setTheme(s.settings.theme)).catch(() => {});
+listen("settings", (e) => window.setTheme(e.payload.theme));
+
 if (params.has("confirm")) confirmView(Number(params.get("confirm")));
 else if (params.has("id")) progressView(Number(params.get("id")));

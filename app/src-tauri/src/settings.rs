@@ -25,6 +25,8 @@ pub struct Settings {
     pub show_progress_window: bool,
     /// Closing the main window keeps SwiftDL running in the tray.
     pub close_to_tray: bool,
+    /// "system", "light" or "dark".
+    pub theme: String,
 }
 
 impl Default for Settings {
@@ -41,6 +43,7 @@ impl Default for Settings {
             onboarding_dismissed: false,
             show_progress_window: true,
             close_to_tray: true,
+            theme: "system".into(),
         }
     }
 }

@@ -316,6 +316,8 @@ impl DownloadManager {
         if let Err(e) = crate::browser::offer_extension(settings.offer_extension) {
             eprintln!("could not update browser extension offer: {e:#}");
         }
+        // Open windows (download windows) follow the theme at once.
+        let _ = self.app.emit("settings", &settings);
         self.inner.lock().unwrap().settings = settings;
         self.save();
         self.schedule();

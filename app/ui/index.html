@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SwiftDL</title>
+  <script src="theme.js"></script>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -111,6 +112,10 @@
       <div class="set-main">
         <section data-panel="general">
           <h2>General</h2>
+          <div class="set-group">
+            <div class="set-row"><div class="sr-text"><b>Theme</b><span>System follows your computer's light or dark setting</span></div>
+              <div class="seg theme-seg" id="set-theme"><button type="button" data-v="system">System</button><button type="button" data-v="light">Light</button><button type="button" data-v="dark">Dark</button></div></div>
+          </div>
           <div class="set-group">
             <div class="set-row"><div class="sr-text"><b>Download folder</b><span id="set-dir"></span></div><button type="button" class="btn sm" id="set-browse">Change…</button></div>
             <label class="set-row"><div class="sr-text"><b>Sort by file type</b><span>Save videos, music, programs and archives into their own folders</span></div><span class="switch"><input type="checkbox" id="set-sort"><i></i></span></label>

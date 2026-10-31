@@ -6,6 +6,15 @@ uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **Theme setting.** Settings → General → Theme: System (follow the computer's
+  light or dark mode), Light or Dark. Picking one previews it at once, and open
+  download windows follow it.
+
+### Fixed
+- The extension's "Download video" button no longer breaks onto two lines on
+  large videos.
+
 ## [0.2.1] - 2026-10-30
 
 ### Added

@@ -4,7 +4,7 @@
 
 html, body.dlw { background: transparent; }
 body.dlw { overflow: hidden; --win-edge: rgba(0, 0, 0, .1); }
-@media (prefers-color-scheme: dark) { body.dlw { --win-edge: rgba(0, 0, 0, .65); } }
+:root[data-theme="dark"] body.dlw { --win-edge: rgba(0, 0, 0, .65); }
 #root {
   margin: 16px; display: flex; flex-direction: column; overflow: hidden;
   border-radius: 12px; background: var(--panel);

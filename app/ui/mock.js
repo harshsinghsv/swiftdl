@@ -14,7 +14,7 @@
   let settings = {
     downloadDir: "C:\\Users\\you\\Downloads", connections: 8, maxConcurrent: 3, speedLimitKib: 0,
     sortIntoCategories: true, askBeforeDownload: true, notifyOnComplete: true,
-    offerExtension: true, onboardingDismissed: false, showProgressWindow: true, closeToTray: true,
+    offerExtension: true, onboardingDismissed: false, showProgressWindow: true, closeToTray: true, theme: "system",
   };
   if (VIDEO) Object.assign(settings, { downloadDir: "C:\\Users\\Harsh\\Downloads", onboardingDismissed: true });
   const catFor = (name) => {
