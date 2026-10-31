@@ -1,18 +1,25 @@
 # Launch video
 
-SwiftDL's 46-second launch film, written as code. It's a screen demo: a
-bright desktop where a browser opens, a download goes to SwiftDL and runs
-over eight connections, then a YouTube video downloads in 1080p, all seen
-through a moving camera. `launch.html` is one timeline whose `seek(t)` draws
-the frame at time `t`; `render.mjs` steps through it in headless Chrome and
-pipes every frame into ffmpeg.
+SwiftDL's 44-second launch film, made from real material:
+
+- **Real websites.** `capture.mjs` captures the Ubuntu download page and a
+  YouTube video page in Chrome at 2x (into `out/pages/`, not committed, since
+  they're other people's pages).
+- **SwiftDL's real UI.** The download windows and the main window are the app's
+  own pages (`app/ui`), running in the preview's video mode (`?video`): the
+  film clicks their real buttons and feeds each download's progress frame by
+  frame.
+
+`launch.html` frames it all like a screen recording, a Chrome window and the
+app on a light wallpaper with a moving camera and cursor, and `render.mjs`
+steps through it in headless Chrome and pipes every frame into ffmpeg.
 
 ```bash
 npm install
 npm run render                 # out/swiftdl-launch.mp4, 1920x1080, 60 fps
-node render.mjs --vertical     # out/swiftdl-launch-vertical.mp4, 1080x1920
 node render.mjs --still 14,31  # single frames, for checking a scene
+node capture.mjs --force       # capture the web pages again
 ```
 
-It uses Chrome (or Edge) and ffmpeg. Set `CHROME` or `FFMPEG` if they aren't
+It needs Chrome (or Edge) and ffmpeg; set `CHROME` or `FFMPEG` if they aren't
 found. The video is silent; add music in any editor.

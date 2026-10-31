@@ -8,9 +8,11 @@
 
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import puppeteer from "puppeteer-core";
+import { findBrowser, serve } from "./server.mjs";
+await import("./capture.mjs"); // the real pages the film shows
 
 const here = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -23,33 +25,29 @@ const [W, H] = vertical ? [1080, 1920] : [1920, 1080];
 const out = join(here, "out");
 mkdirSync(out, { recursive: true });
 
-const BROWSERS = [
-  process.env.CHROME,
-  "C:/Program Files/Google/Chrome/Application/chrome.exe",
-  "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
-  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-  "/usr/bin/google-chrome",
-  "/usr/bin/chromium",
-].filter(Boolean);
 const FFMPEG = process.env.FFMPEG || [
   join(process.env.APPDATA || "", "com.swiftdl.app/tools/ffmpeg/ffmpeg.exe"),
 ].find(existsSync) || "ffmpeg";
 
 const browser = await puppeteer.launch({
-  executablePath: BROWSERS.find(existsSync),
+  executablePath: findBrowser(),
   headless: true,
   args: ["--hide-scrollbars", "--force-color-profile=srgb", "--font-render-hinting=none"],
 });
 const page = await browser.newPage();
 await page.setViewport({ width: W, height: H, deviceScaleFactor: 1 });
-await page.goto(pathToFileURL(resolve(here, "launch.html")).href + (vertical ? "?vertical" : ""), { waitUntil: "networkidle0" });
-await page.evaluate(() => document.fonts.ready);
+// Light mode throughout: the app's UI follows the system theme.
+await page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: "light" }]);
+const { server, origin } = await serve();
+await page.goto(`${origin}/video/launch.html${vertical ? "?vertical" : ""}`, { waitUntil: "networkidle0" });
+await page.evaluate(() => window.ready);
 const duration = await page.evaluate(() => window.DURATION);
 
 const shoot = (t, opts) => page.evaluate((t) => window.seek(t), t).then(() => page.screenshot(opts));
 
 if (flag("--still")) {
-  for (const t of (value("--still") || "1").split(",").map(Number)) {
+  // The film is stateful (it clicks the real UI), so stills play up to each time.
+  for (const t of (value("--still") || "1").split(",").map(Number).sort((a, b) => a - b)) {
     const path = join(out, `still-${t}${vertical ? "-v" : ""}.png`);
     await shoot(t, { path, type: "png" });
     console.log(path);
@@ -76,3 +74,4 @@ if (flag("--still")) {
   console.log(`\r${file}`);
 }
 await browser.close();
+server.close();

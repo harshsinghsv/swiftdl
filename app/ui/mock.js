@@ -4,6 +4,9 @@
 // In the real app this file does nothing.
 (() => {
   if (window.__TAURI__) return;
+  // ?video: the launch film drives this page frame by frame (video/launch.html),
+  // so nothing runs on timers and answers come back at once.
+  const VIDEO = location.search.includes("video");
 
   const MB = 1024 * 1024, GB = 1024 * MB;
   const now = Date.now();
@@ -13,6 +16,7 @@
     sortIntoCategories: true, askBeforeDownload: true, notifyOnComplete: true,
     offerExtension: true, onboardingDismissed: false, showProgressWindow: true, closeToTray: true,
   };
+  if (VIDEO) Object.assign(settings, { downloadDir: "C:\\Users\\Harsh\\Downloads", onboardingDismissed: true });
   const catFor = (name) => {
     const ext = (name.split(".").pop() || "").toLowerCase();
     if (["zip", "rar", "7z", "gz", "iso", "xz", "tar"].includes(ext)) return "Compressed";
@@ -80,7 +84,7 @@
     }
   }
 
-  setInterval(() => {
+  function step() {
     const limit = settings.speedLimitKib * 1024;
     const active = items.filter((i) => i.status === "downloading");
     for (const it of items) {
@@ -114,15 +118,23 @@
     }
     schedule();
     emit("downloads", clone());
-  }, 500);
+  }
+  if (VIDEO) {
+    window.__video = {
+      step,
+      set(id, patch) { const it = items.find((i) => i.id === id); if (it) { Object.assign(it, patch); sims.delete(id); } emit("downloads", clone()); },
+      last: () => items.at(-1),
+    };
+  } else setInterval(step, 500);
 
   const commands = {
     get_state: () => ({ items: clone(), settings: { ...settings }, pending: [], version: "0.1.0 (preview)" }),
     probe_url: async ({ url }) => {
-      await new Promise((r) => setTimeout(r, 700));
+      if (!VIDEO) await new Promise((r) => setTimeout(r, 700));
       const name = decodeURIComponent(new URL(url).pathname.split("/").filter(Boolean).pop() || "download.bin");
       const category = catFor(name);
-      return { filename: name, size: Math.round((40 + Math.random() * 900) * MB), resumable: true, category, dir: dirFor(category) };
+      const size = VIDEO && /ubuntu/.test(name) ? 5.9 * GB : Math.round((40 + Math.random() * 900) * MB);
+      return { filename: name, size, resumable: true, category, dir: dirFor(category) };
     },
     add_download: ({ req }) => {
       const it = item(req.filename, Math.round((120 + Math.random() * 600) * MB), req.start ? "queued" : "paused", 0);
@@ -151,12 +163,12 @@
     }),
     open_store: () => {},
     get_item: ({ id }) => JSON.parse(JSON.stringify(items.find((i) => i.id === id) || null)),
-    confirm_info: () => (location.search.includes("yt") ? { url: "https://www.youtube.com/watch?v=aqz-KE-bpKQ", filename: "" } : { url: "https://cdn.example.net/releases/Obsidian-2.4.1-setup.exe", filename: "", referrer: "https://obsidian.example.net/download" }),
+    confirm_info: () => (VIDEO && !location.search.includes("yt") ? { url: "https://releases.ubuntu.com/26.04.1/ubuntu-26.04.1-desktop-amd64.iso", filename: "", referrer: "https://ubuntu.com/download/desktop" } : location.search.includes("yt") ? { url: "https://www.youtube.com/watch?v=aqz-KE-bpKQ", filename: "" } : { url: "https://cdn.example.net/releases/Obsidian-2.4.1-setup.exe", filename: "", referrer: "https://obsidian.example.net/download" }),
     forget_confirm: () => {}, show_main: () => {},
     is_media_url: ({ url }) => /(^|\.)(youtube\.com|youtu\.be|vimeo\.com)\//.test(url.replace(/^https?:\/\//, "").replace(/^www\./, "")),
     open_new_download: () => {},
     probe_media: async () => {
-      await new Promise((r) => setTimeout(r, 900));
+      if (!VIDEO) await new Promise((r) => setTimeout(r, 900));
       return { title: "Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film", site: "Youtube", duration: 634, qualities: [
         { label: "2160p60", format: "bv*[height=2160]+ba", ext: "mp4", size: 1.9 * GB }, { label: "1440p60", format: "bv*[height=1440]+ba", ext: "mp4", size: 980 * MB },
         { label: "1080p60", format: "bv*[height=1080]+ba", ext: "mp4", size: 412 * MB }, { label: "720p60", format: "bv*[height=720]+ba", ext: "mp4", size: 198 * MB },
@@ -174,7 +186,7 @@
     event: { listen: async (ev, cb) => { (listeners[ev] ||= []).push(cb); return () => {}; } },
   };
 
-  document.addEventListener("DOMContentLoaded", () => {
+  if (!VIDEO) document.addEventListener("DOMContentLoaded", () => {
     const b = document.createElement("div");
     b.className = "preview-banner";
     b.textContent = "Preview · simulated downloads";
