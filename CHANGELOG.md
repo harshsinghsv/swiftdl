@@ -6,6 +6,10 @@ uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- The download window's progress bar is a solid, easy-to-read bar instead of a
+  thin line, and the status no longer starts with a coloured dot.
+
 ## [0.2.2] - 2026-10-31
 
 ### Added

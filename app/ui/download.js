@@ -275,7 +275,7 @@ function render() {
     error: [it.error || "Failed", "var(--red)"],
   }[state];
   setTitle(state === "done" ? "Download complete" : state === "error" ? "Download failed" : `${Math.floor(pct)}% · ${it.filename}`);
-  $("p-sub").innerHTML = `<span class="dot" style="background:${status[1]}"></span><span class="st" title="${esc(status[0])}">${esc(status[0])}</span><span>·</span><span>${esc(host(it.url))}</span>`;
+  $("p-sub").innerHTML = `<span class="st ${state === "error" ? "err" : ""}" title="${esc(status[0])}">${esc(status[0])}</span><span>·</span><span>${esc(host(it.url))}</span>`;
   $("p-pct").textContent = it.size || state === "done" ? `${Math.floor(pct)}%` : "";
   $("p-left").textContent = state === "done" ? bytes(it.size) : it.size ? `${bytes(it.downloaded)} of ${bytes(it.size)}` : bytes(it.downloaded);
   $("p-right").textContent = state === "run" ? `${speed(it.speed)} · ${dur(eta)} left` : state === "done" ? when(it.completedAt) : "";
