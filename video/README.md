@@ -1,8 +1,11 @@
 # Launch video
 
-SwiftDL's 41-second launch film, written as code: `launch.html` is one
-timeline whose `seek(t)` draws the frame at time `t`, and `render.mjs` steps
-through it in headless Chrome and pipes every frame into ffmpeg.
+SwiftDL's 46-second launch film, written as code. It's a screen demo: a
+bright desktop where a browser opens, a download goes to SwiftDL and runs
+over eight connections, then a YouTube video downloads in 1080p, all seen
+through a moving camera. `launch.html` is one timeline whose `seek(t)` draws
+the frame at time `t`; `render.mjs` steps through it in headless Chrome and
+pipes every frame into ffmpeg.
 
 ```bash
 npm install

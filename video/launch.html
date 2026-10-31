@@ -7,350 +7,481 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=block" rel="stylesheet">
 <style>
-  /* One black stage, one idea per shot. Every value below is set by seek(t),
-     never by CSS transitions, so each frame depends only on its time. */
-  :root { --bg: #050506; --ink: #f2f3f5; --muted: #8a8e98; --faint: #4d5058; --line: rgba(255,255,255,.08); --accent: #0a84ff; --green: #3fa877; --panel: #101114; }
-  * { box-sizing: border-box; margin: 0; }
-  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font-family: Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
-  body::after { content: ""; position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse 70% 60% at 50% 45%, rgba(255,255,255,.035), transparent 70%), radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.55)); }
-  .scene { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; }
+  /* A screen demo: a bright desktop recorded through a moving camera. The
+     desktop is laid out in 1920x1080 "screen" pixels; #cam zooms and pans
+     over it. Every value is set by seek(t), never by CSS transitions. */
+  :root {
+    --ink: #17171c; --ink-2: #3c3d45; --muted: #6c6e78; --faint: #a2a4ad; --line: rgba(15,15,25,.08); --line-2: rgba(15,15,25,.13);
+    --accent: #007aff; --green: #23864f; --btn: rgba(15,15,25,.055); --primary: #18181b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: #eef0f5; font-family: Inter, system-ui, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+  .abs { position: absolute; }
   .t { will-change: transform, opacity, filter; }
-  h1, .h { font-size: 104px; font-weight: 600; letter-spacing: -.05em; line-height: 1.02; text-align: center; background: linear-gradient(180deg, #fff 25%, #9a9ea8); -webkit-background-clip: text; background-clip: text; color: transparent; padding-bottom: .08em; }
-  .sub { font-size: 40px; font-weight: 500; letter-spacing: -.025em; color: var(--muted); text-align: center; }
-  .mono { font-family: "JetBrains Mono", ui-monospace, monospace; letter-spacing: 0; }
+  .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
 
-  /* 2: the browser's own download */
-  .chip { width: 820px; padding: 30px 34px; border-radius: 20px; background: #1b1c20; box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 40px 100px -30px #000; display: grid; grid-template-columns: 56px 1fr; gap: 6px 22px; align-items: center; }
-  .chip .ico { grid-row: span 3; width: 56px; height: 56px; border-radius: 14px; background: #2a2b31; display: grid; place-items: center; }
-  .chip .name { font-size: 26px; font-weight: 600; letter-spacing: -.01em; }
-  .chip .track { height: 8px; border-radius: 4px; background: rgba(255,255,255,.1); overflow: hidden; }
-  .chip .track i { display: block; height: 100%; background: #9aa0a9; border-radius: 4px; }
-  .chip .meta { font-size: 21px; color: var(--muted); }
+  /* ---------- title and end cards ---------- */
+  .card-scene { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: radial-gradient(ellipse 55% 60% at 25% 30%, #ffe4d3 0%, transparent 60%), radial-gradient(ellipse 50% 55% at 78% 25%, #d7e2ff 0%, transparent 60%),
+      radial-gradient(ellipse 60% 60% at 60% 85%, #ece0ff 0%, transparent 60%), #f6f6f9; }
+  .big { font-size: 150px; font-weight: 650; letter-spacing: -.055em; line-height: 1; background: linear-gradient(180deg, #111216 30%, #4a4c55); -webkit-background-clip: text; background-clip: text; color: transparent; padding-bottom: .06em; }
+  .lede { font-size: 44px; font-weight: 500; letter-spacing: -.025em; color: var(--muted); margin-top: 22px; }
+  .icon-xl { width: 168px; height: 168px; margin-bottom: 44px; filter: drop-shadow(0 30px 50px rgba(20,20,40,.25)); }
 
-  /* 3: logo */
-  .logo { display: flex; align-items: center; gap: 36px; }
-  .logo svg { width: 150px; height: 150px; overflow: visible; }
-  .word { font-size: 132px; font-weight: 650; letter-spacing: -.055em; }
+  /* ---------- the desktop ---------- */
+  #screen { position: absolute; inset: 0; overflow: hidden; }
+  #cam { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; }
+  .wallpaper { position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 45% 55% at 18% 28%, #ffc9a8 0%, transparent 62%),
+      radial-gradient(ellipse 42% 50% at 82% 18%, #b9cbff 0%, transparent 62%),
+      radial-gradient(ellipse 55% 50% at 62% 88%, #dcc8ff 0%, transparent 62%),
+      radial-gradient(ellipse 40% 45% at 8% 92%, #a9e3d6 0%, transparent 60%),
+      linear-gradient(160deg, #f3e9f1, #e6ebf8); }
+  .grain { position: absolute; inset: 0; opacity: .22; mix-blend-mode: soft-light; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='240' height='240' filter='url(%23n)'/></svg>"); }
+  .taskbar { left: 660px; top: 1004px; width: 600px; height: 62px; border-radius: 18px; background: rgba(255,255,255,.55); backdrop-filter: blur(24px) saturate(1.6); box-shadow: 0 0 0 1px rgba(255,255,255,.6), 0 10px 30px -10px rgba(30,30,60,.3); display: flex; align-items: center; justify-content: center; gap: 18px; }
+  .tb { width: 42px; height: 42px; border-radius: 11px; position: relative; display: grid; place-items: center; }
+  .tb.on::after { content: ""; position: absolute; bottom: -7px; width: 6px; height: 4px; border-radius: 2px; background: #555a66; }
 
-  /* 4: one file, many connections */
-  .file { width: 1400px; }
-  .file-top { display: flex; justify-content: space-between; align-items: baseline; font-size: 26px; color: var(--muted); margin-bottom: 18px; }
-  .file-top b { color: var(--ink); font-weight: 600; }
-  .bar { position: relative; height: 84px; border-radius: 16px; background: rgba(255,255,255,.06); overflow: hidden; }
-  .seg { position: absolute; top: 0; bottom: 0; box-shadow: inset -2px 0 0 var(--bg); }
-  .seg i { position: absolute; inset: 0 auto 0 0; background: var(--accent); }
-  .seg.done i { background: #5aa7ff; }
-  .stats { display: flex; gap: 90px; margin-top: 38px; justify-content: center; }
-  .stat { text-align: center; }
-  .stat .n { font-size: 76px; font-weight: 600; letter-spacing: -.04em; }
-  .stat .l { font-size: 22px; color: var(--muted); margin-top: 2px; }
+  /* ---------- browser ---------- */
+  .browser { left: 200px; top: 70px; width: 1520px; height: 880px; border-radius: 14px; overflow: hidden; background: #fff; box-shadow: 0 0 0 1px rgba(15,15,25,.1), 0 40px 90px -20px rgba(30,30,70,.45); transform-origin: 50% 100%; }
+  .tabs { height: 44px; background: #e3e6ec; display: flex; align-items: flex-end; padding: 0 10px; gap: 4px; position: relative; }
+  .tab { height: 36px; width: 280px; border-radius: 10px 10px 0 0; background: #fff; display: flex; align-items: center; gap: 10px; padding: 0 14px; font-size: 14px; color: var(--ink-2); }
+  .tab .fav { width: 18px; height: 18px; border-radius: 5px; flex: none; }
+  .tab .x { margin-left: auto; color: var(--faint); font-size: 16px; }
+  .winctl { position: absolute; right: 18px; top: 12px; display: flex; gap: 26px; color: #5f6470; font-size: 15px; }
+  .toolbar { height: 48px; display: flex; align-items: center; gap: 16px; padding: 0 16px; border-bottom: 1px solid var(--line); }
+  .toolbar svg { flex: none; }
+  .omni { flex: 1; height: 34px; border-radius: 17px; background: #f0f2f5; display: flex; align-items: center; gap: 10px; padding: 0 16px; font-size: 15px; color: var(--ink-2); }
+  .omni .host { color: var(--ink); }
+  .ext { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #f6a5c0, #8fb4ff); }
+  .page { position: absolute; left: 0; right: 0; top: 92px; bottom: 0; overflow: hidden; }
 
-  /* 5: the app */
-  .stage3d { perspective: 2200px; width: 1500px; }
-  .shot { width: 1500px; border-radius: 18px; padding: 10px; background: rgba(255,255,255,.04); box-shadow: 0 0 0 1px rgba(255,255,255,.09), 0 60px 160px -40px #000; transform-origin: 50% 100%; }
-  .shot img { display: block; width: 100%; border-radius: 10px; }
+  /* site 1: an operating system's download page (fictional) */
+  .os-nav { height: 64px; display: flex; align-items: center; padding: 0 48px; gap: 36px; font-size: 16px; color: var(--muted); border-bottom: 1px solid var(--line); }
+  .os-nav b { color: var(--ink); font-size: 20px; display: flex; align-items: center; gap: 10px; margin-right: auto; }
+  .os-hero { position: absolute; left: 0; right: 0; top: 64px; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 60px;
+    background: radial-gradient(ellipse 50% 60% at 50% 110%, #e9f6ef, transparent 70%); }
+  .os-hero h2 { font-size: 64px; font-weight: 700; letter-spacing: -.04em; }
+  .os-hero p { font-size: 22px; color: var(--muted); margin-top: 12px; }
+  .os-btn { margin-top: 44px; width: 320px; height: 64px; border-radius: 14px; background: #1f7a4c; color: #fff; font-size: 21px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 12px; box-shadow: 0 10px 24px -8px rgba(31,122,76,.6); }
+  .os-meta { margin-top: 18px; font-size: 16px; color: var(--faint); }
 
-  /* 6: resume */
-  .split { display: grid; grid-template-columns: 640px 640px; gap: 120px; align-items: center; }
-  .split img { width: 640px; filter: drop-shadow(0 40px 80px rgba(0,0,0,.6)); }
-  .lines { display: flex; flex-direction: column; gap: 6px; }
-  .lines .h { text-align: left; font-size: 92px; }
-  .lines .sub { text-align: left; margin-top: 28px; font-size: 38px; }
+  /* site 2: a video page */
+  .vp-head { height: 60px; display: flex; align-items: center; padding: 0 28px; gap: 20px; }
+  .vp-search { margin: 0 auto; width: 560px; height: 40px; border-radius: 20px; box-shadow: inset 0 0 0 1px var(--line-2); display: flex; align-items: center; padding: 0 18px; color: var(--faint); font-size: 16px; }
+  .player { left: 40px; top: 84px; width: 1000px; height: 562px; border-radius: 14px; overflow: hidden; background: #0d0f14; }
+  .film { position: absolute; inset: 0; background:
+      radial-gradient(circle at 72% 30%, #fff6c9 0 6%, #ffe08a 7%, transparent 22%),
+      linear-gradient(180deg, #8fd0ff 0%, #c8ecff 55%, transparent 56%),
+      radial-gradient(ellipse 70% 40% at 30% 100%, #4c9a3e 0 60%, transparent 61%),
+      radial-gradient(ellipse 80% 45% at 85% 105%, #5fb24b 0 60%, transparent 61%), #7cc35a; }
+  .bunny { position: absolute; left: 360px; top: 250px; width: 170px; height: 190px; border-radius: 85px 85px 70px 70px; background: #f1f1f1; box-shadow: inset -14px -10px 0 rgba(0,0,0,.06); }
+  .bunny::before, .bunny::after { content: ""; position: absolute; top: -110px; width: 44px; height: 130px; border-radius: 22px; background: #efefef; }
+  .bunny::before { left: 30px; transform: rotate(-8deg); } .bunny::after { right: 30px; transform: rotate(10deg); }
+  .pbar { position: absolute; left: 20px; right: 20px; bottom: 18px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.35); }
+  .pbar i { position: absolute; left: 0; top: 0; bottom: 0; width: 22%; background: #ff3b47; border-radius: 2px; }
+  .vbtn { position: absolute; right: 24px; top: 24px; height: 40px; padding: 0 16px 0 10px; border-radius: 12px; background: rgba(20,21,26,.82); backdrop-filter: blur(10px); color: #fff; font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 9px; box-shadow: 0 0 0 1px rgba(255,255,255,.12); }
+  .vp-title { left: 40px; top: 666px; font-size: 26px; font-weight: 650; letter-spacing: -.015em; }
+  .vp-chan { left: 40px; top: 712px; display: flex; align-items: center; gap: 12px; font-size: 16px; color: var(--muted); }
+  .vp-side { left: 1080px; top: 84px; width: 400px; display: flex; flex-direction: column; gap: 16px; }
+  .rec { display: flex; gap: 12px; } .rec i { width: 168px; height: 94px; border-radius: 10px; flex: none; }
+  .rec span { flex: 1; display: flex; flex-direction: column; gap: 8px; padding-top: 4px; } .rec b { height: 12px; border-radius: 6px; background: #e6e8ec; } .rec b:last-child { width: 60%; }
 
-  /* 7: YouTube */
-  .card { width: 860px; margin-top: 56px; border-radius: 22px; background: var(--panel); box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 50px 120px -30px #000; padding: 34px 38px; position: relative; overflow: hidden; }
-  .card-head { display: flex; align-items: center; gap: 18px; }
-  .card-head .glyph { width: 52px; height: 52px; border-radius: 13px; background: rgba(255,255,255,.07); display: grid; place-items: center; }
-  .card-head b { font-size: 26px; font-weight: 600; letter-spacing: -.015em; }
-  .card-head span { display: block; font-size: 19px; color: var(--muted); margin-top: 2px; }
-  .qlist { position: relative; margin-top: 26px; }
-  .qhl { position: absolute; left: 0; right: 0; height: 58px; border-radius: 12px; background: rgba(255,255,255,.07); box-shadow: inset 0 0 0 1px rgba(10,132,255,.55); }
-  .q { position: relative; display: flex; justify-content: space-between; align-items: center; height: 58px; padding: 0 20px; font-size: 24px; }
-  .q span:last-child { color: var(--muted); font-size: 21px; }
-  .btnrow { display: flex; justify-content: flex-end; margin-top: 22px; }
-  .btn { height: 54px; padding: 0 26px; border-radius: 12px; background: #eceef1; color: #0e0f12; font-size: 22px; font-weight: 600; display: grid; place-items: center; }
-  .prog { position: absolute; inset: 120px 38px auto; }
-  .prog .track { height: 10px; border-radius: 5px; background: rgba(255,255,255,.08); overflow: hidden; margin-top: 26px; }
-  .prog .track i { display: block; height: 100%; background: var(--accent); border-radius: 5px; }
-  .prog .row { display: flex; justify-content: space-between; font-size: 22px; color: var(--muted); margin-top: 16px; }
-  .status { display: flex; align-items: center; gap: 12px; font-size: 26px; font-weight: 500; }
-  .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); }
+  /* ---------- SwiftDL windows (light theme, as in the app) ---------- */
+  .sw { width: 560px; border-radius: 16px; background: #fff; box-shadow: 0 0 0 1px rgba(15,15,25,.09), 0 30px 70px -18px rgba(25,25,60,.45); overflow: hidden; transform-origin: 50% 40%; }
+  .sw-bar { height: 42px; display: flex; align-items: center; gap: 10px; padding: 0 16px; font-size: 13.5px; color: var(--muted); }
+  .sw-bar .ctl { margin-left: auto; display: flex; gap: 18px; color: var(--faint); }
+  .sw-body { padding: 4px 24px 22px; position: relative; }
+  .sw-head { display: flex; align-items: center; gap: 14px; }
+  .glyph { width: 44px; height: 44px; border-radius: 11px; background: #f1f2f5; display: grid; place-items: center; flex: none; }
+  .sw-name { font-size: 17px; font-weight: 600; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sw-sub { font-size: 13.5px; color: var(--muted); margin-top: 2px; display: flex; align-items: center; gap: 7px; }
+  .sdot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+  .kv { display: grid; grid-template-columns: 96px 1fr; row-gap: 12px; margin-top: 20px; font-size: 14.5px; align-items: center; }
+  .kv .k { color: var(--muted); } .kv .v { color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sel { display: inline-flex; align-items: center; gap: 10px; height: 32px; padding: 0 12px; border-radius: 8px; background: var(--btn); font-weight: 500; }
+  .foot { display: flex; align-items: center; gap: 10px; margin-top: 22px; }
+  .foot .grow { flex: 1; }
+  .b { height: 38px; padding: 0 16px; border-radius: 9px; background: var(--btn); font-size: 14.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; }
+  .b.p { background: var(--primary); color: #fff; }
+  .pline { display: flex; align-items: center; gap: 14px; margin-top: 20px; }
+  .track { flex: 1; height: 8px; border-radius: 4px; background: rgba(15,15,25,.08); overflow: hidden; }
+  .track i { display: block; height: 100%; border-radius: 4px; background: var(--accent); }
+  .pct { font-size: 15px; font-weight: 600; width: 44px; text-align: right; }
+  .pmeta { display: flex; justify-content: space-between; margin-top: 8px; font-size: 13.5px; color: var(--muted); }
+  .conn { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
+  .conn-h { display: flex; justify-content: space-between; font-size: 13.5px; color: var(--muted); margin-bottom: 10px; } .conn-h b { color: var(--ink); font-weight: 600; }
+  .lanes { position: relative; height: 12px; }
+  .slot { position: absolute; top: 0; height: 12px; border-radius: 4px; background: rgba(15,15,25,.07); overflow: hidden; }
+  .slot i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); }
+  .rows { margin-top: 12px; display: grid; grid-template-columns: 26px 90px 1fr 120px; row-gap: 7px; font-size: 13px; color: var(--muted); align-items: center; }
+  .mini { height: 5px; border-radius: 3px; background: rgba(15,15,25,.07); overflow: hidden; } .mini i { display: block; height: 100%; background: var(--accent); }
+  .live { color: var(--accent); }
+  .qrow { display: flex; justify-content: space-between; align-items: center; height: 40px; padding: 0 14px; border-radius: 9px; font-size: 15px; position: relative; }
+  .qrow span:last-child { color: var(--muted); font-size: 14px; }
+  .qhl { position: absolute; left: 0; right: 0; height: 40px; border-radius: 9px; background: rgba(0,122,255,.08); box-shadow: inset 0 0 0 1.5px rgba(0,122,255,.55); }
+  .appwin { left: 230px; top: 64px; width: 1460px; border-radius: 14px; overflow: hidden; box-shadow: 0 0 0 1px rgba(15,15,25,.1), 0 40px 100px -20px rgba(30,30,70,.45); }
+  .appwin img { display: block; width: 100%; }
 
-  /* 8: end card */
-  .end .mark { width: 96px; height: 96px; margin-bottom: 34px; }
-  .end h1 { font-size: 150px; }
-  .end .sub { margin-top: 18px; }
-  .end .meta { margin-top: 64px; display: flex; flex-direction: column; align-items: center; gap: 14px; font-size: 26px; color: var(--muted); }
-  .end .meta .mono { font-size: 24px; color: var(--ink); }
-
-  /* 9:16 cut: same timeline, re-flowed */
-  body.v h1, body.v .h { font-size: 86px; }
-  body.v .sub { font-size: 34px; padding: 0 60px; }
-  body.v .chip, body.v .card { width: 900px; }
-  body.v .file { width: 940px; }
-  body.v .stats { gap: 50px; } body.v .stat .n { font-size: 60px; }
-  body.v .stage3d, body.v .shot { width: 1000px; }
-  body.v .split { grid-template-columns: 900px; gap: 70px; justify-items: center; }
-  body.v .lines .h, body.v .lines .sub { text-align: center; }
-  body.v .word { font-size: 104px; } body.v .logo svg { width: 120px; height: 120px; }
-  body.v .end h1 { font-size: 120px; }
+  /* ---------- overlays in screen space ---------- */
+  .cursor { left: 0; top: 0; width: 30px; height: 30px; transform-origin: 3px 3px; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+  .ripple { width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%; border: 3px solid rgba(0,122,255,.55); background: rgba(0,122,255,.12); }
+  .caption { left: 50%; bottom: 72px; transform: translateX(-50%); padding: 20px 38px; border-radius: 999px; background: rgba(255,255,255,.78); backdrop-filter: blur(24px) saturate(1.5); box-shadow: 0 0 0 1px rgba(255,255,255,.7), 0 18px 50px -14px rgba(25,25,60,.4); font-size: 42px; font-weight: 600; letter-spacing: -.025em; white-space: nowrap; color: var(--ink); }
+  .chip { left: 50%; top: 64px; transform: translateX(-50%); padding: 12px 22px; border-radius: 999px; background: rgba(20,21,26,.82); color: #fff; font-size: 24px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
 </style>
 </head>
 <body>
-  <section class="scene" id="s1">
-    <h1 class="t" id="s1a">Your browser downloads</h1>
-    <h1 class="t" id="s1b" style="color:var(--muted);background:none;-webkit-text-fill-color:#6d717b">one connection at a time.</h1>
-  </section>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="mark" viewBox="0 0 32 32"><rect x="4.5" y="3" width="4.4" height="12" rx="2.2"/><rect x="10.9" y="3" width="4.4" height="17" rx="2.2"/><rect x="16.7" y="3" width="4.4" height="17" rx="2.2"/><rect x="23.1" y="3" width="4.4" height="12" rx="2.2"/><path d="M6 21.5 16 28l10-6.5" fill="none" stroke="currentColor" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="dl" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 20h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="disc" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/></symbol>
+  <symbol id="film" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M7.5 4.5v15M16.5 4.5v15M3.5 9.5h4M3.5 14.5h4M16.5 9.5h4M16.5 14.5h4"/></g></symbol>
+  <symbol id="check" viewBox="0 0 24 24"><path d="m5.5 12.5 4 4 9-9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
 
-  <section class="scene" id="s2">
-    <div class="chip t" id="s2chip">
-      <div class="ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#c7cad1" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v12M7.5 11l4.5 4.5 4.5-4.5M5 20h14"/></svg></div>
-      <div class="name">ubuntu-26.04-desktop-amd64.iso</div>
-      <div class="track"><i id="s2fill"></i></div>
-      <div class="meta" id="s2meta"></div>
+<!-- ======================= the screen ======================= -->
+<div id="screen">
+  <div id="cam">
+    <div class="wallpaper"></div><div class="grain"></div>
+
+    <div class="taskbar abs">
+      <div class="tb on" style="background:linear-gradient(135deg,#4f8cff,#7b5cff)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.6 3.6 5.4 3.6 8.5s-1.1 5.9-3.6 8.5c-2.5-2.6-3.6-5.4-3.6-8.5S9.5 6.1 12 3.5"/></svg></div>
+      <div class="tb" style="background:linear-gradient(135deg,#ffcf5c,#f5a524)"><svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+      <div class="tb on" style="background:linear-gradient(180deg,#2e3036,#16171b)"><svg width="24" height="24" style="color:#fff;fill:#fff"><use href="#mark"/></svg></div>
+      <div class="tb" style="background:linear-gradient(135deg,#9aa3b2,#6b7385)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></div>
+      <div class="tb" style="background:linear-gradient(135deg,#5ad19a,#22a06b)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/></svg></div>
     </div>
-    <div class="sub t" id="s2cap" style="margin-top:64px;color:var(--ink);font-size:46px">There's a faster way.</div>
-  </section>
 
-  <section class="scene" id="s3">
-    <div class="logo t" id="s3logo">
-      <svg viewBox="0 0 32 32" id="s3mark">
-        <rect x="4.5" y="3" width="4.4" height="12" rx="2.2" fill="#fff"/><rect x="10.9" y="3" width="4.4" height="17" rx="2.2" fill="#fff"/>
-        <rect x="16.7" y="3" width="4.4" height="17" rx="2.2" fill="#fff"/><rect x="23.1" y="3" width="4.4" height="12" rx="2.2" fill="#fff"/>
-        <path d="M6 21.5 16 28l10-6.5" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" pathLength="1"/>
-      </svg>
-      <span class="word t" id="s3word">SwiftDL</span>
-    </div>
-  </section>
+    <!-- the app's main window (last scene) -->
+    <div class="appwin abs t" id="appwin"><img src="../docs/assets/app-light.png" alt=""></div>
 
-  <section class="scene" id="s4">
-    <h1 class="t" id="s4h">One file. Many connections.</h1>
-    <div class="file t" id="s4file" style="margin-top:70px">
-      <div class="file-top"><b>ubuntu-26.04-desktop-amd64.iso</b><span class="mono" id="s4pct">0%</span></div>
-      <div class="bar" id="s4bar"></div>
-      <div class="stats">
-        <div class="stat"><div class="n" id="s4conn">1</div><div class="l">connections</div></div>
-        <div class="stat"><div class="n"><span id="s4speed">2.1</span><span style="font-size:.5em;color:var(--muted)"> MB/s</span></div><div class="l">speed</div></div>
-        <div class="stat"><div class="n" id="s4left">47m</div><div class="l">left</div></div>
+    <div class="browser abs t" id="browser">
+      <div class="tabs">
+        <div class="tab"><span class="fav" id="fav"></span><span id="tabtitle">Download Orbit OS</span><span class="x">×</span></div>
+        <span style="padding:0 8px 8px;color:#6b7080;font-size:20px">+</span>
+        <div class="winctl"><span>—</span><span>☐</span><span>✕</span></div>
       </div>
-    </div>
-  </section>
-
-  <section class="scene" id="s5">
-    <h1 class="t" id="s5h" style="margin-bottom:64px">Built for big files.</h1>
-    <div class="stage3d"><div class="shot t" id="s5shot"><img src="../docs/assets/app-dark.png" alt=""></div></div>
-  </section>
-
-  <section class="scene" id="s6">
-    <div class="split">
-      <img class="t" id="s6img" src="../docs/assets/window-progress.png" alt="">
-      <div class="lines">
-        <div class="h t" id="s6a">Pause it.</div>
-        <div class="h t" id="s6b">Close it.</div>
-        <div class="h t" id="s6c">Crash it.</div>
-        <div class="sub t" id="s6d">It picks up exactly where it left off.</div>
+      <div class="toolbar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5f6470" stroke-width="2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b6bac3" stroke-width="2" stroke-linecap="round"><path d="M9 5l7 7-7 7"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5f6470" stroke-width="2" stroke-linecap="round"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4v4h-4"/></svg>
+        <div class="omni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5f6470" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span id="url"><span class="host">orbit-os.org</span>/download</span></div>
+        <div class="ext" id="ext" style="background:#18181b"><svg width="17" height="17" style="color:#fff;fill:#fff"><use href="#mark"/></svg></div>
+        <div class="avatar"></div>
       </div>
-    </div>
-  </section>
 
-  <section class="scene" id="s7">
-    <h1 class="t" id="s7h">Now with YouTube.</h1>
-    <div class="card t" id="s7card">
-      <div class="card-head">
-        <span class="glyph"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#c7cad1" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M7.5 4.5v15M16.5 4.5v15M3.5 9.5h4M3.5 14.5h4M16.5 9.5h4M16.5 14.5h4"/></svg></span>
-        <div><b>Big Buck Bunny 60fps 4K.mp4</b><span>youtube.com</span></div>
-      </div>
-      <div id="s7pick">
-        <div class="qlist"><div class="qhl" id="s7hl"></div>
-          <div class="q"><span>2160p60</span><span>1.9 GB</span></div>
-          <div class="q"><span>1440p60</span><span>980 MB</span></div>
-          <div class="q"><span>1080p60</span><span>412 MB</span></div>
-          <div class="q"><span>720p60</span><span>198 MB</span></div>
-          <div class="q"><span>Audio only</span><span>9.8 MB</span></div>
+      <div class="page t" id="pageOS">
+        <div class="os-nav"><b><span style="width:26px;height:26px;border-radius:50%;background:conic-gradient(#1f7a4c,#5ad19a,#1f7a4c)"></span>Orbit</b><span>Desktop</span><span>Server</span><span>Docs</span><span>Community</span></div>
+        <div class="os-hero">
+          <div style="font-size:16px;font-weight:600;color:#1f7a4c;letter-spacing:.02em">LONG-TERM SUPPORT</div>
+          <h2 style="margin-top:14px">Orbit OS 26.04</h2>
+          <p>The fast, friendly desktop. Free forever.</p>
+          <div class="os-btn" id="osbtn"><svg width="22" height="22" style="color:#fff"><use href="#dl"/></svg>Download 64-bit</div>
+          <div class="os-meta">orbit-os-26.04-desktop-amd64.iso · 6.1 GB</div>
         </div>
-        <div class="btnrow"><div class="btn" id="s7btn">Start download</div></div>
       </div>
-      <div class="prog" id="s7prog">
-        <div class="status"><span class="dot" id="s7dot"></span><span id="s7status">Downloading</span></div>
-        <div class="track"><i id="s7fill"></i></div>
-        <div class="row"><span id="s7size"></span><span id="s7speed"></span></div>
-      </div>
-    </div>
-  </section>
 
-  <section class="scene end" id="s8">
-    <svg class="mark t" id="s8mark" viewBox="0 0 32 32" fill="#fff"><rect x="4.5" y="3" width="4.4" height="12" rx="2.2"/><rect x="10.9" y="3" width="4.4" height="17" rx="2.2"/><rect x="16.7" y="3" width="4.4" height="17" rx="2.2"/><rect x="23.1" y="3" width="4.4" height="12" rx="2.2"/><path d="M6 21.5 16 28l10-6.5" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    <h1 class="t" id="s8h">SwiftDL</h1>
-    <div class="sub t" id="s8s">Every download, at full speed.</div>
-    <div class="meta t" id="s8m">
-      <span>Free and open source · Windows, macOS and Linux</span>
-      <span class="mono">github.com/harshsinghsv/swiftdl</span>
+      <div class="page t" id="pageVid" style="opacity:0">
+        <div class="vp-head"><span style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:19px"><span style="width:30px;height:21px;border-radius:6px;background:#ff3b47;display:grid;place-items:center"><span style="border-left:9px solid #fff;border-top:6px solid transparent;border-bottom:6px solid transparent;margin-left:2px"></span></span>Videos</span><div class="vp-search">Search</div><div class="avatar"></div></div>
+        <div class="player abs" id="player"><div class="film"></div><div class="bunny"></div><div class="pbar"><i></i></div>
+          <div class="vbtn t" id="vbtn"><svg width="18" height="18" style="color:#fff;fill:#fff"><use href="#mark"/></svg>Download video</div></div>
+        <div class="vp-title abs">Big Buck Bunny · 60fps 4K short film</div>
+        <div class="vp-chan abs"><span style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#ffb36b,#ff6b6b)"></span><b style="color:var(--ink)">Open Movies</b>· 12M views</div>
+        <div class="vp-side abs">
+          <div class="rec"><i style="background:linear-gradient(135deg,#ffd6a5,#ff9f80)"></i><span><b></b><b></b></span></div>
+          <div class="rec"><i style="background:linear-gradient(135deg,#b5e7ff,#7fb2ff)"></i><span><b></b><b></b></span></div>
+          <div class="rec"><i style="background:linear-gradient(135deg,#d7c6ff,#a08bff)"></i><span><b></b><b></b></span></div>
+          <div class="rec"><i style="background:linear-gradient(135deg,#bff0d4,#5ccf95)"></i><span><b></b><b></b></span></div>
+          <div class="rec"><i style="background:linear-gradient(135deg,#ffe1ec,#ff9cc0)"></i><span><b></b><b></b></span></div>
+        </div>
+      </div>
     </div>
-  </section>
+
+    <!-- SwiftDL: the file from the download page -->
+    <div class="sw abs t" id="win1" style="left:1040px;top:250px">
+      <div class="sw-bar"><svg width="16" height="16" style="color:var(--ink);fill:var(--ink)"><use href="#mark"/></svg><span id="w1title">New download</span><span class="ctl"><span>—</span><span>✕</span></span></div>
+      <div class="sw-body">
+        <div class="sw-head"><span class="glyph"><svg width="22" height="22" style="color:var(--ink-2)"><use href="#disc"/></svg></span>
+          <div style="min-width:0"><div class="sw-name">orbit-os-26.04-desktop-amd64.iso</div><div class="sw-sub" id="w1sub">orbit-os.org</div></div></div>
+        <div id="w1new">
+          <div class="kv">
+            <span class="k">Size</span><span class="v" id="w1size">Checking…</span>
+            <span class="k">Category</span><span class="v"><span class="sel">Compressed <span style="color:var(--faint)">⌄</span></span></span>
+            <span class="k">Save to</span><span class="v">C:\Users\Harsh\Downloads\Compressed</span>
+          </div>
+          <div class="foot"><span class="b">Download later</span><span class="grow"></span><span class="b">Cancel</span><span class="b p" id="w1start">Start download</span></div>
+        </div>
+        <div id="w1prog">
+          <div class="pline"><div class="track"><i id="w1fill"></i></div><span class="pct" id="w1pct">0%</span></div>
+          <div class="pmeta"><span id="w1done"></span><span id="w1speed"></span></div>
+          <div class="conn" id="w1conn"><div class="conn-h"><b>Connections</b><span id="w1active"></span></div><div class="lanes" id="w1lanes"></div><div class="rows" id="w1rows"></div></div>
+          <div class="foot" id="w1foot"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SwiftDL: the video -->
+    <div class="sw abs t" id="win2" style="left:1150px;top:190px">
+      <div class="sw-bar"><svg width="16" height="16" style="color:var(--ink);fill:var(--ink)"><use href="#mark"/></svg><span id="w2title">New download</span><span class="ctl"><span>—</span><span>✕</span></span></div>
+      <div class="sw-body">
+        <div class="sw-head"><span class="glyph"><svg width="22" height="22" style="color:var(--ink-2)"><use href="#film"/></svg></span>
+          <div style="min-width:0"><div class="sw-name">Big Buck Bunny 60fps 4K short film.mp4</div><div class="sw-sub" id="w2sub">youtube.com</div></div></div>
+        <div id="w2new">
+          <div style="margin-top:18px;font-size:13.5px;color:var(--muted)">Quality</div>
+          <div style="position:relative;margin-top:8px" id="qlist">
+            <div class="qhl" id="qhl"></div>
+            <div class="qrow"><span>2160p60</span><span>1.9 GB</span></div>
+            <div class="qrow"><span>1440p60</span><span>980 MB</span></div>
+            <div class="qrow" id="q1080"><span>1080p60</span><span>412 MB</span></div>
+            <div class="qrow"><span>720p60</span><span>198 MB</span></div>
+            <div class="qrow"><span>Audio only</span><span>9.8 MB</span></div>
+          </div>
+          <div class="foot"><span class="grow"></span><span class="b">Cancel</span><span class="b p" id="w2start">Start download</span></div>
+        </div>
+        <div id="w2prog">
+          <div class="pline"><div class="track"><i id="w2fill"></i></div><span class="pct" id="w2pct">0%</span></div>
+          <div class="pmeta"><span id="w2done"></span><span id="w2speed"></span></div>
+          <div class="foot" id="w2foot"></div>
+        </div>
+      </div>
+    </div>
+
+    <svg class="cursor abs t" id="cursor" viewBox="0 0 30 30"><path d="M4 3 L4 24 L9.5 18.6 L13.4 27 L17 25.4 L13.2 17.2 L21 17.2 Z" fill="#111" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>
+    <div class="ripple abs" id="ripple"></div>
+  </div>
+
+  <div class="chip abs t" id="ff"><svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M3 6l9 6-9 6zM12 6l9 6-9 6z"/></svg>Four minutes later</div>
+  <div class="caption abs t" id="cap"></div>
+</div>
+
+<!-- ======================= cards ======================= -->
+<div class="card-scene t" id="title">
+  <img class="icon-xl t" id="tIcon" src="../site/assets/logo.svg" alt="">
+  <div class="big t" id="tName">SwiftDL</div>
+  <div class="lede t" id="tLede">Every download, at full speed.</div>
+</div>
+<div class="card-scene t" id="end">
+  <img class="icon-xl t" id="eIcon" src="../site/assets/logo.svg" alt="">
+  <div class="big t" id="eName">SwiftDL</div>
+  <div class="lede t" id="eLede">Free and open source. Windows, macOS and Linux.</div>
+  <div class="mono t" id="eUrl" style="margin-top:48px;font-size:28px;color:var(--ink-2)">github.com/harshsinghsv/swiftdl</div>
+</div>
 
 <script>
-if (location.search.includes("vertical")) document.body.classList.add("v");
-window.DURATION = 41;
+window.DURATION = 46;
 
-// ---------- timing helpers ----------
+// ---------- helpers ----------
 const $ = (id) => document.getElementById(id);
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const prog = (t, a, b) => clamp((t - a) / (b - a));
 const expo = (x) => (x >= 1 ? 1 : 1 - Math.pow(2, -10 * x));
 const cubic = (x) => 1 - Math.pow(1 - x, 3);
 const inOut = (x) => (x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const smooth = (x) => x * x * (3 - 2 * x);
 const lerp = (a, b, x) => a + (b - a) * x;
+const css = (el, o) => Object.assign(el.style, o);
 
-// Apple-style entrance: rise, sharpen and fade in; fade and soften out.
-function show(el, t, a, b, { y = 30, blur = 14, inDur = .7, outDur = .45, scale = 0 } = {}) {
-  const i = expo(prog(t, a, a + inDur)), o = cubic(prog(t, b - outDur, b));
-  const op = i * (1 - o);
-  el.style.opacity = op;
-  el.style.filter = op < 1 ? `blur(${(1 - i) * blur + o * blur * .6}px)` : "none";
-  el.style.transform = `translateY(${(1 - i) * y - o * y * .4}px) scale(${1 + scale * (1 - i)})`;
+// Rise, sharpen and fade in; soften and fade out.
+function show(el, t, a, b, { y = 24, blur = 12, inDur = .7, outDur = .45, scale = 0 } = {}) {
+  const i = expo(prog(t, a, a + inDur)), o = cubic(prog(t, b - outDur, b)), op = i * (1 - o);
+  css(el, { opacity: op, filter: op > .001 && op < .999 ? `blur(${(1 - i) * blur + o * blur * .6}px)` : "none",
+    transform: `translateY(${(1 - i) * y - o * y * .4}px) scale(${1 + scale * (1 - i) - o * scale * .5})`, visibility: op > .001 ? "visible" : "hidden" });
 }
-const scene = (id, t, a, b) => { const on = t >= a && t < b; $(id).style.display = on ? "flex" : "none"; return on; };
+// A window popping open (and closing): scale up from 94% with a soft fade.
+function pop(el, t, a, b, out = .35) {
+  const i = expo(prog(t, a, a + .5)), o = cubic(prog(t, b - out, b)), op = i * (1 - o);
+  css(el, { opacity: op, transform: `scale(${lerp(.94, 1, i) - o * .04})`, visibility: op > .001 ? "visible" : "hidden" });
+}
+// Keyframes [t, ...values] -> eased values at time t.
+function keys(list, t) {
+  if (t <= list[0][0]) return list[0].slice(1);
+  for (let i = 1; i < list.length; i++) {
+    if (t <= list[i][0]) {
+      const [a, b] = [list[i - 1], list[i]], k = inOut(prog(t, a[0], b[0]));
+      return a.slice(1).map((v, j) => lerp(v, b[j + 1], k));
+    }
+  }
+  return list.at(-1).slice(1);
+}
+const bytes = (n) => (n >= 1e9 ? `${(n / 1e9).toFixed(2)} GB` : `${Math.round(n / 1e6)} MB`);
+const dur = (s) => { s = Math.max(0, Math.round(s)); const m = Math.floor(s / 60); return m ? `${m}m ${String(s % 60).padStart(2, "0")}s` : `${s}s`; };
 
-// ---------- scene 4: a deterministic run of the engine ----------
-// Eight parts at different speeds; a part that finishes takes half of the
-// largest part left, exactly as SwiftDL does. Precomputed per frame.
+// ---------- the engine's split, precomputed ----------
 const SIM = (() => {
-  let seed = 7;
-  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  let segs = Array.from({ length: 8 }, (_, i) => ({ s: i / 8, p: i / 8, e: (i + 1) / 8, r: .55 + rnd() * .9 }));
-  const frames = [];
-  for (let f = 0; f <= 300; f++) {
-    frames.push({ segs: segs.map((x) => [x.s, x.p, x.e]), busy: segs.filter((x) => x.p < x.e).length, done: segs.reduce((a, x) => a + (x.p - x.s), 0) });
-    for (const x of segs) if (x.p < x.e) x.p = Math.min(x.e, x.p + .00055 * x.r);
+  let seed = 11; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  let segs = Array.from({ length: 8 }, (_, i) => ({ s: i / 8, p: i / 8, e: (i + 1) / 8, r: .6 + rnd() * .8 }));
+  const out = [];
+  for (let n = 0; n < 4000; n++) {
+    const done = segs.reduce((a, x) => a + (x.p - x.s), 0);
+    out.push({ done, segs: segs.map((x) => [x.s, x.p, x.e]).sort((a, b) => a[0] - b[0]) });
+    if (done >= .9999) break;
+    for (const x of segs) if (x.p < x.e) x.p = Math.min(x.e, x.p + .0004 * x.r);
     const busy = segs.filter((x) => x.p < x.e);
     if (busy.length < 8) {
       const big = busy.sort((a, b) => (b.e - b.p) - (a.e - a.p))[0];
-      if (big && big.e - big.p > .015) { const m = big.p + (big.e - big.p) / 2; segs.push({ s: m, p: m, e: big.e, r: .55 + rnd() * .9 }); big.e = m; }
+      if (big && big.e - big.p > .01) { const m = big.p + (big.e - big.p) / 2; segs.push({ s: m, p: m, e: big.e, r: .6 + rnd() * .8 }); big.e = m; }
     }
   }
-  return frames;
+  return out;
 })();
+const simAt = (frac) => { let lo = 0, hi = SIM.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (SIM[m].done < frac) lo = m + 1; else hi = m; } return SIM[lo]; };
 
-// ---------- the timeline ----------
-window.seek = (t) => {
-  // 1. The problem.
-  if (scene("s1", t, 0, 3.4)) { show($("s1a"), t, .25, 3.4); show($("s1b"), t, .8, 3.4); }
+// ---------- the story ----------
+// Camera: [t, centre x, centre y, zoom] in screen pixels.
+const CAM = [
+  [0, 960, 540, 1.14], [4.4, 960, 540, 1.14], [5.8, 960, 540, 1], [7.6, 960, 560, 1.07], [8.6, 1180, 500, 1.16], [9.4, 1320, 440, 1.36],
+  [11.3, 1320, 445, 1.36], [12.6, 1320, 470, 1.52], [17.6, 1320, 470, 1.52], [20.2, 1320, 470, 1.36], [21.6, 960, 540, 1.03],
+  [22.9, 740, 420, 1.2], [24.3, 860, 380, 1.2], [25.4, 1430, 400, 1.44], [30.9, 1430, 420, 1.44], [32.1, 960, 540, 1], [38.4, 960, 540, 1.07],
+];
+// Cursor: [t, x, y] waypoints; a string names an element to aim at.
+const CURSOR = [
+  [6.2, 1560, 930], [7.45, "osbtn"], [9.7, "osbtn"], [10.65, "w1start"], [21.7, "w1start"], [22.95, 700, 470], [23.7, 700, 470],
+  [24.45, "vbtn"], [25.7, "vbtn"], [26.35, 1420, 300], [26.7, 1420, 300], [27.25, "w2start"],
+];
+const CLICKS = [7.6, 10.8, 24.6, 27.4];
+const CAPTIONS = [
+  [8.7, 13.3, "Click download. SwiftDL takes it from there."],
+  [13.6, 17.7, "Up to 32 connections, all working at once."],
+  [18.1, 21.4, "6.1 GB, done in under four minutes."],
+  [25.0, 31.0, "Supports YouTube downloads."],
+  [32.7, 37.6, "Every download, in one place."],
+];
 
-  // 2. A real browser download, crawling.
-  if (scene("s2", t, 3.4, 7.6)) {
-    show($("s2chip"), t, 3.5, 7.6, { y: 40, scale: .04 });
-    const k = prog(t, 3.5, 7.6);
-    $("s2fill").style.width = `${lerp(3.1, 5.4, k)}%`;
-    const sp = 2.1 + Math.sin(t * 7) * .12 + Math.sin(t * 2.3) * .08;
-    $("s2meta").textContent = `${sp.toFixed(1)} MB/s · ${Math.round(lerp(47, 46, k))} minutes left`;
-    show($("s2cap"), t, 5.5, 7.6);
+// Element centres in screen coordinates, measured once with the camera still.
+const AIM = {};
+function measure() {
+  const at = { osbtn: 7, w1start: 10, vbtn: 24, w2start: 27 };
+  for (const [id, t] of Object.entries(at)) {
+    window.seek(t, true);
+    const r = $(id).getBoundingClientRect();
+    AIM[id] = [r.left + r.width / 2, r.top + r.height / 2 + 2];
   }
+}
+const point = (p) => (typeof p[1] === "string" ? AIM[p[1]] : [p[1], p[2]]);
 
-  // 3. The reveal.
-  if (scene("s3", t, 7.6, 10.6)) {
-    const rects = $("s3mark").querySelectorAll("rect");
-    rects.forEach((r, i) => {
-      const k = expo(prog(t, 7.8 + i * .09, 8.45 + i * .09));
-      r.style.transformOrigin = `${r.x.baseVal.value}px 3px`;
-      r.style.transform = `scaleY(${k})`;
-      r.style.opacity = k > 0 ? 1 : 0;
-    });
-    const chev = $("s3mark").querySelector("path");
-    chev.style.strokeDasharray = 1;
-    chev.style.strokeDashoffset = 1 - expo(prog(t, 8.2, 8.8));
-    const w = expo(prog(t, 8.55, 9.3));
-    $("s3word").style.opacity = w;
-    $("s3word").style.transform = `translateX(${(1 - w) * -30}px)`;
-    $("s3word").style.letterSpacing = `${lerp(.02, -.055, w)}em`;
-    $("s3word").style.filter = w < 1 ? `blur(${(1 - w) * 10}px)` : "none";
-    const g = $("s3logo");
-    const out = cubic(prog(t, 10.15, 10.6));
-    g.style.opacity = 1 - out;
-    g.style.transform = `scale(${lerp(.94, 1, cubic(prog(t, 7.6, 10.6))) + out * .04})`;
-    g.style.filter = out ? `blur(${out * 10}px)` : "none";
+function cursorAt(t) {
+  if (t <= CURSOR[0][0]) return point(CURSOR[0]);
+  for (let i = 1; i < CURSOR.length; i++) {
+    if (t <= CURSOR[i][0]) {
+      const a = point(CURSOR[i - 1]), b = point(CURSOR[i]), k = inOut(prog(t, CURSOR[i - 1][0], CURSOR[i][0]));
+      const arc = Math.sin(k * Math.PI) * Math.min(60, Math.hypot(b[0] - a[0], b[1] - a[1]) * .12);
+      const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1;
+      return [lerp(a[0], b[0], k) - (dy / len) * arc, lerp(a[1], b[1], k) + (dx / len) * arc];
+    }
   }
+  return point(CURSOR.at(-1));
+}
 
-  // 4. How it's fast.
-  if (scene("s4", t, 10.6, 17.6)) {
-    show($("s4h"), t, 10.8, 17.6);
-    show($("s4file"), t, 11.2, 17.6, { y: 50 });
-    const k = prog(t, 11.6, 16.6), fr = SIM[Math.round(k * (SIM.length - 1))];
-    const bar = $("s4bar");
-    if (bar.children.length !== fr.segs.length) bar.innerHTML = fr.segs.map(() => '<div class="seg"><i></i></div>').join("");
-    [...fr.segs].sort((a, b) => a[0] - b[0]).forEach(([s, p, e], i) => {
-      const el = bar.children[i];
-      el.style.left = `${s * 100}%`; el.style.width = `${(e - s) * 100}%`;
-      el.firstElementChild.style.width = `${((p - s) / Math.max(1e-6, e - s)) * 100}%`;
-      el.className = `seg ${p >= e ? "done" : ""}`;
-    });
-    const ramp = inOut(prog(t, 11.6, 13.2));
-    const pct = Math.min(100, fr.done * 100);
-    $("s4pct").textContent = `${Math.floor(pct)}%`;
-    $("s4conn").textContent = t < 11.6 ? 1 : fr.busy || 8;
-    const speed = pct >= 100 ? 0 : lerp(2.1, 26.4, ramp) + Math.sin(t * 6) * .4 * ramp;
-    $("s4speed").textContent = speed.toFixed(1);
-    $("s4left").textContent = pct >= 100 ? "Done" : `${Math.max(1, Math.round(lerp(47, 3.1, ramp) * (1 - pct / 100)))}m`;
-  }
+function renderLanes(frac, active) {
+  const f = simAt(frac);
+  const lanes = $("w1lanes");
+  if (lanes.children.length !== f.segs.length) lanes.innerHTML = f.segs.map(() => "<span class='slot'><i></i></span>").join("");
+  f.segs.forEach(([s, p, e], i) => {
+    const el = lanes.children[i];
+    css(el, { left: `calc(${s * 100}% + 1px)`, width: `calc(${(e - s) * 100}% - 2px)` });
+    el.firstElementChild.style.width = `${((p - s) / Math.max(1e-6, e - s)) * 100}%`;
+  });
+  const total = 6.1e9, rows = f.segs.slice(0, 4);
+  $("w1rows").innerHTML = rows.map(([s, p, e], i) => `<span>${i + 1}</span><span>${bytes((p - s) * total)}</span><span class="mini"><i style="width:${((p - s) / Math.max(1e-6, e - s)) * 100}%"></i></span><span class="${p >= e ? "" : "live"}">${p >= e ? "Done" : "Receiving data…"}</span>`).join("");
+  $("w1active").textContent = active ? `${f.segs.filter(([, p, e]) => p < e).length} active · ${f.segs.length} parts` : "";
+}
 
-  // 5. The app, swinging up into view.
-  if (scene("s5", t, 17.6, 24)) {
-    show($("s5h"), t, 17.8, 24);
-    const k = expo(prog(t, 18.0, 19.7)), push = inOut(prog(t, 19.7, 24));
-    const out = cubic(prog(t, 23.55, 24));
-    const el = $("s5shot");
-    el.style.opacity = Math.min(1, k * 1.6) * (1 - out);
-    el.style.transform = `translateY(${(1 - k) * 260}px) rotateX(${(1 - k) * 30}deg) scale(${lerp(.84, 1, k) + push * .05})`;
-    el.style.filter = out ? `blur(${out * 10}px)` : "none";
-  }
+let lastCap = "";
+window.seek = (t, still = false) => {
+  // Title and end cards.
+  const tOut = cubic(prog(t, 4.2, 5.2));
+  css($("title"), { opacity: 1 - tOut, visibility: tOut < 1 ? "visible" : "hidden" });
+  show($("tIcon"), t, .2, 99, { scale: .12, y: 10 }); show($("tName"), t, .55, 99); show($("tLede"), t, 1.1, 99, { y: 16 });
+  const eIn = cubic(prog(t, 38.3, 39.1));
+  css($("end"), { opacity: eIn * (1 - cubic(prog(t, 45.2, 46))), visibility: eIn > 0 ? "visible" : "hidden" });
+  show($("eIcon"), t, 38.6, 99, { scale: .12, y: 10 }); show($("eName"), t, 38.9, 99); show($("eLede"), t, 39.5, 99, { y: 16 }); show($("eUrl"), t, 40.1, 99, { y: 12 });
 
-  // 6. Resume.
-  if (scene("s6", t, 24, 29.6)) {
-    show($("s6img"), t, 24.15, 29.6, { y: 60, scale: .03 });
-    $("s6img").style.transform += ` translateY(${Math.sin((t - 24) * 1.4) * 8}px)`;
-    show($("s6a"), t, 24.5, 29.6); show($("s6b"), t, 25.05, 29.6); show($("s6c"), t, 25.6, 29.6);
-    show($("s6d"), t, 26.6, 29.6, { y: 20 });
-  }
+  // Camera.
+  let [cx, cy, s] = still ? [960, 540, 1] : keys(CAM, t);
+  // Never pan past the edge of the desktop.
+  cx = clamp(cx, 960 / s, 1920 - 960 / s); cy = clamp(cy, 540 / s, 1080 - 540 / s);
+  $("cam").style.transform = `translate(${960 - cx * s}px, ${540 - cy * s}px) scale(${s})`;
 
-  // 7. YouTube: pick a quality, download, merge, done.
-  if (scene("s7", t, 29.6, 35.8)) {
-    show($("s7h"), t, 29.8, 35.8);
-    show($("s7card"), t, 30.3, 35.8, { y: 60, scale: .03 });
-    const stops = [[30.9, 0], [31.45, 1], [32.0, 2]];
-    let y = 0;
-    for (let i = 0; i < stops.length; i++) y = lerp(y, stops[i][1], inOut(prog(t, stops[i][0], stops[i][0] + .35)));
-    $("s7hl").style.transform = `translateY(${y * 58}px)`;
-    $("s7hl").style.opacity = expo(prog(t, 30.7, 31.0));
-    const press = prog(t, 32.45, 32.65);
-    $("s7btn").style.transform = `scale(${1 - Math.sin(press * Math.PI) * .06})`;
-    const swap = inOut(prog(t, 32.75, 33.15));
-    $("s7pick").style.opacity = 1 - swap;
-    $("s7pick").style.transform = `translateY(${-swap * 20}px)`;
-    // The card shrinks from the quality list to the progress view.
-    const card = $("s7card");
-    if (!window.CARD_H) { card.style.height = ""; window.CARD_H = card.offsetHeight; }
-    card.style.height = `${lerp(window.CARD_H, 262, swap)}px`;
-    $("s7prog").style.opacity = swap;
-    $("s7prog").style.transform = `translateY(${(1 - swap) * 20}px)`;
-    const p = cubic(prog(t, 33.1, 34.3));
-    $("s7fill").style.width = `${p * 100}%`;
-    const merging = t >= 34.3 && t < 34.95, done = t >= 34.95;
-    $("s7status").textContent = done ? "Download complete" : merging ? "Merging video and audio" : "Downloading";
-    $("s7dot").style.background = done ? "var(--green)" : "var(--accent)";
-    $("s7fill").style.background = done ? "var(--green)" : "var(--accent)";
-    $("s7size").textContent = done ? "412 MB" : `${Math.round(p * 412)} MB of 412 MB`;
-    $("s7speed").textContent = done ? "Saved to Downloads\\Video" : merging ? "" : `${(24 + Math.sin(t * 5) * 1.6).toFixed(1)} MB/s`;
-  }
+  // Browser: opens, switches to the video page, closes.
+  const bIn = expo(prog(t, 5.3, 6.0)), bOut = cubic(prog(t, 31.3, 31.9));
+  css($("browser"), { opacity: bIn * (1 - bOut), transform: `translateY(${(1 - bIn) * 60}px) scale(${lerp(.9, 1, bIn) - bOut * .04})`, visibility: bIn * (1 - bOut) > 0 ? "visible" : "hidden" });
+  const toVid = inOut(prog(t, 21.9, 22.4));
+  $("pageOS").style.opacity = 1 - toVid; $("pageVid").style.opacity = toVid;
+  const vid = t >= 22.15;
+  $("tabtitle").textContent = vid ? "Big Buck Bunny · 60fps 4K" : "Download Orbit OS";
+  $("fav").style.background = vid ? "#ff3b47" : "conic-gradient(#1f7a4c,#5ad19a,#1f7a4c)";
+  $("url").innerHTML = vid ? `<span class="host">youtube.com</span>/watch?v=aqz-KE-bpKQ` : `<span class="host">orbit-os.org</span>/download`;
+  const press = Math.sin(prog(t, 7.6, 7.82) * Math.PI);
+  $("osbtn").style.transform = `scale(${1 - press * .05})`;
+  show($("vbtn"), t, 23.25, 99, { y: -8, blur: 6, inDur: .4 });
+  $("vbtn").style.transform += ` scale(${1 - Math.sin(prog(t, 24.6, 24.82) * Math.PI) * .07})`;
 
-  // 8. End card.
-  if (scene("s8", t, 35.8, 41)) {
-    const fade = 1 - cubic(prog(t, 40.3, 41));
-    $("s8").style.opacity = fade;
-    show($("s8mark"), t, 36.0, 99, { scale: .1 });
-    show($("s8h"), t, 36.25, 99);
-    show($("s8s"), t, 36.9, 99, { y: 20 });
-    show($("s8m"), t, 37.6, 99, { y: 16 });
-  }
+  // Window 1: new download -> progress -> complete.
+  pop($("win1"), t, 7.95, 21.6);
+  const w1p = t >= 10.95, w1done = t >= 19.7;
+  $("w1new").style.display = w1p ? "none" : "block"; $("w1prog").style.display = w1p ? "block" : "none";
+  $("w1title").textContent = w1done ? "Download complete" : w1p ? `${Math.floor(0)}%` : "New download";
+  $("w1size").innerHTML = t < 8.7 ? "<span style='color:var(--faint)'>Checking…</span>" : "6.10 GB <span style='color:var(--muted)'>· Resumable · 8 connections</span>";
+  $("w1start").style.transform = `scale(${1 - Math.sin(prog(t, 10.8, 11.0) * Math.PI) * .06})`;
+  if (w1p) {
+    const p1 = lerp(0, .34, smooth(prog(t, 11.1, 17.6))), p2 = inOut(prog(t, 17.6, 19.7));
+    const frac = w1done ? 1 : lerp(p1, 1, p2);
+    const ramp = inOut(prog(t, 11.1, 12.7));
+    const speed = w1done ? 0 : (2.1 + 26.3 * ramp + Math.sin(t * 5.3) * .5 * ramp + Math.sin(t * 2.1) * .3) * 1e6;
+    $("w1fill").style.width = `${frac * 100}%`; $("w1fill").style.background = w1done ? "var(--green)" : "var(--accent)";
+    $("w1pct").textContent = `${Math.floor(frac * 100)}%`;
+    $("w1title").textContent = w1done ? "Download complete" : `${Math.floor(frac * 100)}% · orbit-os-26.04-desktop-amd64.iso`;
+    $("w1done").textContent = w1done ? "6.10 GB" : `${bytes(frac * 6.1e9)} of 6.10 GB`;
+    $("w1speed").textContent = w1done ? "Just now" : `${(speed / 1e6).toFixed(1)} MB/s · ${dur(((1 - frac) * 6.1e9) / Math.max(speed, 1e6))} left`;
+    $("w1sub").innerHTML = w1done ? `<span class="sdot" style="background:var(--green)"></span>Completed · orbit-os.org` : `<span class="sdot"></span>Downloading · 8 connections · orbit-os.org`;
+    $("w1conn").style.display = w1done ? "none" : "block";
+    if (!w1done) renderLanes(frac, true);
+    const foot = w1done ? `<span class="b">Show in folder</span><span class="grow"></span><span class="b">Close</span><span class="b p">Open</span>` : `<span class="b" style="background:none;color:var(--muted)">⌃ Hide details</span><span class="grow"></span><span class="b">Cancel</span><span class="b">Pause</span>`;
+    if ($("w1foot").innerHTML !== foot) $("w1foot").innerHTML = foot;
+  } else $("w1sub").textContent = "orbit-os.org";
+
+  // Window 2: the video's quality -> progress -> complete.
+  pop($("win2"), t, 24.8, 31.3);
+  // SwiftDL preselects the best quality up to 1080p.
+  css($("qhl"), { transform: "translateY(80px)", opacity: expo(prog(t, 25.1, 25.4)) });
+  $("w2start").style.transform = `scale(${1 - Math.sin(prog(t, 27.4, 27.6) * Math.PI) * .06})`;
+  const w2p = t >= 27.55, merging = t >= 29.7 && t < 30.45, w2done = t >= 30.45;
+  $("w2new").style.display = w2p ? "none" : "block"; $("w2prog").style.display = w2p ? "block" : "none";
+  if (w2p) {
+    const f = w2done || merging ? 1 : cubic(prog(t, 27.6, 29.7)), sp = 23.8 + Math.sin(t * 4.7) * 1.4;
+    $("w2fill").style.width = `${f * 100}%`; $("w2fill").style.background = w2done ? "var(--green)" : "var(--accent)";
+    $("w2pct").textContent = `${Math.floor(f * 100)}%`;
+    $("w2title").textContent = w2done ? "Download complete" : `${Math.floor(f * 100)}% · Big Buck Bunny 60fps 4K short film.mp4`;
+    $("w2sub").innerHTML = w2done ? `<span class="sdot" style="background:var(--green)"></span>Completed · 1080p60 · youtube.com` : merging ? `<span class="sdot"></span>Merging video and audio` : `<span class="sdot"></span>Downloading · 1080p60 · youtube.com`;
+    $("w2done").textContent = w2done ? "412 MB" : `${Math.round(f * 412)} MB of 412 MB`;
+    $("w2speed").textContent = w2done ? "Saved to Downloads\\Video" : merging ? "" : `${sp.toFixed(1)} MB/s`;
+    const foot = w2done ? `<span class="b">Show in folder</span><span class="grow"></span><span class="b">Close</span><span class="b p">Open</span>` : `<span class="grow"></span><span class="b">Cancel</span><span class="b">Pause</span>`;
+    if ($("w2foot").innerHTML !== foot) $("w2foot").innerHTML = foot;
+  } else { $("w2title").textContent = "New download"; $("w2sub").textContent = "youtube.com"; }
+
+  // The main window rises in for the last shot.
+  const aIn = expo(prog(t, 31.9, 33.0));
+  css($("appwin"), { opacity: aIn, transform: `translateY(${(1 - aIn) * 80}px) scale(${lerp(.94, 1, aIn)})`, visibility: aIn > 0 ? "visible" : "hidden" });
+
+  // Cursor, with a press and a ripple on each click.
+  const [mx, my] = still ? [0, 0] : cursorAt(t);
+  const cVis = still ? 0 : expo(prog(t, 6.0, 6.3)) * (1 - cubic(prog(t, 31.0, 31.4)));
+  const near = CLICKS.find((c) => t >= c - .05 && t < c + .5);
+  const down = near ? Math.sin(prog(t, near - .05, near + .17) * Math.PI) : 0;
+  css($("cursor"), { opacity: cVis, transform: `translate(${mx}px, ${my}px) scale(${1 - down * .14})` });
+  const rk = near ? prog(t, near, near + .5) : 1;
+  css($("ripple"), { left: `${mx + 2}px`, top: `${my + 2}px`, opacity: near && !still ? (1 - rk) * .9 : 0, transform: `scale(${.3 + cubic(rk) * 1.1})` });
+
+  // Captions in screen space.
+  const cap = CAPTIONS.find(([a, b]) => t >= a && t < b);
+  if (cap) { if (lastCap !== cap[2]) { $("cap").textContent = cap[2]; lastCap = cap[2]; } show($("cap"), t, cap[0], cap[1], { y: 30 }); $("cap").style.transform += " translateX(-50%)"; }
+  else css($("cap"), { opacity: 0, visibility: "hidden" });
+  show($("ff"), t, 17.75, 19.6, { y: -16 }); $("ff").style.transform += " translateX(-50%)";
 };
+
+measure();
 window.seek(0);
 </script>
 </body>
