@@ -26,3 +26,17 @@ node capture.mjs --force       # capture the web pages again
 
 It needs Chrome (or Edge) and ffmpeg; set `CHROME` or `FFMPEG` if they aren't
 found. The video is silent; add music in any editor.
+
+## Music
+
+The render is silent. To add a track you have the rights to (your own,
+licensed, or royalty-free such as the YouTube Audio Library or Pixabay Music):
+
+```bash
+node music.mjs track.mp3 --from 32   # start the track at its drop, 32 s in
+```
+
+This writes `out/swiftdl-launch-music.mp4`: the track fades in, is levelled to
+streaming loudness and fades out with the end card. Good beats to land on:
+the SwiftDL logo at 9.7 s, the first SwiftDL window at 16.5 s, the race at
+30.7 s, YouTube at 35.5 s and the end card at 51.9 s.
