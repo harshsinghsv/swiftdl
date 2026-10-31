@@ -6,6 +6,8 @@ uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-10-31
+
 ### Added
 - **Theme setting.** Settings → General → Theme: System (follow the computer's
   light or dark mode), Light or Dark. Picking one previews it at once, and open
@@ -101,7 +103,8 @@ uses [Semantic Versioning](https://semver.org/).
 - GitHub Actions for CI and tagged releases (Windows, macOS, Linux and the
   extension zip).
 
-[Unreleased]: https://github.com/harshsinghsv/swiftdl/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/harshsinghsv/swiftdl/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/harshsinghsv/swiftdl/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/harshsinghsv/swiftdl/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/harshsinghsv/swiftdl/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/harshsinghsv/swiftdl/releases/tag/v0.1.0
