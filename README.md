@@ -1,12 +1,12 @@
 <div align="center">
 
-<img src="app/icon.svg" width="96" alt="SwiftDL" />
+<img src="app/icon.svg" width="88" alt="SwiftDL" />
 
 # SwiftDL
 
-### The fast, open-source download manager for your desktop.
+### Every download, at full speed.
 
-**Many connections per file. Instant resume. A window for every download.**
+The free, open-source download manager for Windows, macOS and Linux.
 
 [![Latest release](https://img.shields.io/github/v/release/harshsinghsv/swiftdl?style=flat-square&color=007aff&label=release)](https://github.com/harshsinghsv/swiftdl/releases/latest)
 [![CI](https://img.shields.io/github/actions/workflow/status/harshsinghsv/swiftdl/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/harshsinghsv/swiftdl/actions/workflows/ci.yml)
@@ -14,19 +14,44 @@
 [![Built with Rust and Tauri](https://img.shields.io/badge/built_with-Rust_%2B_Tauri-dea584?style=flat-square&logo=rust&logoColor=white)](#how-it-works)
 [![MIT license](https://img.shields.io/badge/license-MIT-f4c430?style=flat-square)](LICENSE)
 
-[Download](#download) · [Features](#features) · [How it works](#how-it-works) · [Browser extension](#browser-extension) · [FAQ](#faq) · [Build from source](#build-from-source) · [Contributing](#contributing)
-
 <br />
 
-<img src="docs/assets/app-dark.png" alt="SwiftDL main window: downloads grouped by status, with live speed, connections and a detail panel" width="1100" />
+<img src="docs/assets/demo.gif" width="900" alt="Clicking Download on the Ubuntu website opens SwiftDL's New download window; after Start, the 5.9 GB file downloads over eight connections at about 29 MB/s" />
+
+<sub>▶&nbsp; <a href="https://github.com/harshsinghsv/swiftdl/releases/download/v0.2.1/swiftdl-launch.mp4"><b>Watch the one-minute launch video</b></a></sub>
+
+<br />
+<br />
+
+<a href="https://github.com/harshsinghsv/swiftdl/releases/latest"><img src="https://img.shields.io/badge/Download_SwiftDL-18181b?style=for-the-badge" alt="Download SwiftDL" height="40" /></a>
+
+[Why SwiftDL](#your-browser-is-the-bottleneck) · [Download](#download) · [Features](#features) · [How it works](#how-it-works) · [Browser extension](#browser-extension) · [FAQ](#faq) · [Build from source](#build-from-source)
 
 </div>
 
 ---
 
-Browsers download a file over a single connection, and many servers cap how fast each connection can go. SwiftDL splits every download across many connections at once, keeps all of them busy until the very last byte, and saves its progress every second, so a crash, a closed laptop or a dropped Wi-Fi connection never means starting over.
+## Your browser is the bottleneck
 
-Click a download in your browser and SwiftDL takes it from there, with your cookies, so downloads behind a login still work. It's free, open source and built in Rust.
+Browsers download every file over **a single connection**, and many servers cap how fast each connection can go. Click Download on Ubuntu's 5.9 GB installer and Chrome settles in for nearly an hour:
+
+<p align="center"><img src="docs/assets/problem.png" width="820" alt="Chrome's download bubble: ubuntu-26.04.1-desktop-amd64.iso at under 2 MB/s, 56 minutes left" /></p>
+
+SwiftDL splits the same file across many connections at once, keeps every one of them busy until the last byte, and writes straight into the final file. Same file, same internet:
+
+<p align="center"><img src="docs/assets/race.gif" width="820" alt="Same file, same internet: your browser on one connection takes 56 minutes, SwiftDL on eight connections takes 3 minutes 31 seconds" /></p>
+
+And it saves its progress every second, so a crash, a closed laptop or a dropped Wi-Fi connection never means starting over.
+
+## See it in action
+
+Click a download in your browser and SwiftDL takes it from there, with your cookies, so downloads behind a login still work. On video sites, the **Download video** button on the player lets you pick a quality, from 4K down to audio only:
+
+<p align="center"><img src="docs/assets/youtube.gif" width="820" alt="On a YouTube video, SwiftDL's Download video button opens a window with the quality set to 1080p60; the 412 MB video downloads and merges" /></p>
+
+Everything lands in one place: live speed, every connection, queue, pause and resume.
+
+<p align="center"><img src="docs/assets/app-dark.png" width="1000" alt="SwiftDL main window: downloads grouped by status, with live speed, connections and a detail panel" /></p>
 
 ## Download
 
