@@ -1,6 +1,9 @@
 # Launch video
 
-SwiftDL's 44-second launch film, made from real material:
+SwiftDL's launch film (about a minute), made from real material. It opens on
+the problem, Chrome downloading Ubuntu on one connection with nearly an hour
+left, then shows the same file through SwiftDL, a side-by-side race, a
+YouTube download and the app.
 
 - **Real websites.** `capture.mjs` captures the Ubuntu download page and a
   YouTube video page in Chrome at 2x (into `out/pages/`, not committed, since
