@@ -1,0 +1,13 @@
+{
+  "name": "swiftdl-launch-video",
+  "private": true,
+  "type": "module",
+  "description": "SwiftDL's launch video: an HTML timeline rendered frame by frame to MP4.",
+  "scripts": {
+    "render": "node render.mjs",
+    "still": "node render.mjs --still"
+  },
+  "dependencies": {
+    "puppeteer-core": "24.10.2"
+  }
+}

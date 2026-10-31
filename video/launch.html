@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SwiftDL launch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=block" rel="stylesheet">
+<style>
+  /* One black stage, one idea per shot. Every value below is set by seek(t),
+     never by CSS transitions, so each frame depends only on its time. */
+  :root { --bg: #050506; --ink: #f2f3f5; --muted: #8a8e98; --faint: #4d5058; --line: rgba(255,255,255,.08); --accent: #0a84ff; --green: #3fa877; --panel: #101114; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font-family: Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  body::after { content: ""; position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse 70% 60% at 50% 45%, rgba(255,255,255,.035), transparent 70%), radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.55)); }
+  .scene { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; }
+  .t { will-change: transform, opacity, filter; }
+  h1, .h { font-size: 104px; font-weight: 600; letter-spacing: -.05em; line-height: 1.02; text-align: center; background: linear-gradient(180deg, #fff 25%, #9a9ea8); -webkit-background-clip: text; background-clip: text; color: transparent; padding-bottom: .08em; }
+  .sub { font-size: 40px; font-weight: 500; letter-spacing: -.025em; color: var(--muted); text-align: center; }
+  .mono { font-family: "JetBrains Mono", ui-monospace, monospace; letter-spacing: 0; }
+
+  /* 2: the browser's own download */
+  .chip { width: 820px; padding: 30px 34px; border-radius: 20px; background: #1b1c20; box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 40px 100px -30px #000; display: grid; grid-template-columns: 56px 1fr; gap: 6px 22px; align-items: center; }
+  .chip .ico { grid-row: span 3; width: 56px; height: 56px; border-radius: 14px; background: #2a2b31; display: grid; place-items: center; }
+  .chip .name { font-size: 26px; font-weight: 600; letter-spacing: -.01em; }
+  .chip .track { height: 8px; border-radius: 4px; background: rgba(255,255,255,.1); overflow: hidden; }
+  .chip .track i { display: block; height: 100%; background: #9aa0a9; border-radius: 4px; }
+  .chip .meta { font-size: 21px; color: var(--muted); }
+
+  /* 3: logo */
+  .logo { display: flex; align-items: center; gap: 36px; }
+  .logo svg { width: 150px; height: 150px; overflow: visible; }
+  .word { font-size: 132px; font-weight: 650; letter-spacing: -.055em; }
+
+  /* 4: one file, many connections */
+  .file { width: 1400px; }
+  .file-top { display: flex; justify-content: space-between; align-items: baseline; font-size: 26px; color: var(--muted); margin-bottom: 18px; }
+  .file-top b { color: var(--ink); font-weight: 600; }
+  .bar { position: relative; height: 84px; border-radius: 16px; background: rgba(255,255,255,.06); overflow: hidden; }
+  .seg { position: absolute; top: 0; bottom: 0; box-shadow: inset -2px 0 0 var(--bg); }
+  .seg i { position: absolute; inset: 0 auto 0 0; background: var(--accent); }
+  .seg.done i { background: #5aa7ff; }
+  .stats { display: flex; gap: 90px; margin-top: 38px; justify-content: center; }
+  .stat { text-align: center; }
+  .stat .n { font-size: 76px; font-weight: 600; letter-spacing: -.04em; }
+  .stat .l { font-size: 22px; color: var(--muted); margin-top: 2px; }
+
+  /* 5: the app */
+  .stage3d { perspective: 2200px; width: 1500px; }
+  .shot { width: 1500px; border-radius: 18px; padding: 10px; background: rgba(255,255,255,.04); box-shadow: 0 0 0 1px rgba(255,255,255,.09), 0 60px 160px -40px #000; transform-origin: 50% 100%; }
+  .shot img { display: block; width: 100%; border-radius: 10px; }
+
+  /* 6: resume */
+  .split { display: grid; grid-template-columns: 640px 640px; gap: 120px; align-items: center; }
+  .split img { width: 640px; filter: drop-shadow(0 40px 80px rgba(0,0,0,.6)); }
+  .lines { display: flex; flex-direction: column; gap: 6px; }
+  .lines .h { text-align: left; font-size: 92px; }
+  .lines .sub { text-align: left; margin-top: 28px; font-size: 38px; }
+
+  /* 7: YouTube */
+  .card { width: 860px; margin-top: 56px; border-radius: 22px; background: var(--panel); box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 50px 120px -30px #000; padding: 34px 38px; position: relative; overflow: hidden; }
+  .card-head { display: flex; align-items: center; gap: 18px; }
+  .card-head .glyph { width: 52px; height: 52px; border-radius: 13px; background: rgba(255,255,255,.07); display: grid; place-items: center; }
+  .card-head b { font-size: 26px; font-weight: 600; letter-spacing: -.015em; }
+  .card-head span { display: block; font-size: 19px; color: var(--muted); margin-top: 2px; }
+  .qlist { position: relative; margin-top: 26px; }
+  .qhl { position: absolute; left: 0; right: 0; height: 58px; border-radius: 12px; background: rgba(255,255,255,.07); box-shadow: inset 0 0 0 1px rgba(10,132,255,.55); }
+  .q { position: relative; display: flex; justify-content: space-between; align-items: center; height: 58px; padding: 0 20px; font-size: 24px; }
+  .q span:last-child { color: var(--muted); font-size: 21px; }
+  .btnrow { display: flex; justify-content: flex-end; margin-top: 22px; }
+  .btn { height: 54px; padding: 0 26px; border-radius: 12px; background: #eceef1; color: #0e0f12; font-size: 22px; font-weight: 600; display: grid; place-items: center; }
+  .prog { position: absolute; inset: 120px 38px auto; }
+  .prog .track { height: 10px; border-radius: 5px; background: rgba(255,255,255,.08); overflow: hidden; margin-top: 26px; }
+  .prog .track i { display: block; height: 100%; background: var(--accent); border-radius: 5px; }
+  .prog .row { display: flex; justify-content: space-between; font-size: 22px; color: var(--muted); margin-top: 16px; }
+  .status { display: flex; align-items: center; gap: 12px; font-size: 26px; font-weight: 500; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); }
+
+  /* 8: end card */
+  .end .mark { width: 96px; height: 96px; margin-bottom: 34px; }
+  .end h1 { font-size: 150px; }
+  .end .sub { margin-top: 18px; }
+  .end .meta { margin-top: 64px; display: flex; flex-direction: column; align-items: center; gap: 14px; font-size: 26px; color: var(--muted); }
+  .end .meta .mono { font-size: 24px; color: var(--ink); }
+
+  /* 9:16 cut: same timeline, re-flowed */
+  body.v h1, body.v .h { font-size: 86px; }
+  body.v .sub { font-size: 34px; padding: 0 60px; }
+  body.v .chip, body.v .card { width: 900px; }
+  body.v .file { width: 940px; }
+  body.v .stats { gap: 50px; } body.v .stat .n { font-size: 60px; }
+  body.v .stage3d, body.v .shot { width: 1000px; }
+  body.v .split { grid-template-columns: 900px; gap: 70px; justify-items: center; }
+  body.v .lines .h, body.v .lines .sub { text-align: center; }
+  body.v .word { font-size: 104px; } body.v .logo svg { width: 120px; height: 120px; }
+  body.v .end h1 { font-size: 120px; }
+</style>
+</head>
+<body>
+  <section class="scene" id="s1">
+    <h1 class="t" id="s1a">Your browser downloads</h1>
+    <h1 class="t" id="s1b" style="color:var(--muted);background:none;-webkit-text-fill-color:#6d717b">one connection at a time.</h1>
+  </section>
+
+  <section class="scene" id="s2">
+    <div class="chip t" id="s2chip">
+      <div class="ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#c7cad1" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v12M7.5 11l4.5 4.5 4.5-4.5M5 20h14"/></svg></div>
+      <div class="name">ubuntu-26.04-desktop-amd64.iso</div>
+      <div class="track"><i id="s2fill"></i></div>
+      <div class="meta" id="s2meta"></div>
+    </div>
+    <div class="sub t" id="s2cap" style="margin-top:64px;color:var(--ink);font-size:46px">There's a faster way.</div>
+  </section>
+
+  <section class="scene" id="s3">
+    <div class="logo t" id="s3logo">
+      <svg viewBox="0 0 32 32" id="s3mark">
+        <rect x="4.5" y="3" width="4.4" height="12" rx="2.2" fill="#fff"/><rect x="10.9" y="3" width="4.4" height="17" rx="2.2" fill="#fff"/>
+        <rect x="16.7" y="3" width="4.4" height="17" rx="2.2" fill="#fff"/><rect x="23.1" y="3" width="4.4" height="12" rx="2.2" fill="#fff"/>
+        <path d="M6 21.5 16 28l10-6.5" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" pathLength="1"/>
+      </svg>
+      <span class="word t" id="s3word">SwiftDL</span>
+    </div>
+  </section>
+
+  <section class="scene" id="s4">
+    <h1 class="t" id="s4h">One file. Many connections.</h1>
+    <div class="file t" id="s4file" style="margin-top:70px">
+      <div class="file-top"><b>ubuntu-26.04-desktop-amd64.iso</b><span class="mono" id="s4pct">0%</span></div>
+      <div class="bar" id="s4bar"></div>
+      <div class="stats">
+        <div class="stat"><div class="n" id="s4conn">1</div><div class="l">connections</div></div>
+        <div class="stat"><div class="n"><span id="s4speed">2.1</span><span style="font-size:.5em;color:var(--muted)"> MB/s</span></div><div class="l">speed</div></div>
+        <div class="stat"><div class="n" id="s4left">47m</div><div class="l">left</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="scene" id="s5">
+    <h1 class="t" id="s5h" style="margin-bottom:64px">Built for big files.</h1>
+    <div class="stage3d"><div class="shot t" id="s5shot"><img src="../docs/assets/app-dark.png" alt=""></div></div>
+  </section>
+
+  <section class="scene" id="s6">
+    <div class="split">
+      <img class="t" id="s6img" src="../docs/assets/window-progress.png" alt="">
+      <div class="lines">
+        <div class="h t" id="s6a">Pause it.</div>
+        <div class="h t" id="s6b">Close it.</div>
+        <div class="h t" id="s6c">Crash it.</div>
+        <div class="sub t" id="s6d">It picks up exactly where it left off.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="scene" id="s7">
+    <h1 class="t" id="s7h">Now with YouTube.</h1>
+    <div class="card t" id="s7card">
+      <div class="card-head">
+        <span class="glyph"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#c7cad1" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M7.5 4.5v15M16.5 4.5v15M3.5 9.5h4M3.5 14.5h4M16.5 9.5h4M16.5 14.5h4"/></svg></span>
+        <div><b>Big Buck Bunny 60fps 4K.mp4</b><span>youtube.com</span></div>
+      </div>
+      <div id="s7pick">
+        <div class="qlist"><div class="qhl" id="s7hl"></div>
+          <div class="q"><span>2160p60</span><span>1.9 GB</span></div>
+          <div class="q"><span>1440p60</span><span>980 MB</span></div>
+          <div class="q"><span>1080p60</span><span>412 MB</span></div>
+          <div class="q"><span>720p60</span><span>198 MB</span></div>
+          <div class="q"><span>Audio only</span><span>9.8 MB</span></div>
+        </div>
+        <div class="btnrow"><div class="btn" id="s7btn">Start download</div></div>
+      </div>
+      <div class="prog" id="s7prog">
+        <div class="status"><span class="dot" id="s7dot"></span><span id="s7status">Downloading</span></div>
+        <div class="track"><i id="s7fill"></i></div>
+        <div class="row"><span id="s7size"></span><span id="s7speed"></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="scene end" id="s8">
+    <svg class="mark t" id="s8mark" viewBox="0 0 32 32" fill="#fff"><rect x="4.5" y="3" width="4.4" height="12" rx="2.2"/><rect x="10.9" y="3" width="4.4" height="17" rx="2.2"/><rect x="16.7" y="3" width="4.4" height="17" rx="2.2"/><rect x="23.1" y="3" width="4.4" height="12" rx="2.2"/><path d="M6 21.5 16 28l10-6.5" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <h1 class="t" id="s8h">SwiftDL</h1>
+    <div class="sub t" id="s8s">Every download, at full speed.</div>
+    <div class="meta t" id="s8m">
+      <span>Free and open source · Windows, macOS and Linux</span>
+      <span class="mono">github.com/harshsinghsv/swiftdl</span>
+    </div>
+  </section>
+
+<script>
+if (location.search.includes("vertical")) document.body.classList.add("v");
+window.DURATION = 41;
+
+// ---------- timing helpers ----------
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const expo = (x) => (x >= 1 ? 1 : 1 - Math.pow(2, -10 * x));
+const cubic = (x) => 1 - Math.pow(1 - x, 3);
+const inOut = (x) => (x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const lerp = (a, b, x) => a + (b - a) * x;
+
+// Apple-style entrance: rise, sharpen and fade in; fade and soften out.
+function show(el, t, a, b, { y = 30, blur = 14, inDur = .7, outDur = .45, scale = 0 } = {}) {
+  const i = expo(prog(t, a, a + inDur)), o = cubic(prog(t, b - outDur, b));
+  const op = i * (1 - o);
+  el.style.opacity = op;
+  el.style.filter = op < 1 ? `blur(${(1 - i) * blur + o * blur * .6}px)` : "none";
+  el.style.transform = `translateY(${(1 - i) * y - o * y * .4}px) scale(${1 + scale * (1 - i)})`;
+}
+const scene = (id, t, a, b) => { const on = t >= a && t < b; $(id).style.display = on ? "flex" : "none"; return on; };
+
+// ---------- scene 4: a deterministic run of the engine ----------
+// Eight parts at different speeds; a part that finishes takes half of the
+// largest part left, exactly as SwiftDL does. Precomputed per frame.
+const SIM = (() => {
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  let segs = Array.from({ length: 8 }, (_, i) => ({ s: i / 8, p: i / 8, e: (i + 1) / 8, r: .55 + rnd() * .9 }));
+  const frames = [];
+  for (let f = 0; f <= 300; f++) {
+    frames.push({ segs: segs.map((x) => [x.s, x.p, x.e]), busy: segs.filter((x) => x.p < x.e).length, done: segs.reduce((a, x) => a + (x.p - x.s), 0) });
+    for (const x of segs) if (x.p < x.e) x.p = Math.min(x.e, x.p + .00055 * x.r);
+    const busy = segs.filter((x) => x.p < x.e);
+    if (busy.length < 8) {
+      const big = busy.sort((a, b) => (b.e - b.p) - (a.e - a.p))[0];
+      if (big && big.e - big.p > .015) { const m = big.p + (big.e - big.p) / 2; segs.push({ s: m, p: m, e: big.e, r: .55 + rnd() * .9 }); big.e = m; }
+    }
+  }
+  return frames;
+})();
+
+// ---------- the timeline ----------
+window.seek = (t) => {
+  // 1. The problem.
+  if (scene("s1", t, 0, 3.4)) { show($("s1a"), t, .25, 3.4); show($("s1b"), t, .8, 3.4); }
+
+  // 2. A real browser download, crawling.
+  if (scene("s2", t, 3.4, 7.6)) {
+    show($("s2chip"), t, 3.5, 7.6, { y: 40, scale: .04 });
+    const k = prog(t, 3.5, 7.6);
+    $("s2fill").style.width = `${lerp(3.1, 5.4, k)}%`;
+    const sp = 2.1 + Math.sin(t * 7) * .12 + Math.sin(t * 2.3) * .08;
+    $("s2meta").textContent = `${sp.toFixed(1)} MB/s · ${Math.round(lerp(47, 46, k))} minutes left`;
+    show($("s2cap"), t, 5.5, 7.6);
+  }
+
+  // 3. The reveal.
+  if (scene("s3", t, 7.6, 10.6)) {
+    const rects = $("s3mark").querySelectorAll("rect");
+    rects.forEach((r, i) => {
+      const k = expo(prog(t, 7.8 + i * .09, 8.45 + i * .09));
+      r.style.transformOrigin = `${r.x.baseVal.value}px 3px`;
+      r.style.transform = `scaleY(${k})`;
+      r.style.opacity = k > 0 ? 1 : 0;
+    });
+    const chev = $("s3mark").querySelector("path");
+    chev.style.strokeDasharray = 1;
+    chev.style.strokeDashoffset = 1 - expo(prog(t, 8.2, 8.8));
+    const w = expo(prog(t, 8.55, 9.3));
+    $("s3word").style.opacity = w;
+    $("s3word").style.transform = `translateX(${(1 - w) * -30}px)`;
+    $("s3word").style.letterSpacing = `${lerp(.02, -.055, w)}em`;
+    $("s3word").style.filter = w < 1 ? `blur(${(1 - w) * 10}px)` : "none";
+    const g = $("s3logo");
+    const out = cubic(prog(t, 10.15, 10.6));
+    g.style.opacity = 1 - out;
+    g.style.transform = `scale(${lerp(.94, 1, cubic(prog(t, 7.6, 10.6))) + out * .04})`;
+    g.style.filter = out ? `blur(${out * 10}px)` : "none";
+  }
+
+  // 4. How it's fast.
+  if (scene("s4", t, 10.6, 17.6)) {
+    show($("s4h"), t, 10.8, 17.6);
+    show($("s4file"), t, 11.2, 17.6, { y: 50 });
+    const k = prog(t, 11.6, 16.6), fr = SIM[Math.round(k * (SIM.length - 1))];
+    const bar = $("s4bar");
+    if (bar.children.length !== fr.segs.length) bar.innerHTML = fr.segs.map(() => '<div class="seg"><i></i></div>').join("");
+    [...fr.segs].sort((a, b) => a[0] - b[0]).forEach(([s, p, e], i) => {
+      const el = bar.children[i];
+      el.style.left = `${s * 100}%`; el.style.width = `${(e - s) * 100}%`;
+      el.firstElementChild.style.width = `${((p - s) / Math.max(1e-6, e - s)) * 100}%`;
+      el.className = `seg ${p >= e ? "done" : ""}`;
+    });
+    const ramp = inOut(prog(t, 11.6, 13.2));
+    const pct = Math.min(100, fr.done * 100);
+    $("s4pct").textContent = `${Math.floor(pct)}%`;
+    $("s4conn").textContent = t < 11.6 ? 1 : fr.busy || 8;
+    const speed = pct >= 100 ? 0 : lerp(2.1, 26.4, ramp) + Math.sin(t * 6) * .4 * ramp;
+    $("s4speed").textContent = speed.toFixed(1);
+    $("s4left").textContent = pct >= 100 ? "Done" : `${Math.max(1, Math.round(lerp(47, 3.1, ramp) * (1 - pct / 100)))}m`;
+  }
+
+  // 5. The app, swinging up into view.
+  if (scene("s5", t, 17.6, 24)) {
+    show($("s5h"), t, 17.8, 24);
+    const k = expo(prog(t, 18.0, 19.7)), push = inOut(prog(t, 19.7, 24));
+    const out = cubic(prog(t, 23.55, 24));
+    const el = $("s5shot");
+    el.style.opacity = Math.min(1, k * 1.6) * (1 - out);
+    el.style.transform = `translateY(${(1 - k) * 260}px) rotateX(${(1 - k) * 30}deg) scale(${lerp(.84, 1, k) + push * .05})`;
+    el.style.filter = out ? `blur(${out * 10}px)` : "none";
+  }
+
+  // 6. Resume.
+  if (scene("s6", t, 24, 29.6)) {
+    show($("s6img"), t, 24.15, 29.6, { y: 60, scale: .03 });
+    $("s6img").style.transform += ` translateY(${Math.sin((t - 24) * 1.4) * 8}px)`;
+    show($("s6a"), t, 24.5, 29.6); show($("s6b"), t, 25.05, 29.6); show($("s6c"), t, 25.6, 29.6);
+    show($("s6d"), t, 26.6, 29.6, { y: 20 });
+  }
+
+  // 7. YouTube: pick a quality, download, merge, done.
+  if (scene("s7", t, 29.6, 35.8)) {
+    show($("s7h"), t, 29.8, 35.8);
+    show($("s7card"), t, 30.3, 35.8, { y: 60, scale: .03 });
+    const stops = [[30.9, 0], [31.45, 1], [32.0, 2]];
+    let y = 0;
+    for (let i = 0; i < stops.length; i++) y = lerp(y, stops[i][1], inOut(prog(t, stops[i][0], stops[i][0] + .35)));
+    $("s7hl").style.transform = `translateY(${y * 58}px)`;
+    $("s7hl").style.opacity = expo(prog(t, 30.7, 31.0));
+    const press = prog(t, 32.45, 32.65);
+    $("s7btn").style.transform = `scale(${1 - Math.sin(press * Math.PI) * .06})`;
+    const swap = inOut(prog(t, 32.75, 33.15));
+    $("s7pick").style.opacity = 1 - swap;
+    $("s7pick").style.transform = `translateY(${-swap * 20}px)`;
+    // The card shrinks from the quality list to the progress view.
+    const card = $("s7card");
+    if (!window.CARD_H) { card.style.height = ""; window.CARD_H = card.offsetHeight; }
+    card.style.height = `${lerp(window.CARD_H, 262, swap)}px`;
+    $("s7prog").style.opacity = swap;
+    $("s7prog").style.transform = `translateY(${(1 - swap) * 20}px)`;
+    const p = cubic(prog(t, 33.1, 34.3));
+    $("s7fill").style.width = `${p * 100}%`;
+    const merging = t >= 34.3 && t < 34.95, done = t >= 34.95;
+    $("s7status").textContent = done ? "Download complete" : merging ? "Merging video and audio" : "Downloading";
+    $("s7dot").style.background = done ? "var(--green)" : "var(--accent)";
+    $("s7fill").style.background = done ? "var(--green)" : "var(--accent)";
+    $("s7size").textContent = done ? "412 MB" : `${Math.round(p * 412)} MB of 412 MB`;
+    $("s7speed").textContent = done ? "Saved to Downloads\\Video" : merging ? "" : `${(24 + Math.sin(t * 5) * 1.6).toFixed(1)} MB/s`;
+  }
+
+  // 8. End card.
+  if (scene("s8", t, 35.8, 41)) {
+    const fade = 1 - cubic(prog(t, 40.3, 41));
+    $("s8").style.opacity = fade;
+    show($("s8mark"), t, 36.0, 99, { scale: .1 });
+    show($("s8h"), t, 36.25, 99);
+    show($("s8s"), t, 36.9, 99, { y: 20 });
+    show($("s8m"), t, 37.6, 99, { y: 16 });
+  }
+};
+window.seek(0);
+</script>
+</body>
+</html>
