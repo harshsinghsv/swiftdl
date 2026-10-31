@@ -58,7 +58,11 @@ if (flag("--still")) {
   const file = join(out, vertical ? "swiftdl-launch-vertical.mp4" : "swiftdl-launch.mp4");
   const ff = spawn(FFMPEG, [
     "-y", "-loglevel", "error", "-f", "image2pipe", "-framerate", String(FPS), "-c:v", "mjpeg", "-i", "-",
-    "-c:v", "libx264", "-preset", "slow", "-crf", "16", "-pix_fmt", "yuv420p", "-movflags", "+faststart", file,
+    // JPEG frames are full-range; convert to the standard (TV) range players
+    // and social sites expect, or blacks look washed out on some of them.
+    "-vf", "scale=in_range=pc:out_range=tv:out_color_matrix=bt709,format=yuv420p",
+    "-c:v", "libx264", "-preset", "slow", "-crf", "16", "-color_range", "tv", "-colorspace", "bt709",
+    "-color_primaries", "bt709", "-color_trc", "bt709", "-movflags", "+faststart", file,
   ], { stdio: ["pipe", "inherit", "inherit"] });
   const frames = Math.round(duration * FPS);
   const started = Date.now();
