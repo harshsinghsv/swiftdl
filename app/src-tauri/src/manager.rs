@@ -60,6 +60,10 @@ pub struct Item {
     /// which go through yt-dlp instead of the engine.
     #[serde(default)]
     pub format: Option<String>,
+    /// For a torrent or magnet link: the files chosen (empty = all). Its
+    /// presence marks the download as a torrent.
+    #[serde(default)]
+    pub torrent_files: Option<Vec<usize>>,
     /// Live status text, such as "Merging video and audio".
     #[serde(default, skip_deserializing)]
     pub note: Option<String>,
@@ -125,6 +129,9 @@ pub struct AddRequest {
     /// Expected size, when known up front (video qualities).
     #[serde(default)]
     pub size: Option<u64>,
+    /// A torrent: the files to download (see `Item::torrent_files`).
+    #[serde(default)]
+    pub torrent_files: Option<Vec<usize>>,
 }
 
 struct Running {
@@ -247,6 +254,7 @@ impl DownloadManager {
                 speed: 0.0,
                 connections: 0,
                 format: req.format,
+                torrent_files: req.torrent_files,
                 note: None,
             });
             if let Some(label) = req.window {
@@ -331,7 +339,7 @@ impl DownloadManager {
     /// own small "New download" window rather than the main window.
     pub fn incoming(self: &Arc<Self>, inc: Incoming) {
         // Video sites always ask: there's a quality to choose.
-        if self.settings().ask_before_download || crate::media::is_media_url(&inc.url) {
+        if self.settings().ask_before_download || crate::media::is_media_url(&inc.url) || crate::torrent::is_torrent(&inc.url, inc.filename.as_deref()) {
             self.new_download_window(inc);
             return;
         }
@@ -342,7 +350,7 @@ impl DownloadManager {
             let probed = swiftdl_engine::probe(&this.client, &inc.url, &to_header_map(&headers)).await.ok().map(|r| r.filename);
             let filename = inc.suggested_name().or(probed).unwrap_or_else(|| "download.bin".into());
             let dir = this.default_dir(category_for(&filename));
-            this.add(AddRequest { url: inc.url, filename, dir, headers, start: true, window: None, format: None, size: None });
+            this.add(AddRequest { url: inc.url, filename, dir, headers, start: true, window: None, format: None, size: None, torrent_files: None });
         });
     }
 
@@ -405,7 +413,7 @@ impl DownloadManager {
 
     /// Starts queued downloads until `max_concurrent` are running.
     fn schedule(self: &Arc<Self>) {
-        let to_start: Vec<(u64, Request, Option<String>, Arc<Progress>, crate::media::Note, CancellationToken)> = {
+        let to_start: Vec<(u64, Request, Kind, Arc<Progress>, crate::media::Note, CancellationToken)> = {
             let mut g = self.inner.lock().unwrap();
             let Inner { items, running, settings, .. } = &mut *g;
             let free = settings.max_concurrent.max(1).saturating_sub(running.len());
@@ -440,7 +448,12 @@ impl DownloadManager {
                             note: note.clone(),
                         },
                     );
-                    (id, req, item.format.clone(), progress, note, cancel)
+                    let kind = match (&item.torrent_files, &item.format) {
+                        (Some(files), _) => Kind::Torrent(files.clone()),
+                        (None, Some(format)) => Kind::Media(format.clone()),
+                        (None, None) => Kind::File,
+                    };
+                    (id, req, kind, progress, note, cancel)
                 })
                 .collect()
         };
@@ -448,16 +461,22 @@ impl DownloadManager {
             return;
         }
         self.open_progress_windows(&to_start.iter().map(|t| t.0).collect::<Vec<_>>());
-        for (id, req, format, progress, note, cancel) in to_start {
+        for (id, req, kind, progress, note, cancel) in to_start {
             let this = self.clone();
             tauri::async_runtime::spawn(async move {
-                let result = match format {
-                    Some(format) => {
+                let result = match kind {
+                    Kind::Media(format) => {
                         let cookies = req.headers.get("cookie").and_then(|v| v.to_str().ok()).map(str::to_string);
                         let job = crate::media::Job { url: req.url.clone(), format, dest: req.dest.clone(), cookies };
                         crate::media::run(&this.client, job, progress, note, cancel).await
                     }
-                    None => swiftdl_engine::run(&this.client, &req, progress, cancel, this.limiter.clone()).await,
+                    Kind::Torrent(files) => {
+                        // A torrent saves into a folder; `dest` is its name inside it.
+                        let dir = req.dest.parent().map(Path::to_path_buf).unwrap_or_default();
+                        let job = crate::torrent::Job { url: req.url.clone(), headers: req.headers.clone(), dir, files };
+                        crate::torrent::run(&this.client, job, progress, note, cancel).await
+                    }
+                    Kind::File => swiftdl_engine::run(&this.client, &req, progress, cancel, this.limiter.clone()).await,
                 };
                 this.finish(id, result);
             });
@@ -588,6 +607,15 @@ impl DownloadManager {
         self.schedule();
     }
 
+}
+
+/// How a download is fetched.
+enum Kind {
+    File,
+    /// A video site, through yt-dlp, with this format.
+    Media(String),
+    /// A torrent or magnet link, with these files (empty = all).
+    Torrent(Vec<usize>),
 }
 
 pub fn to_header_map(headers: &[(String, String)]) -> HeaderMap {

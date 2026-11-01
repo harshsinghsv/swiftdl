@@ -100,6 +100,7 @@ async function confirmView(token) {
   if (inc.userAgent) headers.push(["User-Agent", inc.userAgent]);
   let dir = settings.downloadDir, dirTouched = false, info = null;
   if (await invoke("is_media_url", { url: inc.url })) return mediaView(token, inc, settings, headers);
+  if (await invoke("is_torrent_url", { url: inc.url, filename: inc.filename || null })) return torrentView(token, inc, settings, headers);
 
   const dirFor = (cat) => (settings.sortIntoCategories && cat !== "Other" ? `${settings.downloadDir}\\${cat}` : settings.downloadDir);
   view.innerHTML = `
@@ -217,6 +218,66 @@ async function mediaView(token, inc, settings, headers) {
   document.addEventListener("keydown", (e) => { if (e.key === "Enter" && !$("c-start").disabled && !e.target.matches("select")) { e.preventDefault(); $("c-start").click(); } });
 }
 
+// ---------- New download from a torrent or magnet link ----------
+// The torrent is read for its files; the user picks which to download.
+async function torrentView(token, inc, settings, headers) {
+  let dir = settings.downloadDir, info = null;
+  const magnet = inc.url.startsWith("magnet:");
+  view.innerHTML = `
+    <div class="d-head">${glyph("Compressed")}<div class="d-name"><input id="c-name" spellcheck="false" placeholder="${magnet ? "Asking peers for the details…" : "Reading the torrent…"}" readonly><div class="d-sub"><span class="st">${magnet ? "Magnet link" : "Torrent"}</span></div></div></div>
+    <div class="t-files" id="t-files"><div class="t-wait"><span class="spinner"></span><span class="muted">${magnet ? "Finding peers who share it. This can take a few seconds." : "Reading the file list…"}</span></div></div>
+    <div class="kv">
+      <span class="k">Selected</span><span class="v" id="t-sel">—</span>
+      <span class="k">Save to</span><span class="v"><span class="path" id="c-dir" title=""></span><button class="btn sm" id="c-browse">Change</button></span>
+    </div>
+    <div class="d-foot">
+      <button class="btn" id="c-later" disabled>Download later</button>
+      <span class="grow"></span>
+      <button class="btn" id="c-cancel">Cancel</button>
+      <button class="btn primary" id="c-start" disabled>Start download</button>
+    </div>`;
+  const setDir = (d) => { dir = d; $("c-dir").textContent = d; $("c-dir").title = d; };
+  setDir(dir);
+  const chosen = () => [...view.querySelectorAll(".t-file input[data-i]:checked")].map((c) => Number(c.dataset.i));
+  const update = () => {
+    const sel = chosen(), size = sel.reduce((a, i) => a + info.files[i].size, 0);
+    $("t-sel").textContent = `${sel.length} of ${info.files.length} file${info.files.length === 1 ? "" : "s"} · ${bytes(size)}`;
+    $("c-start").disabled = $("c-later").disabled = sel.length === 0;
+    const all = $("t-all"); if (all) all.checked = sel.length === info.files.length;
+  };
+  try {
+    info = await invoke("probe_torrent", { url: inc.url, headers });
+    $("c-name").value = info.name;
+    const many = info.files.length > 1;
+    $("t-files").innerHTML = (many ? `<label class="t-file t-allrow"><input type="checkbox" id="t-all" checked><span>All files</span><span class="muted">${bytes(info.size)}</span></label>` : "") +
+      info.files.map((f, i) => `<label class="t-file"><input type="checkbox" data-i="${i}" checked><span title="${esc(f.path)}">${esc(f.path)}</span><span class="muted">${bytes(f.size)}</span></label>`).join("");
+    $("t-files").addEventListener("change", (e) => {
+      if (e.target.id === "t-all") view.querySelectorAll(".t-file input[data-i]").forEach((c) => (c.checked = e.target.checked));
+      update();
+    });
+    update();
+    $("c-start").focus();
+  } catch (e) {
+    $("t-files").innerHTML = `<div class="t-wait"><span class="err">${esc(String(e))}</span></div>`;
+  }
+  $("c-browse").onclick = async () => { const d = await invoke("pick_folder", { start: dir }); if (d) setDir(d); };
+  $("c-cancel").onclick = () => { invoke("forget_confirm", { token }); $("w-close").click(); };
+  const add = async (start) => {
+    if (!info) return;
+    const sel = chosen();
+    if (!sel.length) return;
+    const files = sel.length === info.files.length ? [] : sel;
+    const size = sel.reduce((a, i) => a + info.files[i].size, 0);
+    const id = await invoke("add_download", { req: { url: inc.url, filename: info.name, dir, headers, start, window: win?.label, size, torrentFiles: files } });
+    invoke("forget_confirm", { token });
+    if (!start) { $("w-close").click(); return; }
+    history.replaceState(null, "", `?id=${id}`);
+    progressView(id);
+  };
+  $("c-later").onclick = () => add(false);
+  $("c-start").onclick = () => add(true);
+}
+
 // ---------- progress / complete ----------
 let current = null, details = false, armedTimer = 0, unlisten = null;
 async function progressView(id) {
@@ -243,7 +304,8 @@ function render() {
   // buttons change, so finishing a download feels like the same window.
   const state = it.status === "completed" ? "done" : it.status === "error" ? "error" : it.status === "downloading" ? "run" : "paused";
   const paused = state === "paused";
-  const media = !!it.format;
+  const torrent = Array.isArray(it.torrentFiles);
+  const media = !!it.format || torrent;
   const showDetails = details && !media && (state === "run" || state === "paused");
   const key = `${state}:${showDetails}`;
   if (layout !== key) {
@@ -284,7 +346,7 @@ function render() {
   bar.firstElementChild.style.width = `${pct}%`;
   const row = (k, v, cls = "") => `<span class="k">${k}</span><span class="v"><span class="${cls}" title="${esc(v)}">${esc(v)}</span></span>`;
   const kv = row("Location", dir, "path") +
-    (state === "done" ? "" : media ? row("Quality", qualityLabel(it.format)) : row("Resume", it.resumable ? "Supported" : "Not supported by this server")) +
+    (state === "done" ? "" : torrent ? row("Files", it.torrentFiles.length ? `${it.torrentFiles.length} selected` : "All") : media ? row("Quality", qualityLabel(it.format)) : row("Resume", it.resumable ? "Supported" : "Not supported by this server")) +
     row("Address", it.url);
   if ($("p-kv").innerHTML !== kv) $("p-kv").innerHTML = kv;
 

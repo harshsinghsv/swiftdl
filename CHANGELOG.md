@@ -6,6 +6,14 @@ uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **Torrents and magnet links.** SwiftDL downloads torrents with its own
+  BitTorrent engine (librqbit): the New download window lists the files to
+  pick from, and progress shows peers and seeds. It stops sharing when done.
+- **Opens magnet links and .torrent files.** SwiftDL registers as the
+  computer's handler for both on Windows, and the browser extension sends
+  magnet links and .torrent downloads to it.
+
 ## [0.2.3] - 2026-10-31
 
 ### Changed

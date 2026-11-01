@@ -744,8 +744,9 @@ async function probe() {
   const url = $("add-url").value.trim();
   if (!/^https?:\/\/\S+/i.test(url)) { add.info = null; $("add-file").hidden = true; renderChips(); url ? setState("error", "Links start with http:// or https://") : setState("idle"); return; }
   const seq = ++add.seq;
-  // Video sites (YouTube and others) need a quality: their own window.
-  if (await invoke("is_media_url", { url }).catch(() => false)) {
+  // Video sites need a quality and torrents a file choice: their own window.
+  const special = await invoke("is_media_url", { url }).catch(() => false) || await invoke("is_torrent_url", { url, filename: null }).catch(() => false);
+  if (special) {
     $("dlg-add").close();
     invoke("open_new_download", { url });
     return;

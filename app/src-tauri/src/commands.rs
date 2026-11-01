@@ -160,6 +160,16 @@ pub async fn pick_folder(m: Mgr<'_>, start: Option<PathBuf>) -> Result<Option<Pa
 }
 
 #[tauri::command]
+pub fn is_torrent_url(url: String, filename: Option<String>) -> bool {
+    crate::torrent::is_torrent(&url, filename.as_deref())
+}
+
+#[tauri::command]
+pub async fn probe_torrent(m: Mgr<'_>, url: String, headers: Vec<(String, String)>) -> Result<crate::torrent::TorrentInfo, String> {
+    crate::torrent::probe(m.client(), &url, &to_header_map(&headers)).await.map_err(|e| format!("{e:#}"))
+}
+
+#[tauri::command]
 pub fn is_media_url(url: String) -> bool {
     crate::media::is_media_url(url.trim())
 }

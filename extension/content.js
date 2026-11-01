@@ -14,6 +14,18 @@
     if (e.altKey && e.target.closest?.("a[href]")) chrome.runtime.sendMessage({ type: "bypass" }).catch(() => {});
   }, true);
 
+  // Magnet links aren't downloads, so the browser would hand them to another
+  // app. Send them to SwiftDL; if it can't take them, open the link as usual.
+  document.addEventListener("click", async (e) => {
+    const a = e.target.closest?.('a[href^="magnet:"]');
+    if (!a || e.altKey || e.button !== 0 || e.defaultPrevented) return;
+    e.preventDefault();
+    e.stopPropagation();
+    let res;
+    try { res = await chrome.runtime.sendMessage({ type: "magnet", url: a.href }); } catch { res = null; }
+    if (!res?.ok) location.href = a.href;
+  }, true);
+
   const MIN_W = 200, MIN_H = 112;
   // Video sites SwiftDL downloads through yt-dlp: the page itself is sent,
   // and the quality is chosen in SwiftDL.

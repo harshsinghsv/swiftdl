@@ -80,3 +80,12 @@ body.dlw { overflow: hidden; --win-edge: rgba(0, 0, 0, .1); }
 .d-foot { display: flex; align-items: center; gap: 8px; margin-top: 20px; }
 .d-foot .btn.armed { background: var(--red); color: #fff; }
 .note { margin: 14px 0 0; font-size: 12px; }
+
+/* Torrent file picker */
+.t-files { margin-top: 16px; max-height: 210px; overflow-y: auto; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--border); padding: 4px; }
+.t-file { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 7px; font-size: 13px; cursor: default; }
+.t-file:hover { background: var(--hover); }
+.t-file span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.t-file input { accent-color: var(--accent); margin: 0; }
+.t-allrow { font-weight: 600; border-bottom: 1px solid var(--border); border-radius: 7px 7px 0 0; margin-bottom: 2px; }
+.t-wait { display: flex; align-items: center; gap: 10px; padding: 18px 12px; font-size: 13px; }

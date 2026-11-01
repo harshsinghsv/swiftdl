@@ -7,6 +7,7 @@ mod manager;
 mod media;
 mod native_host;
 mod settings;
+mod torrent;
 mod windows;
 
 use manager::DownloadManager;
@@ -61,7 +62,7 @@ fn main() {
         // Must be first: a second launch (e.g. from the extension) hands its
         // args to this window and exits.
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
-            if let Some(inc) = native_host::parse_add_arg(&args) {
+            if let Some(inc) = native_host::parse_add_arg(&args).or_else(|| torrent::parse_open_arg(&args)) {
                 app.state::<Arc<DownloadManager>>().incoming(inc);
             } else {
                 show_main_window(app);
@@ -77,6 +78,9 @@ fn main() {
             if let Err(e) = browser::register(&data_dir) {
                 eprintln!("browser integration not registered: {e:#}");
             }
+            if let Err(e) = torrent::register_handlers() {
+                eprintln!("magnet and .torrent handlers not registered: {e:#}");
+            }
             if let Err(e) = browser::offer_extension(mgr.settings().offer_extension) {
                 eprintln!("could not offer the browser extension: {e:#}");
             }
@@ -90,7 +94,7 @@ fn main() {
             mgr.start_ticker();
             // Launched by the browser extension: show only the small
             // download window, like IDM. Otherwise open the main window.
-            match native_host::parse_add_arg(&args) {
+            match native_host::parse_add_arg(&args).or_else(|| torrent::parse_open_arg(&args)) {
                 Some(inc) => mgr.incoming(inc),
                 None => show_main_window(app.handle()),
             }
@@ -101,6 +105,8 @@ fn main() {
             commands::probe_url,
             commands::probe_media,
             commands::is_media_url,
+            commands::is_torrent_url,
+            commands::probe_torrent,
             commands::open_new_download,
             commands::default_dir,
             commands::add_download,

@@ -163,10 +163,18 @@
     }),
     open_store: () => {},
     get_item: ({ id }) => JSON.parse(JSON.stringify(items.find((i) => i.id === id) || null)),
-    confirm_info: () => (VIDEO && !location.search.includes("yt") ? { url: "https://releases.ubuntu.com/26.04.1/ubuntu-26.04.1-desktop-amd64.iso", filename: "", referrer: "https://ubuntu.com/download/desktop" } : location.search.includes("yt") ? { url: "https://www.youtube.com/watch?v=aqz-KE-bpKQ", filename: "" } : { url: "https://cdn.example.net/releases/Obsidian-2.4.1-setup.exe", filename: "", referrer: "https://obsidian.example.net/download" }),
+    confirm_info: () => (location.search.includes("torrent") ? { url: "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c&dn=Blender+Open+Movies", filename: "" } : VIDEO && !location.search.includes("yt") ? { url: "https://releases.ubuntu.com/26.04.1/ubuntu-26.04.1-desktop-amd64.iso", filename: "", referrer: "https://ubuntu.com/download/desktop" } : location.search.includes("yt") ? { url: "https://www.youtube.com/watch?v=aqz-KE-bpKQ", filename: "" } : { url: "https://cdn.example.net/releases/Obsidian-2.4.1-setup.exe", filename: "", referrer: "https://obsidian.example.net/download" }),
     forget_confirm: () => {}, show_main: () => {},
     is_media_url: ({ url }) => /(^|\.)(youtube\.com|youtu\.be|vimeo\.com)\//.test(url.replace(/^https?:\/\//, "").replace(/^www\./, "")),
     open_new_download: () => {},
+    is_torrent_url: ({ url, filename }) => /^magnet:|\.torrent($|\?)/i.test(url) || /\.torrent$/i.test(filename || ""),
+    probe_torrent: async () => {
+      if (!VIDEO) await new Promise((r) => setTimeout(r, 1200));
+      return { name: "Blender Open Movies Collection", size: 9.4 * GB, files: [
+        { path: "Big Buck Bunny/big_buck_bunny_1080p.mp4", size: 3.1 * GB }, { path: "Big Buck Bunny/subtitles/en.srt", size: 42 * 1024 },
+        { path: "Sintel/sintel_1080p.mkv", size: 2.6 * GB }, { path: "Tears of Steel/tears_of_steel_1080p.mov", size: 3.7 * GB },
+        { path: "README.txt", size: 3 * 1024 }] };
+    },
     probe_media: async () => {
       if (!VIDEO) await new Promise((r) => setTimeout(r, 900));
       return { title: "Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film", site: "Youtube", duration: 634, qualities: [

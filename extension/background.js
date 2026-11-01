@@ -194,6 +194,17 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
         } catch (e) {
           return { ok: false, error: String(e?.message || e) };
         }
+      case "magnet": {
+        const { enabled } = await getSettings();
+        if (!enabled || (await siteDisabled(pageUrl))) return { ok: false };
+        try {
+          await sendToApp({ url: msg.url, referrer: pageUrl });
+          flashBadge("✓", "#2f9e6a", tabId);
+          return { ok: true };
+        } catch (e) {
+          return { ok: false, error: String(e?.message || e) };
+        }
+      }
       case "show":
         return chrome.runtime.sendNativeMessage(HOST, { type: "show" }).catch((e) => ({ ok: false, error: String(e) }));
       case "toggle-site": {

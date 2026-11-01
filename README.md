@@ -112,6 +112,7 @@ SwiftDL checks the file before downloading: its real name, size, type and whethe
 **Also included**
 
 - **Resume anything.** Pause, quit, lose your connection or crash: SwiftDL continues where it stopped.
+- **Torrents and magnet links.** Pick the files you want; SwiftDL opens magnet links and .torrent files from anywhere.
 - **Download video button.** A button appears over video players and lists the video and audio files the page loaded.
 - **Queue and speed limit.** Choose how many downloads run at once and cap total bandwidth.
 - **Tidy by default.** Files are sorted into Video, Music, Programs, Compressed and Documents folders.
