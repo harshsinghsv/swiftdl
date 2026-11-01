@@ -138,6 +138,25 @@ fn main() {
             }
             _ => {}
         })
-        .run(tauri::generate_context!())
-        .expect("error while running SwiftDL");
+        .build(tauri::generate_context!())
+        .expect("error while starting SwiftDL")
+        .run(|_app, _event| {
+            // macOS hands over magnet links and .torrent files as an event,
+            // not as arguments.
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Opened { urls } = _event {
+                for url in urls {
+                    let link = if url.scheme() == "file" {
+                        url.to_file_path().ok().map(|p| p.to_string_lossy().into_owned())
+                    } else {
+                        Some(url.to_string())
+                    };
+                    if let (Some(link), Some(mgr)) = (link, _app.try_state::<Arc<DownloadManager>>()) {
+                        if torrent::is_torrent(&link, None) {
+                            mgr.incoming(manager::Incoming { url: link, filename: None, referrer: None, cookies: None, user_agent: None });
+                        }
+                    }
+                }
+            }
+        });
 }

@@ -473,7 +473,8 @@ impl DownloadManager {
                     Kind::Torrent(files) => {
                         // A torrent saves into a folder; `dest` is its name inside it.
                         let dir = req.dest.parent().map(Path::to_path_buf).unwrap_or_default();
-                        let job = crate::torrent::Job { url: req.url.clone(), headers: req.headers.clone(), dir, files };
+                        let seed = crate::torrent::Seed::from_setting(&this.settings().seed_until);
+                        let job = crate::torrent::Job { url: req.url.clone(), headers: req.headers.clone(), dir, files, seed };
                         crate::torrent::run(&this.client, job, progress, note, cancel).await
                     }
                     Kind::File => swiftdl_engine::run(&this.client, &req, progress, cancel, this.limiter.clone()).await,

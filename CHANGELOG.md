@@ -11,8 +11,11 @@ uses [Semantic Versioning](https://semver.org/).
   BitTorrent engine (librqbit): the New download window lists the files to
   pick from, and progress shows peers and seeds. It stops sharing when done.
 - **Opens magnet links and .torrent files.** SwiftDL registers as the
-  computer's handler for both on Windows, and the browser extension sends
-  magnet links and .torrent downloads to it.
+  computer's handler for both on Windows, macOS and Linux, and the browser
+  extension sends magnet links and .torrent downloads to it.
+- **Seeding choice.** Settings → General → After a torrent finishes: stop
+  sharing, share until a ratio of 1 or 2, or keep sharing. The download is
+  ready either way.
 
 ## [0.2.3] - 2026-10-31
 

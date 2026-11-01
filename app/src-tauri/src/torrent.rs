@@ -93,6 +93,26 @@ pub async fn probe(client: &Client, url: &str, headers: &HeaderMap) -> Result<To
     Ok(TorrentInfo { name, files, size })
 }
 
+/// What happens after a torrent finishes (Settings > General).
+#[derive(Clone, Copy)]
+pub enum Seed {
+    /// Stop sharing straight away.
+    Stop,
+    /// Keep sharing until this much has been uploaded, relative to its size.
+    Ratio(f64),
+    /// Keep sharing while SwiftDL is running.
+    Forever,
+}
+
+impl Seed {
+    pub fn from_setting(s: &str) -> Self {
+        match s {
+            "forever" => Seed::Forever,
+            r => r.parse::<f64>().ok().filter(|r| *r > 0.0).map_or(Seed::Stop, Seed::Ratio),
+        }
+    }
+}
+
 pub struct Job {
     pub url: String,
     pub headers: HeaderMap,
@@ -100,6 +120,7 @@ pub struct Job {
     pub dir: PathBuf,
     /// Indexes of the files to download; empty means all of them.
     pub files: Vec<usize>,
+    pub seed: Seed,
 }
 
 /// Downloads a torrent, reporting into `progress` and `note`. Cancelling
@@ -155,10 +176,33 @@ pub async fn run(client: &Client, job: Job, progress: Arc<Progress>, note: crate
             _ = cancel.cancelled() => break Ok(Outcome::Paused),
         }
     };
-    // Stop sharing and let go of the files; the download itself stays on disk.
-    let _ = session.delete(handle.id().into(), false).await;
     progress.connections.store(0, Ordering::Relaxed);
     set_note(None);
+    match (&outcome, job.seed) {
+        // Finished and set to keep sharing: the download is complete now,
+        // and sharing carries on in the background until its limit.
+        (Ok(Outcome::Completed), seed @ (Seed::Ratio(_) | Seed::Forever)) => {
+            let session = session.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Seed::Ratio(ratio) = seed {
+                    loop {
+                        tokio::time::sleep(Duration::from_secs(5)).await;
+                        let stats = handle.stats();
+                        if stats.error.is_some() || stats.total_bytes == 0 || stats.uploaded_bytes as f64 >= stats.total_bytes as f64 * ratio {
+                            break;
+                        }
+                    }
+                    let _ = session.delete(handle.id().into(), false).await;
+                }
+                // Forever: the torrent stays in the session until SwiftDL quits.
+            });
+        }
+        // Otherwise stop sharing and let go of the files; what was
+        // downloaded stays on disk.
+        _ => {
+            let _ = session.delete(handle.id().into(), false).await;
+        }
+    }
     outcome
 }
 
@@ -210,7 +254,85 @@ pub fn register_handlers() -> Result<()> {
         const SHCNE_ASSOCCHANGED: i32 = 0x0800_0000;
         unsafe { SHChangeNotify(SHCNE_ASSOCCHANGED, 0, std::ptr::null(), std::ptr::null()) };
     }
+    #[cfg(target_os = "linux")]
+    linux::register()?;
+    #[cfg(target_os = "macos")]
+    macos::set_default_handler();
     Ok(())
+}
+
+/// Linux: a hidden desktop entry for magnet links and .torrent files, set
+/// as the default with xdg-mime. Opening one starts `SwiftDL --open <it>`.
+#[cfg(target_os = "linux")]
+mod linux {
+    use anyhow::Result;
+    use std::path::PathBuf;
+    use std::process::Command;
+
+    const ENTRY: &str = "swiftdl-handler.desktop";
+    const TYPES: [&str; 2] = ["x-scheme-handler/magnet", "application/x-bittorrent"];
+
+    pub fn register() -> Result<()> {
+        // An AppImage runs from a temporary mount; $APPIMAGE is the file itself.
+        let exe = std::env::var_os("APPIMAGE").map(PathBuf::from).map_or_else(std::env::current_exe, Ok)?;
+        let apps = std::env::var_os("XDG_DATA_HOME")
+            .map(PathBuf::from)
+            .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".local/share")))
+            .ok_or_else(|| anyhow::anyhow!("no home folder"))?
+            .join("applications");
+        std::fs::create_dir_all(&apps)?;
+        // Desktop entries quote the program and escape \ and " inside it.
+        let exec = exe.to_string_lossy().replace('\\', "\\\\").replace('"', "\\\"");
+        let entry = format!(
+            "[Desktop Entry]\nType=Application\nName=SwiftDL\nComment=Open torrents and magnet links in SwiftDL\n\
+             Exec=\"{exec}\" --open %u\nIcon=swiftdl\nTerminal=false\nNoDisplay=true\nMimeType={};\n",
+            TYPES.join(";")
+        );
+        std::fs::write(apps.join(ENTRY), entry)?;
+        for t in TYPES {
+            let _ = Command::new("xdg-mime").args(["default", ENTRY, t]).status();
+        }
+        let _ = Command::new("update-desktop-database").arg(&apps).status();
+        Ok(())
+    }
+}
+
+/// macOS: the app bundle declares magnet links and .torrent files
+/// (Info.plist); this makes SwiftDL their default handler, and the system
+/// hands them over as "opened" events (see main.rs).
+#[cfg(target_os = "macos")]
+mod macos {
+    use std::ffi::c_void;
+
+    type CFStringRef = *const c_void;
+    const UTF8: u32 = 0x0800_0100;
+    const ALL_ROLES: u32 = 0xFFFF_FFFF;
+
+    #[link(name = "CoreFoundation", kind = "framework")]
+    unsafe extern "C" {
+        fn CFStringCreateWithBytes(alloc: *const c_void, bytes: *const u8, len: isize, encoding: u32, external: u8) -> CFStringRef;
+        fn CFRelease(cf: *const c_void);
+    }
+    #[link(name = "CoreServices", kind = "framework")]
+    unsafe extern "C" {
+        fn LSSetDefaultHandlerForURLScheme(scheme: CFStringRef, bundle_id: CFStringRef) -> i32;
+        fn LSSetDefaultRoleHandlerForContentType(content_type: CFStringRef, role: u32, bundle_id: CFStringRef) -> i32;
+    }
+
+    fn cf(s: &str) -> CFStringRef {
+        unsafe { CFStringCreateWithBytes(std::ptr::null(), s.as_ptr(), s.len() as isize, UTF8, 0) }
+    }
+
+    pub fn set_default_handler() {
+        let (scheme, uti, app) = (cf("magnet"), cf("org.bittorrent.torrent"), cf("com.swiftdl.app"));
+        unsafe {
+            LSSetDefaultHandlerForURLScheme(scheme, app);
+            LSSetDefaultRoleHandlerForContentType(uti, ALL_ROLES, app);
+            for r in [scheme, uti, app] {
+                CFRelease(r);
+            }
+        }
+    }
 }
 
 /// A magnet link or .torrent file the app was opened with (by the system,
@@ -231,6 +353,15 @@ mod tests {
         assert!(is_torrent(r"C:\Users\me\Downloads\film.TORRENT", None));
         assert!(is_torrent("https://tracker.example/download.php?id=42", Some("film.torrent")));
         assert!(!is_torrent("https://example.com/ubuntu.iso", None));
+    }
+
+    #[test]
+    fn reads_the_seeding_setting() {
+        assert!(matches!(Seed::from_setting("stop"), Seed::Stop));
+        assert!(matches!(Seed::from_setting("1"), Seed::Ratio(r) if r == 1.0));
+        assert!(matches!(Seed::from_setting("2"), Seed::Ratio(r) if r == 2.0));
+        assert!(matches!(Seed::from_setting("forever"), Seed::Forever));
+        assert!(matches!(Seed::from_setting("nonsense"), Seed::Stop));
     }
 
     #[test]
@@ -259,7 +390,7 @@ mod live {
             let note = crate::media::Note::default();
             let cancel = CancellationToken::new();
             let dir = std::env::temp_dir().join("swiftdl-torrent-test");
-            let job = Job { url: url.into(), headers: HeaderMap::new(), dir: dir.clone(), files: vec![] };
+            let job = Job { url: url.into(), headers: HeaderMap::new(), dir: dir.clone(), files: vec![], seed: Seed::Stop };
             let (p, n, c) = (progress.clone(), note.clone(), cancel.clone());
             let watch = tauri::async_runtime::spawn(async move {
                 for s in 0..30 {

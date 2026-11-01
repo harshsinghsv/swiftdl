@@ -802,7 +802,11 @@ function nextPending() {
 }
 
 // ---------- settings ----------
-let setDir = "", setLimitKib = 0, setThemeChoice = "system";
+let setDir = "", setLimitKib = 0, setThemeChoice = "system", setSeed = "stop";
+function renderSeed() {
+  $("set-seed").querySelectorAll("[data-v]").forEach((b) => b.classList.toggle("on", b.dataset.v === setSeed));
+}
+$("set-seed").addEventListener("click", (e) => { const b = e.target.closest("[data-v]"); if (b) { setSeed = b.dataset.v; renderSeed(); } });
 function renderThemeChoice() {
   $("set-theme").querySelectorAll("[data-v]").forEach((b) => b.classList.toggle("on", b.dataset.v === setThemeChoice));
 }
@@ -821,6 +825,8 @@ function openSettings(tab = "general") {
   const s = state.settings;
   setThemeChoice = s.theme || "system";
   renderThemeChoice();
+  setSeed = s.seedUntil || "stop";
+  renderSeed();
   setDir = s.downloadDir; $("set-dir").textContent = setDir;
   $("set-sort").checked = s.sortIntoCategories;
   $("set-ask").checked = s.askBeforeDownload;
@@ -874,6 +880,7 @@ $("form-settings").addEventListener("submit", async (e) => {
     closeToTray: $("set-tray").checked,
     onboardingDismissed: state.settings.onboardingDismissed,
     theme: setThemeChoice,
+    seedUntil: setSeed,
   });
   $("dlg-settings").close();
   toast("Settings saved", "ok");

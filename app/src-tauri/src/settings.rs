@@ -27,6 +27,9 @@ pub struct Settings {
     pub close_to_tray: bool,
     /// "system", "light" or "dark".
     pub theme: String,
+    /// After a torrent finishes: "stop", a share ratio such as "1" or "2",
+    /// or "forever".
+    pub seed_until: String,
 }
 
 impl Default for Settings {
@@ -44,6 +47,7 @@ impl Default for Settings {
             show_progress_window: true,
             close_to_tray: true,
             theme: "system".into(),
+            seed_until: "stop".into(),
         }
     }
 }
