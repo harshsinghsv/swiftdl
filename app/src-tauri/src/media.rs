@@ -545,6 +545,11 @@ fn last_error(stderr: &str) -> Option<String> {
     if e.contains("Requested format is not available") && js_runtime().is_none() {
         return Some("This site needs a JavaScript runtime for yt-dlp. Install Node.js or Deno, then try again.".into());
     }
+    // A stream address the site no longer serves: links like these expire, or
+    // work once, and "generic" is yt-dlp's name for a plain address.
+    if e.contains("[generic]") && (e.contains("HTTP Error 404") || e.contains("HTTP Error 403") || e.contains("HTTP Error 410")) {
+        return Some("The site no longer gives out this stream link. Such links can expire or work only once: play the video again in the browser, then use SwiftDL on it.".into());
+    }
     // yt-dlp's advice names its own flags, which mean nothing here.
     let lower = e.to_lowercase();
     if lower.contains("--cookies") || lower.contains("logged-in") || lower.contains("authentication is required") || lower.contains("login required") {
@@ -890,6 +895,12 @@ mod tests {
         let vimeo = "ERROR: [vimeo] 1: The web client only works when logged-in. Use --cookies, --cookies-from-browser, --username and --password";
         assert!(super::last_error(vimeo).unwrap().starts_with("This site needs you to be signed in"));
         assert_eq!(super::last_error("ERROR: [x] 1: Video unavailable").unwrap(), "[x] 1: Video unavailable");
+    }
+
+    #[test]
+    fn expired_stream_links_are_explained() {
+        let e = "ERROR: [generic] 82134615: Unable to download webpage: HTTP Error 404: Not Found (caused by <HTTPError 404: Not Found>)";
+        assert!(super::last_error(e).unwrap().starts_with("The site no longer gives out this stream link"));
     }
 
     #[test]

@@ -150,6 +150,18 @@
   function scheduleHide() { clearTimeout(hideTimer); if (!open) hideTimer = setTimeout(hide, 1600); }
   function setOpen(v) { open = v; wrap?.classList.toggle("open", v); }
 
+  // Which captured stream is the video being watched. `items` is newest first.
+  // A tab that stays open collects streams from every video played in it, and
+  // their links expire, so the oldest is often stale. Prefer the newest playlist
+  // that lists several qualities (the main one); failing that, the oldest of the
+  // recent ones, since a player loads its main playlist first.
+  function pickStream(items) {
+    const streams = items.filter((m) => m.kind === "hls" || m.kind === "dash");
+    const main = streams.find((m) => m.qualities?.length > 1) || streams.find((m) => m.qualities?.length);
+    if (main || !streams.length) return main || null;
+    return streams.filter((m) => streams[0].at - m.at < 60000).at(-1);
+  }
+
   async function toggle() {
     if (open) { setOpen(false); return; }
     panel.classList.remove("q");
@@ -159,7 +171,7 @@
     try { res = await chrome.runtime.sendMessage({ type: "media" }); } catch { res = { items: [] }; }
     // Any site: if the player loaded a stream (HLS or DASH), list its
     // qualities now. The oldest one is the main playlist with every quality.
-    const hls = (res?.items || []).filter((m) => m.kind === "hls" || m.kind === "dash").at(-1);
+    const hls = pickStream(res?.items || []);
     if (hls?.qualities?.length) { qualityMenu(hls.url, title(), hls.qualities); return; }
     if (hls && (await streamMenu(hls.url))) return;
     if (onVideoSite()) return grab(location.href, title());
@@ -170,7 +182,7 @@
     const files = items.filter((m) => m.kind === "file");
     // A player loads its main playlist first, then one per quality: the
     // oldest stream is the main one, which lets SwiftDL offer every quality.
-    const stream = items.filter((m) => m.kind !== "file").at(-1);
+    const stream = pickStream(items);
     const name = title();
     let html = "";
     if (files.length) {
