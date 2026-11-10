@@ -56,12 +56,37 @@ fn handle(msg: &[u8]) -> Value {
     };
     match v["type"].as_str() {
         Some("ping") => json!({ "ok": true, "version": env!("CARGO_PKG_VERSION") }),
-        Some("download") if v["url"].is_string() => reply(launch_app(&["--add", &URL_SAFE_NO_PAD.encode(msg)])),
+        Some("download") if v["url"].is_string() => match refused(&v) {
+            // The site won't give SwiftDL this file: say so, and the extension
+            // lets the browser keep (and finish) its own download.
+            Some(why) => json!({ "ok": false, "error": why }),
+            None => reply(launch_app(&["--add", &URL_SAFE_NO_PAD.encode(msg)])),
+        },
         Some("show") => reply(launch_app(&[])),
         // The quality menu opened on a video: start looking it up now.
         Some("prepare") if v["url"].is_string() => reply(launch_app(&["--prepare", &URL_SAFE_NO_PAD.encode(msg)])),
         _ => json!({ "ok": false, "error": "unknown message" }),
     }
+}
+
+/// Asks the site for the file the way SwiftDL would. Returns why not, when the
+/// site refuses (403, a sign-in page...): then the browser should keep the
+/// download. Network trouble and slow answers are not refusals; the app deals
+/// with those.
+fn refused(v: &Value) -> Option<String> {
+    let inc: crate::manager::Incoming = serde_json::from_value(v.clone()).ok()?;
+    let plain = inc.url.starts_with("http") && !crate::media::is_media_url(&inc.url) && !crate::torrent::is_torrent(&inc.url, inc.filename.as_deref());
+    if !plain {
+        return None;
+    }
+    let headers = crate::manager::to_header_map(&inc.headers());
+    let probe = async {
+        let client = swiftdl_engine::build_client().ok()?;
+        tokio::time::timeout(std::time::Duration::from_secs(8), swiftdl_engine::probe(&client, &inc.url, &headers)).await.ok()
+    };
+    let result = tauri::async_runtime::block_on(probe)?;
+    let err = format!("{:#}", result.err()?);
+    (err.starts_with("server returned") || err.starts_with("This link opens a web page")).then(|| format!("{err}. The browser keeps this download."))
 }
 
 /// Starts the app with `args`. If it is already open, the single-instance
@@ -243,4 +268,40 @@ pub fn parse_add_arg(args: &[String]) -> Option<crate::manager::Incoming> {
     let i = args.iter().position(|a| a == "--add")?;
     let raw = URL_SAFE_NO_PAD.decode(args.get(i + 1)?).ok()?;
     serde_json::from_slice(&raw).ok()
+}
+
+#[cfg(test)]
+mod refusal_tests {
+    use super::refused;
+    use std::io::{Read, Write};
+
+    /// A server that answers every request with `reply`.
+    fn serve(reply: &'static str) -> String {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        std::thread::spawn(move || {
+            for mut s in listener.incoming().flatten() {
+                let mut buf = [0u8; 2048];
+                let _ = s.read(&mut buf);
+                let _ = s.write_all(reply.as_bytes());
+            }
+        });
+        format!("http://127.0.0.1:{port}/file.zip")
+    }
+
+    fn ask(url: &str) -> Option<String> {
+        refused(&serde_json::json!({ "type": "download", "url": url }))
+    }
+
+    #[test]
+    fn the_browser_keeps_what_the_site_refuses() {
+        let forbidden = serve("HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+        assert!(ask(&forbidden).unwrap().contains("403"));
+        let page = serve("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: 2\r\nConnection: close\r\n\r\nhi");
+        assert!(ask(&page).unwrap().contains("web page"));
+        let file = serve("HTTP/1.1 206 Partial Content\r\nContent-Type: application/zip\r\nContent-Range: bytes 0-0/1000\r\nContent-Length: 1\r\nConnection: close\r\n\r\nx");
+        assert_eq!(ask(&file), None, "a working link is taken over");
+        assert_eq!(ask("http://127.0.0.1:1/unreachable.zip"), None, "no answer is not a refusal");
+        assert_eq!(ask("https://www.youtube.com/watch?v=abc"), None, "video pages go through yt-dlp");
+    }
 }
