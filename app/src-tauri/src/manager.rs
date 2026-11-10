@@ -592,10 +592,12 @@ impl DownloadManager {
     fn finish(self: &Arc<Self>, id: u64, result: Result<Outcome>) {
         let mut notify = None;
         let mut completed = false;
+        let mut unpack: Option<PathBuf> = None;
         {
             let mut g = self.inner.lock().unwrap();
             let running = g.running.remove(&id);
             let notify_enabled = g.settings.notify_on_complete;
+            let extract_enabled = g.settings.extract_archives;
             match g.items.iter_mut().find(|i| i.id == id) {
                 None => {
                     // Removed while running: drop what it left behind.
@@ -620,6 +622,9 @@ impl DownloadManager {
                     match result {
                         Ok(Outcome::Completed) => {
                             completed = true;
+                            if extract_enabled && item.torrent_files.is_none() && crate::extract::is_archive(&item.filename) {
+                                unpack = Some(item.path.clone());
+                            }
                             item.status = Status::Completed;
                             item.completed_at = Some(now_ms());
                             item.size = item.size.or(Some(item.downloaded));
@@ -643,6 +648,23 @@ impl DownloadManager {
         if let Some(name) = notify {
             use tauri_plugin_notification::NotificationExt;
             let _ = self.app.notification().builder().title("Download complete").body(name).show();
+        }
+        if let Some(path) = unpack {
+            let app = self.app.clone();
+            std::thread::spawn(move || {
+                use tauri_plugin_notification::NotificationExt;
+                let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+                match crate::extract::unpack(&path) {
+                    Ok(dir) => {
+                        crate::log::line(&format!("unpacked {name} into {}", dir.display()));
+                        let _ = app.notification().builder().title("Unpacked").body(format!("{name} is in {}", dir.display())).show();
+                    }
+                    Err(e) => {
+                        crate::log::line(&format!("couldn't unpack {name}: {e:#}"));
+                        let _ = app.notification().builder().title("Couldn't unpack").body(format!("{name}: {e}")).show();
+                    }
+                }
+            });
         }
         self.changed();
         self.save();

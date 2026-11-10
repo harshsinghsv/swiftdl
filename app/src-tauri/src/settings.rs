@@ -42,6 +42,8 @@ pub struct Settings {
     pub bind_address: String,
     /// When switching to SwiftDL, offer to download a link on the clipboard.
     pub watch_clipboard: bool,
+    /// Unpack finished .zip, .tar.gz and .7z files into a folder beside them.
+    pub extract_archives: bool,
 }
 
 impl Default for Settings {
@@ -65,6 +67,7 @@ impl Default for Settings {
             proxy: String::new(),
             bind_address: String::new(),
             watch_clipboard: false,
+            extract_archives: false,
         }
     }
 }

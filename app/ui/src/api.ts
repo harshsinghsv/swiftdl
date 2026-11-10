@@ -61,6 +61,8 @@ export interface Settings {
   bindAddress: string;
   /** Offer to download a link on the clipboard when switching to SwiftDL. */
   watchClipboard: boolean;
+  /** Unpack finished archives beside themselves. */
+  extractArchives: boolean;
 }
 
 export interface Incoming {

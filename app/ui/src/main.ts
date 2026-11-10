@@ -856,6 +856,7 @@ function openSettings(tab = "general") {
   $("set-ask").checked = s.askBeforeDownload;
   $("set-notify").checked = s.notifyOnComplete;
   $("set-clip").checked = s.watchClipboard;
+  $("set-extract").checked = s.extractArchives;
   $("set-proxy").value = s.proxy || "";
   $("set-bind").value = s.bindAddress || "";
   $("set-offer").checked = s.offerExtension;
@@ -904,6 +905,7 @@ $("form-settings").addEventListener("submit", async (e) => {
     askBeforeDownload: $("set-ask").checked,
     notifyOnComplete: $("set-notify").checked,
     watchClipboard: $("set-clip").checked,
+    extractArchives: $("set-extract").checked,
     proxy: $("set-proxy").value.trim(),
     bindAddress: $("set-bind").value.trim(),
     offerExtension: $("set-offer").checked,

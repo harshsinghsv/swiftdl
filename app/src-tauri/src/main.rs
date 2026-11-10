@@ -10,6 +10,7 @@ mod native_host;
 mod settings;
 mod torrent;
 mod batch;
+mod extract;
 mod stream;
 mod update;
 mod windows;
