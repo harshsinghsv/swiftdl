@@ -44,7 +44,11 @@ pub struct Settings {
     pub watch_clipboard: bool,
     /// Unpack finished .zip, .tar.gz and .7z files into a folder beside them.
     pub extract_archives: bool,
-    /// Real-Debrid API token. Empty = not used.
+    /// Interface size in percent (90-150).
+    pub ui_scale: u32,
+    /// Which debrid service the token is for: "realdebrid", "alldebrid" or "premiumize".
+    pub debrid_provider: String,
+    /// The service's API token. Empty = not used.
     pub debrid_token: String,
 }
 
@@ -70,6 +74,8 @@ impl Default for Settings {
             bind_address: String::new(),
             watch_clipboard: false,
             extract_archives: false,
+            ui_scale: 100,
+            debrid_provider: "realdebrid".into(),
             debrid_token: String::new(),
         }
     }

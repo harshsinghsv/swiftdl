@@ -63,8 +63,12 @@ export interface Settings {
   watchClipboard: boolean;
   /** Unpack finished archives beside themselves. */
   extractArchives: boolean;
-  /** Real-Debrid API token; empty = not used. */
+  /** "realdebrid", "alldebrid" or "premiumize". */
+  debridProvider: string;
+  /** The service's API token; empty = not used. */
   debridToken: string;
+  /** Interface size in percent (90-150). */
+  uiScale: number;
 }
 
 export interface Incoming {

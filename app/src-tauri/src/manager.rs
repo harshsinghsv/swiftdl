@@ -424,8 +424,10 @@ impl DownloadManager {
         moved
     }
 
-    pub fn debrid_token(&self) -> String {
-        self.inner.lock().unwrap().settings.debrid_token.clone()
+    /// The chosen debrid service and its token.
+    pub fn debrid(&self) -> (String, String) {
+        let g = self.inner.lock().unwrap();
+        (g.settings.debrid_provider.clone(), g.settings.debrid_token.clone())
     }
 
     pub fn item(&self, id: u64) -> Option<Item> {
@@ -621,8 +623,8 @@ impl DownloadManager {
                     Kind::File => {
                         // A file-hosting link goes through Real-Debrid, when set up.
                         let mut req = req;
-                        let token = this.inner.lock().unwrap().settings.debrid_token.clone();
-                        match crate::debrid::resolve(&this.client, &token, &req.url).await {
+                        let (service, token) = this.debrid();
+                        match crate::debrid::resolve(&this.client, &service, &token, &req.url).await {
                             Ok(Some(direct)) => {
                                 req.url = direct.url;
                                 req.headers = Default::default();

@@ -215,7 +215,7 @@ function renderList() {
     let h = headEls.get(g.s);
     if (!h) { h = document.createElement("div"); h.className = "ghead"; headEls.set(g.s, h); }
     const right = g.s === "downloading" ? speed(g.items.reduce((s, i) => s + (i.speed || 0), 0)) : g.s === "completed" ? bytes(g.items.reduce((s, i) => s + (i.size || 0), 0)) : "";
-    const html = `${statusIcon({ status: g.s, size: 4, downloaded: 3 })}<span>${g.title}</span><span class="gc">${g.items.length}</span><span class="gr">${right}</span>`;
+    const html = `${statusIcon({ status: g.s, size: 4, downloaded: 3 })}<span>${g.title}</span><span class="gc">${g.items.length}</span><span class="gr">${right}</span>${g.s === "completed" ? `<button type="button" class="gclear" data-clear title="Remove finished downloads from the list (the files stay)">Clear</button>` : ""}`;
     if (h.innerHTML !== html) h.innerHTML = html;
     nodes.push(h);
     for (const it of g.items) {
@@ -531,6 +531,13 @@ document.addEventListener("contextmenu", (e) => { if (!target(e).closest<HTMLEle
 // Double-click is read from mousedown's click count: a live row's details
 // are replaced every half second, and "dblclick" doesn't fire when the
 // element under the first click is gone by the second.
+$("rows").addEventListener("click", async (e) => {
+  if (!target(e).closest<HTMLElement>("[data-clear]")) return;
+  const ids = state.items.filter((i) => i.status === "completed").map((i) => i.id);
+  if (!ids.length) return;
+  await call("remove", { ids, deleteFiles: false });
+  toast(`Cleared ${ids.length} from the list`, "ok");
+});
 $("rows").addEventListener("mousedown", (e) => {
   const r = target(e).closest<HTMLElement>(".row"), it = r ? byId(Number(r.dataset.id)) : undefined;
   if (!it || e.button !== 0) return;
@@ -864,6 +871,13 @@ function nextPending() {
 }
 
 // ---------- settings ----------
+// Interface size: the whole window scales (the download windows keep their size).
+const applyScale = (pct?: number) => { document.documentElement.style.zoom = String((pct && pct >= 80 && pct <= 160 ? pct : 100) / 100); };
+let setScale = 100, setDebridProvider = "realdebrid";
+function renderScale() { $("set-scale").querySelectorAll<HTMLElement>("[data-v]").forEach((b) => b.classList.toggle("on", Number(b.dataset.v) === setScale)); }
+$("set-scale").addEventListener("click", (e) => { const b = target(e).closest<HTMLElement>("[data-v]"); if (b) { setScale = Number(b.dataset.v); renderScale(); applyScale(setScale); } });
+function renderDebridProvider() { $("set-debrid-provider").querySelectorAll<HTMLElement>("[data-v]").forEach((b) => b.classList.toggle("on", b.dataset.v === setDebridProvider)); }
+$("set-debrid-provider").addEventListener("click", (e) => { const b = target(e).closest<HTMLElement>("[data-v]"); if (b) { setDebridProvider = b.dataset.v!; renderDebridProvider(); } });
 let setDir = "", setLimitKib = 0, setThemeChoice = "system", setSeed = "stop", setWhenDone = "nothing", setStartAt = 0;
 function renderWhenDone() {
   $("set-whendone").querySelectorAll<HTMLElement>("[data-v]").forEach((b) => b.classList.toggle("on", b.dataset.v === setWhenDone));
@@ -898,9 +912,9 @@ $("set-theme").addEventListener("click", (e) => {
   renderThemeChoice();
   window.setTheme(setThemeChoice);
 });
-const restoreTheme = () => window.setTheme(settings().theme);
+const restoreTheme = () => { window.setTheme(settings().theme); applyScale(settings().uiScale); };
 $("dlg-settings").addEventListener("cancel", restoreTheme); // Escape
-$("dlg-settings").addEventListener("close", restoreTheme);
+$("dlg-settings").addEventListener("close", () => { restoreTheme(); applyScale(state.settings?.uiScale); });
 function openSettings(tab = "general") {
   const s = settings();
   setThemeChoice = s.theme || "system";
@@ -920,6 +934,10 @@ function openSettings(tab = "general") {
   $("set-proxy").value = s.proxy || "";
   $("set-bind").value = s.bindAddress || "";
   $("set-debrid").value = s.debridToken || "";
+  setDebridProvider = s.debridProvider || "realdebrid";
+  renderDebridProvider();
+  setScale = s.uiScale || 100;
+  renderScale();
   $("set-offer").checked = s.offerExtension;
   $("set-progress-win").checked = s.showProgressWindow;
   $("set-tray").checked = s.closeToTray;
@@ -969,7 +987,9 @@ $("form-settings").addEventListener("submit", async (e) => {
     extractArchives: $("set-extract").checked,
     proxy: $("set-proxy").value.trim(),
     bindAddress: $("set-bind").value.trim(),
+    debridProvider: setDebridProvider,
     debridToken: $("set-debrid").value.trim(),
+    uiScale: setScale,
     offerExtension: $("set-offer").checked,
     showProgressWindow: $("set-progress-win").checked,
     closeToTray: $("set-tray").checked,
@@ -1036,6 +1056,7 @@ async function boot() {
   const s = await invoke("get_state");
   state.settings = s.settings;
   window.setTheme(s.settings.theme);
+  applyScale(s.settings.uiScale);
   state.pending = s.pending;
   state.version = s.version;
   $("version").textContent = `Version ${s.version}`;

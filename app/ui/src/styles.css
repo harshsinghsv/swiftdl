@@ -566,3 +566,6 @@ code { font: 11.5px ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospac
 .grab-row input { accent-color: var(--accent); flex: none; }
 .grab-row .gn { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
 .grab-row .gh { flex: none; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--faint); font-size: 12px; }
+
+.gclear { margin-left: 10px; padding: 0 7px; height: 20px; border-radius: 5px; font-size: 11.5px; font-weight: 500; color: var(--muted); }
+.gclear:hover { background: var(--active); color: var(--text); }

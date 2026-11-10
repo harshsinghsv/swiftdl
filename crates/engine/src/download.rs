@@ -554,3 +554,77 @@ mod mirror_tests {
         assert_eq!(hc.load(Ordering::Relaxed), 1, "a mirror with the wrong size is only asked once, for the check");
     }
 }
+
+#[cfg(test)]
+mod socks_tests {
+    use super::*;
+    use std::io::{Read, Write};
+    use std::net::TcpStream;
+    use std::sync::atomic::AtomicUsize;
+
+    fn web() -> u16 {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        std::thread::spawn(move || {
+            for mut s in listener.incoming().flatten() {
+                let mut buf = [0u8; 1024];
+                let _ = s.read(&mut buf);
+                let _ = s.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nhi");
+            }
+        });
+        port
+    }
+
+    /// A bare SOCKS5 server (no login, CONNECT only) that counts what it carries.
+    fn socks(hits: Arc<AtomicUsize>) -> u16 {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        std::thread::spawn(move || {
+            for mut client in listener.incoming().flatten() {
+                let hits = hits.clone();
+                std::thread::spawn(move || {
+                    let mut b = [0u8; 300];
+                    client.read_exact(&mut b[..2]).unwrap();
+                    let n = b[1] as usize;
+                    client.read_exact(&mut b[..n]).unwrap();
+                    client.write_all(&[5, 0]).unwrap();
+                    client.read_exact(&mut b[..4]).unwrap();
+                    let host = match b[3] {
+                        1 => {
+                            client.read_exact(&mut b[..4]).unwrap();
+                            format!("{}.{}.{}.{}", b[0], b[1], b[2], b[3])
+                        }
+                        3 => {
+                            client.read_exact(&mut b[..1]).unwrap();
+                            let len = b[0] as usize;
+                            client.read_exact(&mut b[..len]).unwrap();
+                            String::from_utf8_lossy(&b[..len]).into_owned()
+                        }
+                        _ => return,
+                    };
+                    client.read_exact(&mut b[..2]).unwrap();
+                    let port = u16::from_be_bytes([b[0], b[1]]);
+                    let Ok(target) = TcpStream::connect((host.as_str(), port)) else { return };
+                    client.write_all(&[5, 0, 0, 1, 0, 0, 0, 0, 0, 0]).unwrap();
+                    hits.fetch_add(1, Ordering::Relaxed);
+                    let (mut c2, mut t2) = (client.try_clone().unwrap(), target.try_clone().unwrap());
+                    std::thread::spawn(move || { let _ = std::io::copy(&mut c2, &mut t2); });
+                    let mut target = target;
+                    let _ = std::io::copy(&mut target, &mut client);
+                });
+            }
+        });
+        port
+    }
+
+    #[tokio::test]
+    async fn downloads_through_a_socks5_proxy() {
+        let target = web();
+        let hits = Arc::new(AtomicUsize::new(0));
+        let proxy = socks(hits.clone());
+        let client = build_client_opts(&format!("socks5h://127.0.0.1:{proxy}"), "").unwrap();
+        let body = client.get(format!("http://localhost:{target}/")).send().await.unwrap().text().await.unwrap();
+        assert_eq!(body, "hi");
+        assert!(hits.load(Ordering::Relaxed) >= 1, "the request went through the proxy");
+    }
+}

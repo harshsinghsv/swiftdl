@@ -36,8 +36,9 @@ pub fn get_state(m: Mgr) -> AppState {
 
 #[tauri::command]
 pub async fn probe_url(m: Mgr<'_>, url: String, headers: Vec<(String, String)>) -> Result<ProbeInfo, String> {
-    // A link on a Real-Debrid host: name and size come from Real-Debrid.
-    if let Some(direct) = crate::debrid::resolve(m.client(), &m.debrid_token(), url.trim()).await.map_err(|e| format!("{e:#}"))? {
+    // A link on a debrid host: name and size come from the service.
+    let (service, token) = m.debrid();
+    if let Some(direct) = crate::debrid::resolve(m.client(), &service, &token, url.trim()).await.map_err(|e| format!("{e:#}"))? {
         let category = category_for(&direct.filename).to_string();
         return Ok(ProbeInfo { dir: m.default_dir(&category), filename: direct.filename, size: direct.size, resumable: true, category });
     }
