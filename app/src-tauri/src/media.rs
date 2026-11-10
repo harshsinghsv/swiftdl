@@ -134,6 +134,7 @@ async fn fetch(client: &Client, url: &str, dest: &Path, note: &Note, label: &str
         connections: 8,
         headers: Default::default(),
         restart: false,
+        mirrors: vec![],
     };
     let progress = Arc::new(Progress::default());
     let ticker = {
@@ -693,7 +694,7 @@ async fn direct(client: &Client, job: &Job, progress: &Arc<Progress>, note: &Not
                 headers.insert(k, v);
             }
         }
-        let req = swiftdl_engine::Request { url: f["url"].as_str().unwrap_or_default().to_string(), dest: path.clone(), connections: YOUTUBE_CONNECTIONS, headers, restart: false };
+        let req = swiftdl_engine::Request { url: f["url"].as_str().unwrap_or_default().to_string(), dest: path.clone(), connections: YOUTUBE_CONNECTIONS, headers, restart: false, mirrors: vec![] };
         let (p, cancel, limiter) = (p.clone(), cancel.clone(), limiter.clone());
         async move { swiftdl_engine::run(client, &req, p, cancel, limiter).await }
     });

@@ -732,6 +732,16 @@ function renderChips() {
 async function probe() {
   const url = $("add-url").value.trim();
   if (!/^(https?:\/\/|magnet:\?)\S+/i.test(url)) { add.info = null; $("add-file").hidden = true; renderChips(); if (url) setState("error", "Paste a web link (http:// or https://) or a magnet link"); else setState("idle"); return; }
+  // A Metalink lists several mirrors of one file: download from all of them.
+  if (/\.(meta4|metalink)(\?|#|$)/i.test(url)) {
+    try {
+      const [name, n] = await invoke("add_metalink", { url });
+      $("dlg-add").close();
+      if (state.view !== "all" && state.view !== "active") state.view = "all";
+      toast(`Downloading ${esc(name)} from ${n} address${n === 1 ? "" : "es"}`, "dl");
+    } catch (e) { setState("error", `Couldn't read that Metalink: ${e}`); }
+    return;
+  }
   const seq = ++add.seq;
   // Video sites need a quality and torrents a file choice: their own window.
   const special = await invoke("is_media_url", { url }).catch(() => false) || await invoke("is_torrent_url", { url, filename: null }).catch(() => false);

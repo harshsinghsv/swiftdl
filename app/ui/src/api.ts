@@ -100,6 +100,7 @@ export interface Commands {
   add_links: [{ text: string }, number];
   set_url: [{ id: number; url: string }, void];
   download_next: [{ id: number }, boolean];
+  add_metalink: [{ url: string }, [string, number]];
   open_in_browser: [{ url: string }, void];
   is_media_url: [{ url: string }, boolean];
   is_torrent_url: [{ url: string; filename: string | null }, boolean];

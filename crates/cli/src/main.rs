@@ -105,6 +105,7 @@ async fn run(args: Args) -> Result<Option<PathBuf>> {
     }
 
     let req = Request {
+        mirrors: vec![],
         url: args.url,
         dest: dest.clone(),
         connections: args.connections as usize,

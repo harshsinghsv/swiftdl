@@ -70,6 +70,9 @@ pub struct Item {
     /// SHA-256 the user gave to check the finished file against.
     #[serde(default)]
     pub checksum: Option<String>,
+    /// Other addresses of the same file (from a Metalink).
+    #[serde(default)]
+    pub mirrors: Vec<String>,
     /// The finished file matched `checksum`.
     #[serde(default)]
     pub verified: bool,
@@ -145,6 +148,9 @@ pub struct AddRequest {
     /// SHA-256 to check the finished file against.
     #[serde(default)]
     pub checksum: Option<String>,
+    /// Other addresses of the same file.
+    #[serde(default)]
+    pub mirrors: Vec<String>,
     /// A torrent: the files to download (see `Item::torrent_files`).
     #[serde(default)]
     pub torrent_files: Option<Vec<usize>>,
@@ -280,6 +286,7 @@ impl DownloadManager {
                 torrent_files: req.torrent_files,
                 note: None,
                 checksum: req.checksum,
+                mirrors: req.mirrors,
                 verified: false,
             });
             if let Some(label) = req.window {
@@ -371,6 +378,30 @@ impl DownloadManager {
         off
     }
 
+    /// A Metalink link: fetches the list, then downloads the file from all its
+    /// mirrors, checking the checksum it lists. Returns the file's name and
+    /// how many addresses it has.
+    pub async fn add_metalink(self: &Arc<Self>, url: &str) -> Result<(String, usize), String> {
+        let text = self.client.get(url).send().await.map_err(|e| e.to_string())?.error_for_status().map_err(|e| e.to_string())?.text().await.map_err(|e| e.to_string())?;
+        let m = crate::metalink::parse(&text).map_err(|e| format!("{e:#}"))?;
+        let dir = self.default_dir(category_for(&m.name));
+        let n = m.urls.len();
+        self.add(AddRequest {
+            url: m.urls[0].clone(),
+            filename: m.name.clone(),
+            dir,
+            headers: vec![],
+            start: true,
+            window: None,
+            format: None,
+            size: m.size,
+            torrent_files: None,
+            checksum: m.sha256,
+            mirrors: m.urls[1..].to_vec(),
+        });
+        Ok((m.name, n))
+    }
+
     /// Moves a waiting download to the front of the queue.
     pub fn download_next(&self, id: u64) -> bool {
         let moved = {
@@ -438,7 +469,7 @@ impl DownloadManager {
             let probed = swiftdl_engine::probe(&this.client, &inc.url, &to_header_map(&headers)).await.ok().map(|r| r.filename);
             let filename = inc.suggested_name().or(probed).unwrap_or_else(|| "download.bin".into());
             let dir = this.default_dir(category_for(&filename));
-            this.add(AddRequest { url: inc.url, filename, dir, headers, start: true, window: None, format: None, size: None, torrent_files: None, checksum: None });
+            this.add(AddRequest { url: inc.url, filename, dir, headers, start: true, window: None, format: None, size: None, torrent_files: None, checksum: None, mirrors: vec![] });
         });
     }
 
@@ -521,6 +552,7 @@ impl DownloadManager {
                         connections,
                         headers: to_header_map(&item.headers),
                         restart: false,
+                        mirrors: item.mirrors.clone(),
                     };
                     let progress = Arc::new(Progress::default());
                     progress.downloaded.store(item.downloaded, Ordering::Relaxed);

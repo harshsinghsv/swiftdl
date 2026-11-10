@@ -253,6 +253,12 @@ pub fn open_in_browser(app: tauri::AppHandle, url: String) -> Result<(), String>
     app.opener().open_url(format!("{base}#swiftdl-browser"), None::<&str>).map_err(|e| e.to_string())
 }
 
+/// Downloads the file a Metalink describes, from all its mirrors.
+#[tauri::command]
+pub async fn add_metalink(m: Mgr<'_>, url: String) -> Result<(String, usize), String> {
+    m.add_metalink(url.trim()).await
+}
+
 /// Puts a waiting download first in the queue.
 #[tauri::command]
 pub fn download_next(m: Mgr, id: u64) -> bool {
