@@ -73,6 +73,8 @@ export interface Settings {
   apiEnabled: boolean;
   apiPort: number;
   apiSecret: string;
+  /** Let other devices on the network reach the API and the web remote. */
+  apiLan: boolean;
 }
 
 export interface Incoming {

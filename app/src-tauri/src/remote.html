@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>SwiftDL Remote</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14.5' fill='%2317181c'/%3E%3Cg fill='%23fff' transform='translate(13 13) scale(1.1875)'%3E%3Crect x='4.5' y='3' width='4.4' height='12' rx='2.2'/%3E%3Crect x='10.9' y='3' width='4.4' height='17' rx='2.2'/%3E%3Crect x='16.7' y='3' width='4.4' height='17' rx='2.2'/%3E%3Crect x='23.1' y='3' width='4.4' height='12' rx='2.2'/%3E%3Cpath d='M6 21.5 16 28l10-6.5' fill='none' stroke='%23fff' stroke-width='4.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/g%3E%3C/svg%3E">
+<style>
+  :root { --bg:#101114; --panel:#16171b; --line:#25272d; --text:#e6e8ec; --muted:#8a8e98; --faint:#5b5f69; --accent:#0a84ff; --green:#2f9e6a; --amber:#d9a441; --red:#e0605e; --track:#26282e; }
+  @media (prefers-color-scheme: light) { :root { --bg:#f6f7f9; --panel:#fff; --line:#e3e5ea; --text:#1b1d22; --muted:#6b707b; --faint:#9a9fa9; --track:#e6e8ed; } }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, "Segoe UI", sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 16px; }
+  header { display: flex; align-items: center; gap: 10px; padding: 6px 0 14px; }
+  header svg { width: 26px; height: 26px; flex: none; }
+  header b { font-size: 16px; letter-spacing: -.01em; }
+  header .grow { flex: 1; }
+  #speed { color: var(--muted); font-variant-numeric: tabular-nums; }
+  form.add { display: flex; gap: 8px; margin-bottom: 18px; }
+  input { font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; min-width: 0; }
+  input:focus { outline: none; border-color: var(--accent); }
+  form.add input { flex: 1; }
+  button { font: inherit; cursor: pointer; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 13px; }
+  button:hover { border-color: var(--faint); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  h2 { margin: 18px 2px 8px; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: none; letter-spacing: .01em; }
+  h2 span { color: var(--faint); margin-left: 6px; font-weight: 500; }
+  .item { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 11px 13px; margin-bottom: 8px; }
+  .top { display: flex; align-items: center; gap: 10px; }
+  .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+  .acts { display: flex; gap: 6px; flex: none; }
+  .acts button { padding: 4px 10px; font-size: 12.5px; }
+  .bar { height: 5px; border-radius: 3px; background: var(--track); margin: 9px 0 7px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--accent); }
+  .paused .bar i, .waiting .bar i { background: var(--amber); }
+  .complete .bar i { background: var(--green); }
+  .error .bar i { background: var(--red); }
+  .meta { display: flex; gap: 14px; color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .meta .err { color: var(--red); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .empty { color: var(--faint); padding: 28px 0; text-align: center; }
+  #gate { position: fixed; inset: 0; background: var(--bg); display: none; align-items: center; justify-content: center; padding: 16px; }
+  #gate.on { display: flex; }
+  #gate form { width: 100%; max-width: 340px; display: grid; gap: 10px; }
+  #gate p { margin: 0; color: var(--muted); }
+  #gate .bad { color: var(--red); min-height: 1.4em; }
+  #toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; display: none; }
+  #toast.on { display: block; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" fill="#17181c" stroke="#fff" stroke-opacity=".12"/><g fill="#fff" transform="translate(13 13) scale(1.1875)"><rect x="4.5" y="3" width="4.4" height="12" rx="2.2"/><rect x="10.9" y="3" width="4.4" height="17" rx="2.2"/><rect x="16.7" y="3" width="4.4" height="17" rx="2.2"/><rect x="23.1" y="3" width="4.4" height="12" rx="2.2"/><path d="M6 21.5 16 28l10-6.5" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></g></svg>
+    <b>SwiftDL</b><span class="grow"></span><span id="speed"></span>
+  </header>
+  <form class="add" id="add"><input id="url" type="text" inputmode="url" placeholder="Paste a link to download" autocomplete="off" spellcheck="false"><button class="primary" type="submit">Add</button></form>
+  <div id="list"></div>
+</main>
+<div id="gate"><form id="gateform"><p><b>SwiftDL Remote</b><br>Enter the secret from SwiftDL's Settings, Local API.</p><input id="secret" type="password" placeholder="Secret" autocomplete="off"><div class="bad" id="bad"></div><button class="primary" type="submit">Connect</button></form></div>
+<div id="toast"></div>
+<script>
+const $ = (id) => document.getElementById(id);
+let secret = "";
+try { secret = localStorage.getItem("swiftdl-remote-secret") || ""; } catch {}
+const KEYS = ["gid", "status", "totalLength", "completedLength", "downloadSpeed", "errorMessage", "files"];
+
+async function rpc(calls) {
+  const body = { jsonrpc: "2.0", id: "r", method: "system.multicall", params: [calls.map(([m, ...p]) => ({ methodName: m, params: ["token:" + secret, ...p] }))] };
+  const r = await fetch("/jsonrpc", { method: "POST", body: JSON.stringify(body) });
+  const j = await r.json();
+  return j.result || [];
+}
+const val = (r) => (Array.isArray(r) ? r[0] : null);
+const unauthorized = (r) => r && !Array.isArray(r) && r.message === "Unauthorized";
+
+const bytes = (n) => { n = Number(n) || 0; const u = ["B", "KB", "MB", "GB", "TB"]; let i = 0; while (n >= 1024 && i < 4) { n /= 1024; i++; } return (i ? n.toFixed(n >= 100 ? 0 : 1) : n) + " " + u[i]; };
+const clock = (s) => (s < 60 ? `${Math.ceil(s)} s` : s < 3600 ? `${Math.floor(s / 60)} min` : `${Math.floor(s / 3600)} h ${Math.floor((s % 3600) / 60)} min`);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const base = (p) => String(p || "").split(/[\\/]/).pop();
+
+function card(d) {
+  const total = Number(d.totalLength), done = Number(d.completedLength), speed = Number(d.downloadSpeed);
+  const pct = total ? Math.min(100, (done / total) * 100) : d.status === "complete" ? 100 : 0;
+  const name = esc(base(d.files?.[0]?.path) || "Download");
+  const act = d.status === "active" || d.status === "waiting" ? `<button data-a="pause">Pause</button>` : d.status === "paused" ? `<button data-a="resume">Resume</button>` : d.status === "error" ? `<button data-a="resume">Retry</button>` : "";
+  const meta = d.status === "active" ? `<span>${bytes(done)} of ${bytes(total)}</span><span>${bytes(speed)}/s</span>${speed && total ? `<span>${clock((total - done) / speed)} left</span>` : ""}`
+    : d.status === "error" ? `<span class="err">${esc(d.errorMessage || "Failed")}</span>`
+    : d.status === "complete" ? `<span>${bytes(total || done)}</span><span>Finished</span>`
+    : `<span>${bytes(done)} of ${total ? bytes(total) : "?"}</span><span>${d.status === "paused" ? "Paused" : "Waiting"}</span>`;
+  return `<div class="item ${d.status}" data-g="${d.gid}"><div class="top"><span class="name" title="${name}">${name}</span><span class="acts">${act}<button data-a="remove">Remove</button></span></div><div class="bar"><i style="width:${pct}%"></i></div><div class="meta">${meta}</div></div>`;
+}
+const section = (title, list) => (list.length ? `<h2>${title}<span>${list.length}</span></h2>${list.map(card).join("")}` : "");
+
+async function refresh() {
+  let out;
+  try {
+    out = await rpc([["aria2.getGlobalStat"], ["aria2.tellActive", KEYS], ["aria2.tellWaiting", 0, 200, KEYS], ["aria2.tellStopped", 0, 200, KEYS]]);
+  } catch { $("speed").textContent = "Can't reach SwiftDL"; return; }
+  if (unauthorized(out[0])) { gate(secret ? "That isn't the right secret" : ""); return; }
+  $("gate").classList.remove("on");
+  const stat = val(out[0]) || {};
+  $("speed").textContent = Number(stat.downloadSpeed) ? bytes(stat.downloadSpeed) + "/s" : "Idle";
+  const active = val(out[1]) || [], waiting = val(out[2]) || [], stopped = (val(out[3]) || []).slice().reverse();
+  const html = section("Downloading", active) + section("Waiting", waiting) + section("Finished", stopped);
+  $("list").innerHTML = html || `<p class="empty">No downloads yet. Paste a link above.</p>`;
+}
+
+function gate(msg) { $("bad").textContent = msg || ""; $("gate").classList.add("on"); $("secret").focus(); }
+$("gateform").addEventListener("submit", (e) => {
+  e.preventDefault();
+  secret = $("secret").value.trim();
+  try { localStorage.setItem("swiftdl-remote-secret", secret); } catch {}
+  refresh();
+});
+
+let toastTimer = 0;
+function toast(t) { $("toast").textContent = t; $("toast").classList.add("on"); clearTimeout(toastTimer); toastTimer = setTimeout(() => $("toast").classList.remove("on"), 2200); }
+
+$("add").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const url = $("url").value.trim();
+  if (!url) return;
+  const r = (await rpc([["aria2.addUri", [url]]]))[0];
+  if (Array.isArray(r)) { $("url").value = ""; toast("Added"); } else toast(r?.message || "Couldn't add that");
+  refresh();
+});
+
+$("list").addEventListener("click", async (e) => {
+  const b = e.target.closest("button[data-a]");
+  if (!b) return;
+  const gid = b.closest(".item").dataset.g;
+  const m = { pause: "aria2.pause", resume: "aria2.unpause", remove: "aria2.remove" }[b.dataset.a];
+  await rpc([[m, gid]]);
+  refresh();
+});
+
+refresh();
+setInterval(refresh, 1500);
+</script>
+</body>
+</html>

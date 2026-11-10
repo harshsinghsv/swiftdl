@@ -51,6 +51,9 @@ pub struct Settings {
     pub api_port: u16,
     /// Every API call must carry this secret. The API stays off while it is empty.
     pub api_secret: String,
+    /// Also let other devices on the local network reach the API and the web
+    /// remote (a phone). Only used with a secret of 12 or more characters.
+    pub api_lan: bool,
     /// Which debrid service the token is for: "realdebrid", "alldebrid" or "premiumize".
     pub debrid_provider: String,
     /// The service's API token. Empty = not used.
@@ -83,6 +86,7 @@ impl Default for Settings {
             api_enabled: false,
             api_port: 6800,
             api_secret: String::new(),
+            api_lan: false,
             debrid_provider: "realdebrid".into(),
             debrid_token: String::new(),
         }

@@ -177,8 +177,9 @@
           <h2>Local API</h2>
           <div class="set-group">
             <label class="set-row"><div class="sr-text"><b>aria2-compatible API</b><span>Lets tools like AriaNg and scripts control SwiftDL. Local only, and every call needs the secret. Restart SwiftDL to apply.</span></div><span class="switch"><input type="checkbox" id="set-api"><i></i></span></label>
-            <div class="set-row"><div class="sr-text"><b>Port</b><span id="set-api-hint">http://127.0.0.1:6800/jsonrpc</span></div><input id="set-api-port" class="txt" type="number" min="1024" max="65535" placeholder="6800"></div>
+            <div class="set-row"><div class="sr-text"><b>Port</b><span id="set-api-hint">Open http://127.0.0.1:6800 for the web remote</span></div><input id="set-api-port" class="txt" type="number" min="1024" max="65535" placeholder="6800"></div>
             <div class="set-row"><div class="sr-text"><b>Secret</b><span>Used as token:SECRET in each call</span></div><input id="set-api-secret" class="txt" spellcheck="false" autocomplete="off" placeholder="Made when you turn it on"></div>
+            <label class="set-row"><div class="sr-text"><b>Allow other devices on my network</b><span>For a phone. Anyone on your Wi-Fi who knows the secret could control SwiftDL, and the connection isn't encrypted, so only use a network you trust. Needs a secret of 12 or more characters.</span></div><span class="switch"><input type="checkbox" id="set-api-lan"><i></i></span></label>
           </div>
           <h2>Automation</h2>
           <div class="set-group">

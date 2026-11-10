@@ -18,7 +18,7 @@ declare global { interface Window { __video?: unknown } }
   let settings: Settings = {
     downloadDir: "C:\\Users\\you\\Downloads", connections: 8, maxConcurrent: 3, speedLimitKib: 0,
     sortIntoCategories: true, askBeforeDownload: true, notifyOnComplete: true,
-    offerExtension: true, onboardingDismissed: false, showProgressWindow: true, closeToTray: true, theme: "system", seedUntil: "stop", whenDone: "nothing", startAt: 0, proxy: "", bindAddress: "", watchClipboard: false, extractArchives: false, debridProvider: "realdebrid", debridToken: "", uiScale: 100, apiEnabled: false, apiPort: 6800, apiSecret: "",
+    offerExtension: true, onboardingDismissed: false, showProgressWindow: true, closeToTray: true, theme: "system", seedUntil: "stop", whenDone: "nothing", startAt: 0, proxy: "", bindAddress: "", watchClipboard: false, extractArchives: false, debridProvider: "realdebrid", debridToken: "", uiScale: 100, apiEnabled: false, apiPort: 6800, apiSecret: "", apiLan: false,
   };
   if (VIDEO) Object.assign(settings, { downloadDir: "C:\\Users\\Harsh\\Downloads", onboardingDismissed: true });
   const catFor = (name: string) => {

@@ -1,9 +1,13 @@
 //! A local, aria2-compatible JSON-RPC API, so tools that already talk to aria2
 //! (AriaNg, scripts, automation) can control SwiftDL.
 //!
-//! It is off by default. It listens only on this computer, needs the secret
-//! token on every call, and refuses requests whose Host isn't local (which
-//! stops a web page from reaching it by DNS rebinding).
+//! It is off by default. It listens only on this computer unless the user
+//! allows the local network, needs the secret token on every call, and refuses
+//! requests whose Host isn't local (or, on a network, an IP address), which
+//! stops a web page from reaching it by DNS rebinding.
+//!
+//! The same server also serves SwiftDL's own web remote at `/`: a single page
+//! that talks to the API.
 
 use crate::manager::{AddRequest, DownloadManager, Item, Status};
 use serde_json::{Value, json};
@@ -226,17 +230,26 @@ pub fn dispatch(req: &Value, be: &dyn Backend, secret: &str) -> Value {
     }
 }
 
-fn local_host(host: &str) -> bool {
+/// The page, built into the app.
+const PAGE: &str = include_str!("remote.html");
+
+/// Whether a request's Host header is acceptable. On this PC: localhost or
+/// 127.0.0.1. On a network, also an IP address (a phone types the PC's address).
+/// A name is never accepted from the network: that is how DNS rebinding works.
+fn host_allowed(host: &str, lan: bool) -> bool {
     let h = host.trim().to_ascii_lowercase();
     let name = h.rsplit_once(':').filter(|(_, port)| port.chars().all(|c| c.is_ascii_digit())).map(|(n, _)| n).unwrap_or(&h);
-    matches!(name, "127.0.0.1" | "localhost" | "[::1]")
+    if matches!(name, "127.0.0.1" | "localhost" | "[::1]") {
+        return true;
+    }
+    lan && name.trim_matches(['[', ']']).parse::<std::net::IpAddr>().is_ok()
 }
 
 fn header(name: &str, value: &str) -> tiny_http::Header {
     tiny_http::Header::from_bytes(name.as_bytes(), value.as_bytes()).unwrap()
 }
 
-fn answer(req: tiny_http::Request, backend: &dyn Backend, secret: &str) {
+fn answer(req: tiny_http::Request, backend: &dyn Backend, secret: &str, lan: bool) {
     use std::io::Read;
     let cors = |r: tiny_http::Response<std::io::Cursor<Vec<u8>>>| {
         r.with_header(header("Access-Control-Allow-Origin", "*"))
@@ -244,7 +257,7 @@ fn answer(req: tiny_http::Request, backend: &dyn Backend, secret: &str) {
             .with_header(header("Access-Control-Allow-Methods", "POST, OPTIONS"))
     };
     let host = req.headers().iter().find(|h| h.field.equiv("Host")).map(|h| h.value.as_str().to_string()).unwrap_or_default();
-    if !local_host(&host) {
+    if !host_allowed(&host, lan) {
         let _ = req.respond(tiny_http::Response::from_string("Forbidden").with_status_code(403));
         return;
     }
@@ -253,6 +266,16 @@ fn answer(req: tiny_http::Request, backend: &dyn Backend, secret: &str) {
         return;
     }
     let path = req.url().split('?').next().unwrap_or("").to_string();
+    // The web remote. The page itself holds nothing private: every call it makes needs the secret.
+    if *req.method() == tiny_http::Method::Get && (path == "/" || path == "/index.html") {
+        let page = tiny_http::Response::from_string(PAGE)
+            .with_header(header("Content-Type", "text/html; charset=utf-8"))
+            .with_header(header("Content-Security-Policy", "default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'"))
+            .with_header(header("X-Frame-Options", "DENY"))
+            .with_header(header("Cache-Control", "no-store"));
+        let _ = req.respond(page);
+        return;
+    }
     if *req.method() != tiny_http::Method::Post || !(path == "/jsonrpc" || path == "/") {
         let _ = req.respond(tiny_http::Response::from_string("Not found").with_status_code(404));
         return;
@@ -269,13 +292,14 @@ fn answer(req: tiny_http::Request, backend: &dyn Backend, secret: &str) {
 }
 
 /// Starts the API on `addr` (like "127.0.0.1:6800") and returns the port it
-/// got. It runs on its own thread for as long as the app does.
-pub fn serve(addr: &str, backend: Arc<dyn Backend>, secret: String) -> Result<u16, String> {
+/// got. `lan` says `addr` is open to the network. It runs on its own thread
+/// for as long as the app does.
+pub fn serve(addr: &str, backend: Arc<dyn Backend>, secret: String, lan: bool) -> Result<u16, String> {
     let server = tiny_http::Server::http(addr).map_err(|e| e.to_string())?;
     let port = server.server_addr().to_ip().map(|a| a.port()).unwrap_or(0);
     std::thread::spawn(move || {
         for req in server.incoming_requests() {
-            answer(req, &*backend, &secret);
+            answer(req, &*backend, &secret, lan);
         }
     });
     Ok(port)
@@ -399,7 +423,7 @@ mod tests {
 
     #[test]
     fn serves_over_http_to_local_callers_only() {
-        let port = serve("127.0.0.1:0", Arc::new(fake()), "s3cret".into()).unwrap();
+        let port = serve("127.0.0.1:0", Arc::new(fake()), "s3cret".into(), false).unwrap();
         let ok = http(port, &format!("127.0.0.1:{port}"), "POST /jsonrpc", r#"{"jsonrpc":"2.0","id":"a","method":"aria2.getVersion","params":["token:s3cret"]}"#);
         assert!(ok.starts_with("HTTP/1.1 200") && ok.contains("\"version\"") && ok.to_lowercase().contains("access-control-allow-origin"), "{ok}");
         let wrong = http(port, &format!("localhost:{port}"), "POST /jsonrpc", r#"{"id":1,"method":"aria2.getVersion","params":["token:no"]}"#);
@@ -410,5 +434,37 @@ mod tests {
         assert!(preflight.starts_with("HTTP/1.1 204"), "{preflight}");
         let garbage = http(port, &format!("127.0.0.1:{port}"), "POST /jsonrpc", "not json");
         assert!(garbage.contains("Parse error"), "{garbage}");
+    }
+
+    #[test]
+    fn serves_the_web_remote_page() {
+        let port = serve("127.0.0.1:0", Arc::new(fake()), "s3cret".into(), false).unwrap();
+        let page = http(port, &format!("127.0.0.1:{port}"), "GET /", "");
+        assert!(page.starts_with("HTTP/1.1 200") && page.contains("<title>SwiftDL Remote</title>") && page.to_lowercase().contains("content-security-policy"), "{}", &page[..page.len().min(300)]);
+        assert!(!page.contains("s3cret"), "the page never carries the secret");
+        let other = http(port, &format!("127.0.0.1:{port}"), "GET /secret-files", "");
+        assert!(other.starts_with("HTTP/1.1 404"), "{other}");
+        let rebound = http(port, &format!("evil.example:{port}"), "GET /", "");
+        assert!(rebound.starts_with("HTTP/1.1 403"), "{rebound}");
+    }
+
+    #[test]
+    fn a_network_accepts_addresses_but_never_names() {
+        assert!(host_allowed("127.0.0.1:6800", false) && host_allowed("localhost:6800", false) && host_allowed("[::1]:6800", false));
+        assert!(!host_allowed("192.168.1.20:6800", false), "off the network unless allowed");
+        assert!(host_allowed("192.168.1.20:6800", true) && host_allowed("10.0.0.5", true) && host_allowed("[fe80::1]:6800", true));
+        assert!(!host_allowed("evil.example:6800", true) && !host_allowed("my-pc.local:6800", true), "a name could be DNS rebinding");
+    }
+
+    /// `SWIFTDL_REMOTE_PORT=6899 cargo test serve_demo -- --ignored`: the page over the
+    /// real server with fake downloads, for looking at it in a browser. Secret: demo
+    #[test]
+    #[ignore]
+    fn serve_demo() {
+        let port: u16 = std::env::var("SWIFTDL_REMOTE_PORT").unwrap().parse().unwrap();
+        let f = fake();
+        f.items.lock().unwrap().push(item(6, "downloading", 250));
+        serve(&format!("127.0.0.1:{port}"), Arc::new(f), "demo".into(), false).unwrap();
+        std::thread::sleep(std::time::Duration::from_secs(300));
     }
 }
