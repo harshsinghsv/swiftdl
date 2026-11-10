@@ -30,6 +30,11 @@ pub struct Settings {
     /// After a torrent finishes: "stop", a share ratio such as "1" or "2",
     /// or "forever".
     pub seed_until: String,
+    /// Once all downloads are done: "nothing", "close", "sleep" or "shutdown".
+    /// Used once, then back to "nothing".
+    pub when_done: String,
+    /// Hold the queue until this time (ms since epoch). 0 = no schedule.
+    pub start_at: u64,
 }
 
 impl Default for Settings {
@@ -48,6 +53,8 @@ impl Default for Settings {
             close_to_tray: true,
             theme: "system".into(),
             seed_until: "stop".into(),
+            when_done: "nothing".into(),
+            start_at: 0,
         }
     }
 }

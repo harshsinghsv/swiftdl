@@ -9,6 +9,7 @@ mod media;
 mod native_host;
 mod settings;
 mod torrent;
+mod batch;
 mod stream;
 mod update;
 mod windows;
@@ -117,6 +118,7 @@ fn main() {
             commands::probe_url,
             commands::probe_media,
             commands::probe_note,
+            commands::add_links,
             commands::is_media_url,
             commands::is_torrent_url,
             commands::probe_torrent,

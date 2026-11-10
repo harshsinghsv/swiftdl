@@ -728,6 +728,17 @@ async function probe() {
     setState("error", `Couldn't reach that link: ${e}`);
   }
 }
+// Several links, or a [01-50] pattern: add them all at once.
+$("add-url").addEventListener("paste", async (e) => {
+  const text = e.clipboardData?.getData("text") || "";
+  if (!/\s/.test(text.trim()) && !/\[\d+-\d+\]/.test(text)) return;
+  e.preventDefault();
+  const n = await invoke("add_links", { text }).catch(() => 0);
+  if (!n) return toast("No links found in what you pasted", "err");
+  $("dlg-add").close();
+  if (state.view !== "all" && state.view !== "active") state.view = "all";
+  toast(`Adding ${n} download${n === 1 ? "" : "s"}`, "dl");
+});
 $("add-url").addEventListener("input", () => { clearTimeout(add.timer); add.timer = window.setTimeout(probe, 400); });
 $("add-chips").addEventListener("click", async (e) => {
   if (!target(e).closest<HTMLElement>("#add-folder")) return;
@@ -761,7 +772,25 @@ function nextPending() {
 }
 
 // ---------- settings ----------
-let setDir = "", setLimitKib = 0, setThemeChoice = "system", setSeed = "stop";
+let setDir = "", setLimitKib = 0, setThemeChoice = "system", setSeed = "stop", setWhenDone = "nothing", setStartAt = 0;
+function renderWhenDone() {
+  $("set-whendone").querySelectorAll<HTMLElement>("[data-v]").forEach((b) => b.classList.toggle("on", b.dataset.v === setWhenDone));
+}
+$("set-whendone").addEventListener("click", (e) => { const b = target(e).closest<HTMLElement>("[data-v]"); if (b) { setWhenDone = b.dataset.v!; renderWhenDone(); } });
+// "Start at 02:00" means the next 02:00: tonight, or tomorrow if it has passed.
+function nextTime(hhmm: string): number {
+  const [h, m] = hhmm.split(":").map(Number);
+  const d = new Date(); d.setHours(h, m, 0, 0);
+  if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1);
+  return d.getTime();
+}
+function renderStartAt() {
+  const on = setStartAt > Date.now();
+  $("set-startat").value = on ? new Date(setStartAt).toTimeString().slice(0, 5) : "";
+  $("set-startat-hint").textContent = on ? `Downloads wait until ${new Date(setStartAt).toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" })}` : "Downloads wait until this time, once";
+}
+$("set-startat").addEventListener("change", () => { setStartAt = $("set-startat").value ? nextTime($("set-startat").value) : 0; renderStartAt(); });
+$("set-startat-clear").addEventListener("click", () => { setStartAt = 0; renderStartAt(); });
 function renderSeed() {
   $("set-seed").querySelectorAll<HTMLElement>("[data-v]").forEach((b) => b.classList.toggle("on", b.dataset.v === setSeed));
 }
@@ -786,6 +815,10 @@ function openSettings(tab = "general") {
   renderThemeChoice();
   setSeed = s.seedUntil || "stop";
   renderSeed();
+  setWhenDone = s.whenDone || "nothing";
+  renderWhenDone();
+  setStartAt = s.startAt || 0;
+  renderStartAt();
   setDir = s.downloadDir; $("set-dir").textContent = setDir;
   $("set-sort").checked = s.sortIntoCategories;
   $("set-ask").checked = s.askBeforeDownload;
@@ -841,6 +874,8 @@ $("form-settings").addEventListener("submit", async (e) => {
     onboardingDismissed: settings().onboardingDismissed,
     theme: setThemeChoice,
     seedUntil: setSeed,
+    whenDone: setWhenDone,
+    startAt: setStartAt,
   });
   $("dlg-settings").close();
   toast("Settings saved", "ok");
@@ -913,6 +948,8 @@ async function boot() {
   setTimeout(checkUpdate, 5000);
   setInterval(checkUpdate, 12 * 60 * 60 * 1000);
   await listen("downloads", (e) => ingest(e.payload));
+  // A one-time setting finished (when-done fired, or the queue's start time came).
+  await listen("settings", (e) => { state.settings = e.payload; if ($("dlg-settings").open) openSettings(); });
   await listen("incoming", () => invoke("get_state").then((s) => { state.pending.push(...s.pending); nextPending(); }));
   setInterval(() => {
     if (!state.items.some((i) => i.status === "downloading")) {

@@ -49,6 +49,10 @@ export interface Settings {
   closeToTray: boolean;
   theme: "system" | "light" | "dark" | string;
   seedUntil: "stop" | "1" | "2" | "forever" | string;
+  /** Once all downloads finish: "nothing", "close", "sleep" or "shutdown". */
+  whenDone: string;
+  /** The queue is held until this time (ms since epoch); 0 = no schedule. */
+  startAt: number;
 }
 
 export interface Incoming {
@@ -82,6 +86,7 @@ export interface Commands {
   probe_url: [{ url: string; headers: Header[] }, ProbeInfo];
   probe_media: [{ url: string; headers: Header[] }, MediaInfo];
   probe_note: [void, string | null];
+  add_links: [{ text: string }, number];
   is_media_url: [{ url: string }, boolean];
   is_torrent_url: [{ url: string; filename: string | null }, boolean];
   probe_torrent: [{ url: string; headers: Header[] }, TorrentInfo];

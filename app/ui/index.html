@@ -144,6 +144,13 @@
               <label class="custom">Custom <input id="set-limit-custom" type="number" min="0" step="64" placeholder="—"> KB/s</label>
             </div>
           </div>
+          <h2>Automation</h2>
+          <div class="set-group">
+            <div class="set-row col"><div class="sr-text"><b>When all downloads finish</b><span>Happens once, then goes back to doing nothing</span></div>
+              <div class="seg" id="set-whendone"><button type="button" data-v="nothing">Nothing</button><button type="button" data-v="close">Quit SwiftDL</button><button type="button" data-v="sleep">Sleep</button><button type="button" data-v="shutdown">Shut down</button></div></div>
+            <div class="set-row"><div class="sr-text"><b>Start the queue at</b><span id="set-startat-hint">Downloads wait until this time, once</span></div>
+              <span class="custom"><input id="set-startat" type="time"> <button type="button" class="btn sm" id="set-startat-clear">Clear</button></span></div>
+          </div>
         </section>
         <section data-panel="browser" hidden>
           <h2>Browser extension</h2>

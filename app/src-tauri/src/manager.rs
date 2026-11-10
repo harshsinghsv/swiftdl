@@ -357,7 +357,26 @@ impl DownloadManager {
             self.new_download_window(inc);
             return;
         }
-        // No dialog: probe for the real file name, then start right away.
+        self.add_quiet(inc);
+    }
+
+    /// Links pasted in bulk (a list, or a pattern like `file[01-50].zip`):
+    /// each is probed for its name and started, without a window per file.
+    pub fn add_links(self: &Arc<Self>, text: &str) -> usize {
+        let links = crate::batch::expand_links(text);
+        for url in &links {
+            let inc = Incoming { url: url.clone(), filename: None, referrer: None, cookies: None, user_agent: None, qualities: None, pick: None };
+            if crate::media::is_media_url(url) || crate::torrent::is_torrent(url, None) {
+                self.new_download_window(inc);
+            } else {
+                self.add_quiet(inc);
+            }
+        }
+        links.len()
+    }
+
+    /// Probes for the real file name, then starts the download right away.
+    fn add_quiet(self: &Arc<Self>, inc: Incoming) {
         let this = self.clone();
         tauri::async_runtime::spawn(async move {
             let headers = inc.headers();
@@ -430,7 +449,9 @@ impl DownloadManager {
         let to_start: Vec<(u64, Request, Kind, Arc<Progress>, crate::media::Note, CancellationToken)> = {
             let mut g = self.inner.lock().unwrap();
             let Inner { items, running, settings, .. } = &mut *g;
-            let free = settings.max_concurrent.max(1).saturating_sub(running.len());
+            // A start time in the future holds the whole queue.
+            let held = settings.start_at > now_ms();
+            let free = if held { 0 } else { settings.max_concurrent.max(1).saturating_sub(running.len()) };
             let connections = settings.connections;
             items
                 .iter_mut()
@@ -513,6 +534,7 @@ impl DownloadManager {
 
     fn finish(self: &Arc<Self>, id: u64, result: Result<Outcome>) {
         let mut notify = None;
+        let mut completed = false;
         {
             let mut g = self.inner.lock().unwrap();
             let running = g.running.remove(&id);
@@ -540,6 +562,7 @@ impl DownloadManager {
                     item.note = None;
                     match result {
                         Ok(Outcome::Completed) => {
+                            completed = true;
                             item.status = Status::Completed;
                             item.completed_at = Some(now_ms());
                             item.size = item.size.or(Some(item.downloaded));
@@ -567,6 +590,92 @@ impl DownloadManager {
         self.changed();
         self.save();
         self.schedule();
+        // "When all downloads finish": once nothing is running or waiting.
+        let action = {
+            let mut g = self.inner.lock().unwrap();
+            let idle = g.running.is_empty() && !g.items.iter().any(|i| i.status == Status::Queued);
+            if completed && idle && g.settings.when_done != "nothing" {
+                Some(std::mem::replace(&mut g.settings.when_done, "nothing".into()))
+            } else {
+                None
+            }
+        };
+        if let Some(kind) = action {
+            let settings = self.inner.lock().unwrap().settings.clone();
+            let _ = self.app.emit("settings", &settings);
+            self.save();
+            self.power(&kind);
+        }
+    }
+
+    /// Quit, sleep or shut down, with a notice first.
+    fn power(&self, kind: &str) {
+        use tauri_plugin_notification::NotificationExt;
+        crate::log::line(&format!("all downloads finished: {kind}"));
+        if kind == "close" {
+            self.app.exit(0);
+            return;
+        }
+        let body = if kind == "sleep" { "Going to sleep in a few seconds." } else { "Shutting down in 60 seconds. To cancel, run: shutdown /a" };
+        let _ = self.app.notification().builder().title("Downloads finished").body(body).show();
+        let kind = kind.to_string();
+        std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_secs(5));
+            let mut cmd;
+            #[cfg(windows)]
+            {
+                use std::os::windows::process::CommandExt;
+                cmd = if kind == "sleep" {
+                    let mut c = std::process::Command::new("rundll32.exe");
+                    c.args(["powrprof.dll,SetSuspendState", "0,1,0"]);
+                    c
+                } else {
+                    let mut c = std::process::Command::new("shutdown");
+                    c.args(["/s", "/t", "60"]);
+                    c
+                };
+                cmd.creation_flags(0x0800_0000);
+            }
+            #[cfg(target_os = "macos")]
+            {
+                cmd = if kind == "sleep" {
+                    let mut c = std::process::Command::new("pmset");
+                    c.arg("sleepnow");
+                    c
+                } else {
+                    let mut c = std::process::Command::new("osascript");
+                    c.args(["-e", "tell app \"System Events\" to shut down"]);
+                    c
+                };
+            }
+            #[cfg(all(unix, not(target_os = "macos")))]
+            {
+                cmd = std::process::Command::new("systemctl");
+                cmd.arg(if kind == "sleep" { "suspend" } else { "poweroff" });
+            }
+            if let Err(e) = cmd.spawn() {
+                crate::log::line(&format!("could not {kind}: {e}"));
+            }
+        });
+    }
+
+    /// Starts the held queue once its start time has come.
+    fn check_start_time(self: &Arc<Self>) {
+        let due = {
+            let mut g = self.inner.lock().unwrap();
+            if g.settings.start_at != 0 && now_ms() >= g.settings.start_at {
+                g.settings.start_at = 0;
+                true
+            } else {
+                false
+            }
+        };
+        if due {
+            let settings = self.inner.lock().unwrap().settings.clone();
+            let _ = self.app.emit("settings", &settings);
+            self.save();
+            self.schedule();
+        }
     }
 
     /// Called every 500 ms: copies live progress into items, computes
@@ -629,6 +738,7 @@ impl DownloadManager {
             let mut tick = tokio::time::interval(Duration::from_millis(500));
             for n in 0u64.. {
                 tick.tick().await;
+                this.check_start_time();
                 this.tick(n);
             }
         });
