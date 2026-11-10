@@ -253,6 +253,23 @@ pub fn open_in_browser(app: tauri::AppHandle, url: String) -> Result<(), String>
     app.opener().open_url(format!("{base}#swiftdl-browser"), None::<&str>).map_err(|e| e.to_string())
 }
 
+/// Site grabber: the links on one web page, for the user to pick from.
+#[tauri::command]
+pub async fn grab_page(m: Mgr<'_>, url: String) -> Result<Vec<crate::grabber::Found>, String> {
+    let page = url::Url::parse(url.trim()).map_err(|_| "That isn't a web link".to_string())?;
+    if !matches!(page.scheme(), "http" | "https") {
+        return Err("That isn't a web link".into());
+    }
+    let resp = m.client().get(page.as_str()).send().await.map_err(|e| e.to_string())?.error_for_status().map_err(|e| e.to_string())?;
+    let final_url = resp.url().clone();
+    // A page is text; a huge or binary answer is a file, not a page to read.
+    if resp.content_length().is_some_and(|n| n > 8_000_000) {
+        return Err("That's a large file, not a web page".into());
+    }
+    let html = resp.text().await.map_err(|e| e.to_string())?;
+    Ok(crate::grabber::find_links(&html, &final_url))
+}
+
 /// Downloads the file a Metalink describes, from all its mirrors.
 #[tauri::command]
 pub async fn add_metalink(m: Mgr<'_>, url: String) -> Result<(String, usize), String> {

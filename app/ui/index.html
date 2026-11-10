@@ -91,6 +91,7 @@
       <div class="chips" id="add-chips"></div>
       <div class="comp-foot">
         <button type="button" class="ghost-btn" id="add-paste"><i data-icon="clipboard"></i>Paste from clipboard</button>
+        <button type="button" class="ghost-btn" id="add-grab" title="List the files a web page links to"><i data-icon="search"></i>Find files on a page</button>
         <span class="grow"></span>
         <button type="button" class="btn" id="add-later">Download later</button>
         <button type="submit" class="btn primary" id="add-start">Download <kbd>Ctrl ↵</kbd></button>
@@ -99,6 +100,24 @@
   </dialog>
 
   <!-- Settings -->
+  <dialog id="dlg-grab" class="modal composer grab">
+    <form method="dialog" id="form-grab">
+      <div class="comp-top">
+        <span class="crumb"><img src="logo.svg" alt="" width="14" height="14">SwiftDL</span><i data-icon="chevron" class="crumb-sep"></i><span class="crumb-cur">Find files on a page</span>
+        <span class="grow"></span>
+        <button type="button" class="sq-btn" id="grab-x" title="Close (Esc)"><i data-icon="x"></i></button>
+      </div>
+      <input id="grab-url" class="comp-url" type="url" placeholder="Paste a page address…" autocomplete="off" spellcheck="false">
+      <div class="comp-state" id="grab-state"></div>
+      <div class="chips" id="grab-chips"></div>
+      <div class="grab-list" id="grab-list"></div>
+      <div class="comp-foot">
+        <button type="button" class="ghost-btn" id="grab-all">Select all</button>
+        <span class="grow"></span>
+        <button type="button" class="btn primary" id="grab-go" disabled>Download</button>
+      </div>
+    </form>
+  </dialog>
   <dialog id="dlg-settings" class="modal settings">
     <form method="dialog" id="form-settings">
       <nav class="set-nav" id="set-nav">

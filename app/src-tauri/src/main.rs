@@ -11,6 +11,7 @@ mod settings;
 mod torrent;
 mod batch;
 mod extract;
+mod grabber;
 mod metalink;
 mod stream;
 mod update;
@@ -126,6 +127,7 @@ fn main() {
             commands::probe_note,
             commands::add_links,
             commands::set_url,
+            commands::grab_page,
             commands::add_metalink,
             commands::download_next,
             commands::open_in_browser,

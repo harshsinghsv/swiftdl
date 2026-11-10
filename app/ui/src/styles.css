@@ -555,3 +555,14 @@ code { font: 11.5px ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospac
 .set-row input.txt { width: 190px; height: 28px; padding: 0 9px; border: 0; border-radius: 7px; background: var(--btn-bg); color: var(--text); font: inherit; user-select: text; }
 .set-row input.txt:focus { outline: none; box-shadow: inset 0 0 0 1px var(--accent); }
 .set-row input.txt::placeholder { color: var(--faint); }
+
+/* Find files on a page */
+.grab .chips { margin: 10px 20px 0; }
+.grab .chip { cursor: pointer; }
+.grab .chip.on { box-shadow: inset 0 0 0 1px var(--accent); color: var(--text); }
+.grab-list { margin: 10px 8px 0; max-height: 300px; overflow-y: auto; }
+.grab-row { display: flex; align-items: center; gap: 10px; padding: 5px 12px; border-radius: 7px; cursor: pointer; font-size: 13px; color: var(--text-2); }
+.grab-row:hover { background: var(--active); }
+.grab-row input { accent-color: var(--accent); flex: none; }
+.grab-row .gn { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+.grab-row .gh { flex: none; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--faint); font-size: 12px; }

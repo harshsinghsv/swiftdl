@@ -4,7 +4,7 @@
 import "./styles.css";
 import { invoke, listen, currentWindow, $ } from "./api";
 import type { Item, Settings, IntegrationStatus, BrowserStatus, Incoming, ProbeInfo, Header, Status, Commands, UpdateInfo } from "./api";
-import { icon, CATS, parts, bytes, speed, dur, when, esc, host, segBar } from "./util";
+import { icon, CATS, catOf, parts, bytes, speed, dur, when, esc, host, segBar } from "./util";
 
 const appWindow = currentWindow();
 const target = (e: Event) => e.target as HTMLElement;
@@ -770,6 +770,56 @@ async function probe() {
     setState("error", `Couldn't reach that link: ${e}`);
   }
 }
+// ---------- find files on a page ----------
+type Found = { url: string; name: string };
+const grab = { all: [] as Found[], picked: new Set<string>(), cat: "File", q: "" };
+const looksLikeFile = (n: string) => /\.[a-z0-9]{2,5}$/i.test(n) && !/\.(html?|php|aspx?|jsp|js|css|json|xml|map)$/i.test(n);
+function grabVisible(): Found[] {
+  return grab.all.filter((f) => (grab.cat === "File" ? looksLikeFile(f.name) : grab.cat === "All" ? true : looksLikeFile(f.name) && catOf(f.name) === grab.cat));
+}
+function renderGrab() {
+  const list = grabVisible();
+  const cats = ["File", ...Object.keys(CATS).filter((c) => c !== "Other" && grab.all.some((f) => looksLikeFile(f.name) && catOf(f.name) === c)), "All"];
+  $("grab-chips").innerHTML = cats.map((c) => `<button type="button" class="chip${c === grab.cat ? " on" : ""}" data-c="${c}"><span>${c === "File" ? "All files" : c === "All" ? "Every link" : c}</span></button>`).join("");
+  $("grab-list").innerHTML = list.map((f) => `<label class="grab-row"><input type="checkbox" data-u="${esc(f.url)}"${grab.picked.has(f.url) ? " checked" : ""}><span class="gn" title="${esc(f.url)}">${esc(f.name || f.url)}</span><span class="gh">${esc(host(f.url))}</span></label>`).join("") || `<p class="muted" style="padding:10px 12px">Nothing here.</p>`;
+  const n = grab.picked.size;
+  $("grab-go").disabled = !n;
+  $("grab-go").textContent = n ? `Download ${n} file${n === 1 ? "" : "s"}` : "Download";
+  $("grab-all").textContent = list.length && list.every((f) => grab.picked.has(f.url)) ? "Select none" : "Select all";
+}
+async function loadGrab() {
+  const url = $("grab-url").value.trim();
+  if (!/^https?:\/\//i.test(url)) return;
+  $("grab-state").textContent = "Reading the page…";
+  try {
+    grab.all = await invoke("grab_page", { url });
+    grab.picked.clear();
+    $("grab-state").textContent = grab.all.length ? `${grabVisible().length} files on this page` : "No links found on this page";
+    renderGrab();
+  } catch (e) { $("grab-state").textContent = `Couldn't read that page: ${e}`; }
+}
+$("add-grab").onclick = () => {
+  const url = $("add-url").value.trim();
+  $("dlg-add").close();
+  $("grab-url").value = /^https?:\/\//i.test(url) ? url : "";
+  grab.all = []; grab.picked.clear(); grab.cat = "File"; $("grab-state").textContent = ""; renderGrab();
+  $("dlg-grab").showModal();
+  $("grab-url").focus();
+  if ($("grab-url").value) loadGrab();
+};
+$("grab-x").onclick = () => $("dlg-grab").close();
+$("grab-url").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); loadGrab(); } });
+$("grab-url").addEventListener("paste", () => setTimeout(loadGrab, 50));
+$("grab-chips").addEventListener("click", (e) => { const b = target(e).closest<HTMLElement>("[data-c]"); if (b) { grab.cat = b.dataset.c!; renderGrab(); } });
+$("grab-list").addEventListener("change", (e) => { const i = target(e) as HTMLInputElement; if (i.dataset.u) { i.checked ? grab.picked.add(i.dataset.u) : grab.picked.delete(i.dataset.u); renderGrab(); } });
+$("grab-all").onclick = () => { const list = grabVisible(); const all = list.every((f) => grab.picked.has(f.url)); list.forEach((f) => (all ? grab.picked.delete(f.url) : grab.picked.add(f.url))); renderGrab(); };
+$("grab-go").onclick = async () => {
+  const n = await invoke("add_links", { text: [...grab.picked].join("\n") }).catch(() => 0);
+  $("dlg-grab").close();
+  if (state.view !== "all" && state.view !== "active") state.view = "all";
+  toast(`Adding ${n} download${n === 1 ? "" : "s"}`, "dl");
+};
+
 // Several links, or a [01-50] pattern: add them all at once.
 $("add-url").addEventListener("paste", async (e) => {
   const text = e.clipboardData?.getData("text") || "";
