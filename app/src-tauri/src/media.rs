@@ -336,9 +336,15 @@ async fn ytdlp_json(ytdlp: PathBuf, url: String, headers: Vec<(String, String)>,
         let mut cmd = if with_js { ytdlp_command(&ytdlp) } else { command(&ytdlp) };
         cmd.args(["-J", "--no-playlist", "--no-warnings", "--socket-timeout", "20"]);
         add_headers(&mut cmd, &headers_for(&url, &headers, with_js));
-        let mut child = cmd.arg(&url).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn().context("couldn't start yt-dlp")?;
+        // Plain anonymous pipes, as the common Windows launchers make. Rust's own
+        // `Stdio::piped()` is a named pipe, and on some PCs yt-dlp's Python can't
+        // write to it ("[Errno 22] Invalid argument", seen on Bilibili).
+        let (mut so, so_w) = os_pipe::pipe()?;
+        let (mut se, se_w) = os_pipe::pipe()?;
+        let mut child = cmd.arg(&url).stdout(so_w).stderr(se_w).spawn().context("couldn't start yt-dlp")?;
+        // The command still holds the write ends; without this the readers never see the end.
+        drop(cmd);
         // Read both pipes on their own threads so a full pipe can't stall yt-dlp.
-        let (mut so, mut se) = (child.stdout.take().unwrap(), child.stderr.take().unwrap());
         let out = std::thread::spawn(move || { let mut b = vec![]; let _ = so.read_to_end(&mut b); b });
         let err = std::thread::spawn(move || { let mut b = vec![]; let _ = se.read_to_end(&mut b); b });
         let start = std::time::Instant::now();
@@ -729,16 +735,22 @@ async fn attempt(tools: &Tools, job: &Job, progress: &Arc<Progress>, note: &Note
         Some(saved) => { cmd.arg("--load-info-json").arg(saved); }
         None => { cmd.arg(&job.url); }
     }
-    let mut child = cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).spawn().context("couldn't start yt-dlp")?;
+    // Plain anonymous pipes; see ytdlp_json.
+    let (stdout, out_w) = os_pipe::pipe()?;
+    let (mut stderr, err_w) = os_pipe::pipe()?;
+    let child = cmd.stdout(out_w).stderr(err_w).spawn().context("couldn't start yt-dlp")?;
+    drop(cmd);
 
-    let stdout = child.stdout.take().unwrap();
-    let stderr = child.stderr.take().unwrap();
     let errors = Arc::new(Mutex::new(String::new()));
     {
         let errors = errors.clone();
         std::thread::spawn(move || {
-            let text: String = BufReader::new(stderr).lines().map_while(Result::ok).collect::<Vec<_>>().join("\n");
-            *errors.lock().unwrap() = text;
+            // Read bytes, not lines of UTF-8: stopping at the first byte that isn't
+            // valid UTF-8 (yt-dlp writes the PC's own code page) would close the pipe
+            // on yt-dlp, and its next write fails with "[Errno 22]".
+            let mut bytes = vec![];
+            let _ = stderr.read_to_end(&mut bytes);
+            *errors.lock().unwrap() = String::from_utf8_lossy(&bytes).into_owned();
         });
     }
     let reader = {
@@ -780,7 +792,17 @@ fn read_progress(stdout: impl std::io::Read, progress: &Progress, note: &Note) {
     let num = |s: &str| s.trim().parse::<f64>().ok().filter(|n| n.is_finite() && *n > 0.0).map(|n| n as u64);
     let (mut base, mut cur) = (0u64, 0u64);
     let hint = progress.total.load(Ordering::Relaxed);
-    for line in BufReader::new(stdout).lines().map_while(Result::ok) {
+    // Lines as raw bytes, converted leniently: an odd byte must never end the
+    // reading, or the pipe closes under yt-dlp (see attempt).
+    let mut reader = BufReader::new(stdout);
+    let mut raw = Vec::new();
+    loop {
+        raw.clear();
+        if !matches!(reader.read_until(b'\n', &mut raw), Ok(n) if n > 0) {
+            break;
+        }
+        let line = String::from_utf8_lossy(&raw);
+        let line = line.trim_end();
         if let Some(rest) = line.strip_prefix("SDL|") {
             let f: Vec<&str> = rest.split('|').collect();
             if f.len() < 4 {
@@ -899,6 +921,38 @@ mod tests {
 mod live {
     /// `cargo test --release live_youtube -- --ignored --nocapture` with
     /// SWIFTDL_YT_URL and SWIFTDL_YT_OUT set. Downloads 1080p for real.
+    /// Runs the same lookup the app does, for any URL in SWIFTDL_PROBE_URL.
+    #[test]
+    #[ignore]
+    fn live_probe() {
+        let url = std::env::var("SWIFTDL_PROBE_URL").unwrap();
+        let ytdlp = super::ytdlp_path();
+        for with_js in [false, true] {
+            let r = tauri::async_runtime::block_on(super::ytdlp_json(ytdlp.clone(), url.clone(), vec![], with_js));
+            match r {
+                Ok(j) => println!("with_js={with_js}: ok, {} bytes", j.len()),
+                Err(e) => println!("with_js={with_js}: FAILED: {e:#}"),
+            }
+        }
+    }
+
+    /// Downloads the smallest quality of SWIFTDL_DL_URL to SWIFTDL_DL_OUT through
+    /// the same code path as the app. Run it with PYTHONIOENCODING=gbk to act
+    /// like a Chinese-language Windows.
+    #[test]
+    #[ignore]
+    fn live_download() {
+        let url = std::env::var("SWIFTDL_DL_URL").unwrap();
+        let dest = std::path::PathBuf::from(std::env::var("SWIFTDL_DL_OUT").unwrap());
+        let client = swiftdl_engine::build_client().unwrap();
+        let job = super::Job { url, format: "wv*+wa/w".into(), dest: dest.clone(), headers: vec![] };
+        let r = tauri::async_runtime::block_on(super::run(&client, job, Default::default(), Default::default(), Default::default()));
+        match r {
+            Ok(o) => println!("RESULT {o:?}, {} bytes", std::fs::metadata(&dest).map(|m| m.len()).unwrap_or(0)),
+            Err(e) => println!("RESULT FAILED: {e:#}"),
+        }
+    }
+
     #[test]
     #[ignore]
     fn live_youtube() {

@@ -17,10 +17,28 @@ pub struct RemoteFile {
     pub last_modified: Option<String>,
 }
 
+/// Google Drive's normal share links answer with a "can't scan for viruses"
+/// web page, not the file. This address serves the file itself.
+fn direct_url(url: &str) -> String {
+    let Ok(u) = reqwest::Url::parse(url) else { return url.to_string() };
+    if u.host_str() != Some("drive.google.com") {
+        return url.to_string();
+    }
+    let id = u.query_pairs().find(|(k, _)| k == "id").map(|(_, v)| v.into_owned()).or_else(|| {
+        let mut parts = u.path_segments()?;
+        (parts.next()? == "file" && parts.next()? == "d").then(|| parts.next().map(str::to_string)).flatten()
+    });
+    match id.filter(|i| !i.is_empty() && i.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')) {
+        Some(id) => format!("https://drive.usercontent.google.com/download?id={id}&export=download&confirm=t"),
+        None => url.to_string(),
+    }
+}
+
 /// Asks for byte 0 only. A `206` with `Content-Range: bytes 0-0/N` proves
 /// range support and gives the size. A `200` means the server ignored the
 /// range, so we must download in a single stream.
 pub async fn probe(client: &Client, url: &str, headers: &header::HeaderMap) -> Result<RemoteFile> {
+    let url = &direct_url(url);
     let resp = client
         .get(url)
         .headers(headers.clone())
@@ -51,6 +69,15 @@ pub async fn probe(client: &Client, url: &str, headers: &header::HeaderMap) -> R
         .map(|n| sanitize(&n))
         .filter(|n| !n.is_empty())
         .unwrap_or_else(|| "download.bin".to_string());
+
+    // A web page where a file should be: a sign-in or "are you sure" page.
+    // Saving it as the download would only leave a small broken file.
+    let ctype = header_str(h, header::CONTENT_TYPE).unwrap_or("").to_ascii_lowercase();
+    let attachment = header_str(h, header::CONTENT_DISPOSITION).is_some_and(|d| d.to_ascii_lowercase().contains("attachment"));
+    let wants_html = [".html", ".htm", ".xhtml"].iter().any(|e| filename.to_ascii_lowercase().ends_with(e));
+    if ctype.starts_with("text/html") && !attachment && !wants_html {
+        bail!("This link opens a web page, not a file. The site may need you to sign in or confirm first.");
+    }
 
     Ok(RemoteFile {
         url: final_url.to_string(),
@@ -104,6 +131,16 @@ fn sanitize(name: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn drive_links_go_to_the_file() {
+        let want = "https://drive.usercontent.google.com/download?id=AbC_1-x&export=download&confirm=t";
+        assert_eq!(direct_url("https://drive.google.com/uc?id=AbC_1-x&export=download"), want);
+        assert_eq!(direct_url("https://drive.google.com/file/d/AbC_1-x/view?usp=sharing"), want);
+        assert_eq!(direct_url("https://drive.google.com/open?id=AbC_1-x"), want);
+        assert_eq!(direct_url("https://example.com/uc?id=AbC_1-x"), "https://example.com/uc?id=AbC_1-x");
+        assert_eq!(direct_url("https://drive.google.com/drive/folders/zzz"), "https://drive.google.com/drive/folders/zzz");
+    }
 
     #[test]
     fn parses_disposition() {
