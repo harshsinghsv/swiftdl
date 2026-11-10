@@ -403,6 +403,16 @@ pub fn part_path(dest: &Path) -> PathBuf {
 }
 
 /// The still-missing ranges of a paused download, from its resume file.
+/// Points a paused download's saved progress at a new address for the same
+/// file (a link that expired and was replaced). The size and the server's
+/// validators are still checked when it resumes, so a different file starts over.
+pub fn rebase_saved(dest: &Path, new_url: &str) -> bool {
+    let path = append_ext(dest, "swiftdl");
+    let Some(mut s) = SavedState::load(&path) else { return false };
+    s.url = new_url.to_string();
+    s.save(&path).is_ok()
+}
+
 pub fn saved_remaining(dest: &Path) -> Option<Vec<(u64, u64)>> {
     SavedState::load(&append_ext(dest, "swiftdl")).map(|s| s.segments)
 }
@@ -412,4 +422,24 @@ fn append_ext(path: &Path, ext: &str) -> PathBuf {
     s.push(".");
     s.push(ext);
     PathBuf::from(s)
+}
+
+#[cfg(test)]
+mod rebase_tests {
+    use super::*;
+
+    #[test]
+    fn a_refreshed_link_keeps_its_progress() {
+        let dest = std::env::temp_dir().join("swiftdl-rebase-test.bin");
+        let state = SavedState { url: "https://x/f?token=old".into(), size: 100, etag: Some("e".into()), last_modified: None, segments: vec![(40, 100)] };
+        state.save(&append_ext(&dest, "swiftdl")).unwrap();
+        assert!(!state.matches("https://x/f?token=new", 100, &Some("e".into()), &None), "a different address would start over");
+        assert!(rebase_saved(&dest, "https://x/f?token=new"));
+        let moved = SavedState::load(&append_ext(&dest, "swiftdl")).unwrap();
+        assert!(moved.matches("https://x/f?token=new", 100, &Some("e".into()), &None));
+        assert!(!moved.matches("https://x/f?token=new", 101, &Some("e".into()), &None), "a different size still starts over");
+        assert_eq!(moved.segments, vec![(40, 100)]);
+        let _ = std::fs::remove_file(append_ext(&dest, "swiftdl"));
+        assert!(!rebase_saved(&dest, "https://x/f"), "nothing saved, nothing to move");
+    }
 }

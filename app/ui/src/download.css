@@ -90,3 +90,8 @@ body.dlw { overflow: hidden; --win-edge: rgba(0, 0, 0, .1); }
 /* Solid: the small window has text right under it. */
 .dd-menu { min-width: 160px; overflow-y: auto; background: var(--panel); border: 1px solid var(--border); backdrop-filter: none; }
 .dd-menu button.on { color: var(--text); background: var(--active); }
+
+.kv .v input { width: 100%; height: 26px; padding: 0 8px; border: 0; border-radius: 6px; background: var(--btn-bg); color: var(--text); font: inherit; user-select: text; }
+.kv .v input:focus { outline: none; box-shadow: inset 0 0 0 1px var(--accent); }
+.kv .v input::placeholder { color: var(--faint); }
+.kv .v input.bad { box-shadow: inset 0 0 0 1px var(--red); }

@@ -242,6 +242,12 @@ pub async fn probe_media(m: Mgr<'_>, url: String, headers: Vec<(String, String)>
 
 /// A video-site link pasted into the main window: choose its quality in a
 /// "New download" window, like a link caught from the browser.
+/// Replaces a stopped download's address and resumes it.
+#[tauri::command]
+pub fn set_url(m: Mgr, id: u64, url: String) -> Result<(), String> {
+    m.set_url(id, &url)
+}
+
 /// Adds every link in pasted text (lists and `[01-50]` patterns). Returns how many.
 #[tauri::command]
 pub fn add_links(m: Mgr, text: String) -> usize {

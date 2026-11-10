@@ -31,6 +31,8 @@ export interface Item {
   format: string | null;
   torrentFiles: number[] | null;
   note: string | null;
+  checksum?: string | null;
+  verified?: boolean;
   peers?: number | null;
   seeds?: number | null;
 }
@@ -77,6 +79,7 @@ export interface TorrentInfo { name: string; size: number; files: { path: string
 export interface AddRequest {
   url: string; filename: string; dir: string; headers?: Header[]; start: boolean;
   window?: string | null; format?: string | null; size?: number | null; torrentFiles?: number[] | null;
+  checksum?: string | null;
 }
 
 type Ids = { ids: number[] };
@@ -87,6 +90,7 @@ export interface Commands {
   probe_media: [{ url: string; headers: Header[] }, MediaInfo];
   probe_note: [void, string | null];
   add_links: [{ text: string }, number];
+  set_url: [{ id: number; url: string }, void];
   is_media_url: [{ url: string }, boolean];
   is_torrent_url: [{ url: string; filename: string | null }, boolean];
   probe_torrent: [{ url: string; headers: Header[] }, TorrentInfo];

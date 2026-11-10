@@ -67,6 +67,12 @@ pub struct Item {
     /// Live status text, such as "Merging video and audio".
     #[serde(default, skip_deserializing)]
     pub note: Option<String>,
+    /// SHA-256 the user gave to check the finished file against.
+    #[serde(default)]
+    pub checksum: Option<String>,
+    /// The finished file matched `checksum`.
+    #[serde(default)]
+    pub verified: bool,
 }
 
 /// A download sent by the browser extension, waiting for the user to
@@ -136,6 +142,9 @@ pub struct AddRequest {
     /// Expected size, when known up front (video qualities).
     #[serde(default)]
     pub size: Option<u64>,
+    /// SHA-256 to check the finished file against.
+    #[serde(default)]
+    pub checksum: Option<String>,
     /// A torrent: the files to download (see `Item::torrent_files`).
     #[serde(default)]
     pub torrent_files: Option<Vec<usize>>,
@@ -263,6 +272,8 @@ impl DownloadManager {
                 format: req.format,
                 torrent_files: req.torrent_files,
                 note: None,
+                checksum: req.checksum,
+                verified: false,
             });
             if let Some(label) = req.window {
                 g.windows.insert(id, label);
@@ -383,7 +394,7 @@ impl DownloadManager {
             let probed = swiftdl_engine::probe(&this.client, &inc.url, &to_header_map(&headers)).await.ok().map(|r| r.filename);
             let filename = inc.suggested_name().or(probed).unwrap_or_else(|| "download.bin".into());
             let dir = this.default_dir(category_for(&filename));
-            this.add(AddRequest { url: inc.url, filename, dir, headers, start: true, window: None, format: None, size: None, torrent_files: None });
+            this.add(AddRequest { url: inc.url, filename, dir, headers, start: true, window: None, format: None, size: None, torrent_files: None, checksum: None });
         });
     }
 
@@ -499,6 +510,7 @@ impl DownloadManager {
         for (id, req, kind, progress, note, cancel) in to_start {
             let this = self.clone();
             tauri::async_runtime::spawn(async move {
+                let check_note = note.clone();
                 let result = match kind {
                     // A stream picked in the extension: our own downloader.
                     Kind::Media(format) if crate::stream::parse_format(&format).is_some() => {
@@ -526,6 +538,7 @@ impl DownloadManager {
                     }
                     Kind::File => swiftdl_engine::run(&this.client, &req, progress, cancel, this.limiter.clone()).await,
                 };
+                let result = this.verify(id, result, &check_note).await;
                 this.finish(id, result);
             });
         }
@@ -606,6 +619,49 @@ impl DownloadManager {
             self.save();
             self.power(&kind);
         }
+    }
+
+    /// Checks a finished file against the SHA-256 the user gave, if any.
+    async fn verify(self: &Arc<Self>, id: u64, result: Result<Outcome>, note: &crate::media::Note) -> Result<Outcome> {
+        if !matches!(result, Ok(Outcome::Completed)) {
+            return result;
+        }
+        let Some((want, path)) = self.item(id).and_then(|i| i.checksum.clone().map(|c| (c, i.path.clone()))) else { return result };
+        *note.lock().unwrap() = Some("Checking the file".into());
+        match tauri::async_runtime::spawn_blocking(move || sha256_file(&path)).await {
+            Ok(Ok(got)) if got.eq_ignore_ascii_case(want.trim()) => {
+                if let Some(i) = self.inner.lock().unwrap().items.iter_mut().find(|i| i.id == id) {
+                    i.verified = true;
+                }
+                result
+            }
+            Ok(Ok(got)) => Err(anyhow::anyhow!("The file's SHA-256 doesn't match. Expected {}, got {got}. It may be corrupted or not the file you meant.", want.trim())),
+            _ => Err(anyhow::anyhow!("The file finished, but couldn't be read to check it.")),
+        }
+    }
+
+    /// Replaces a stopped download's address (an expired link, refreshed) and
+    /// resumes it where it left off.
+    pub fn set_url(self: &Arc<Self>, id: u64, url: &str) -> Result<(), String> {
+        let url = url.trim();
+        if !(url.starts_with("http://") || url.starts_with("https://")) {
+            return Err("That isn't a web link".into());
+        }
+        {
+            let mut g = self.inner.lock().unwrap();
+            let Some(item) = g.items.iter_mut().find(|i| i.id == id) else { return Err("Download not found".into()) };
+            if item.format.is_some() || item.torrent_files.is_some() {
+                return Err("Only regular file downloads can change address".into());
+            }
+            if matches!(item.status, Status::Completed | Status::Downloading) {
+                return Err("Pause the download first".into());
+            }
+            item.url = url.to_string();
+            item.error = None;
+            swiftdl_engine::rebase_saved(&item.path, url);
+        }
+        self.resume(&[id]);
+        Ok(())
     }
 
     /// Quit, sleep or shut down, with a notice first.
@@ -802,4 +858,31 @@ fn save_json<T: Serialize>(path: &Path, value: &T) -> Result<()> {
     std::fs::write(&tmp, serde_json::to_vec_pretty(value)?)?;
     std::fs::rename(&tmp, path)?;
     Ok(())
+}
+
+fn sha256_file(path: &Path) -> std::io::Result<String> {
+    use sha2::{Digest, Sha256};
+    use std::io::Read;
+    let mut file = std::fs::File::open(path)?;
+    let mut hash = Sha256::new();
+    let mut buf = vec![0u8; 1 << 20];
+    loop {
+        let n = file.read(&mut buf)?;
+        if n == 0 {
+            break;
+        }
+        hash.update(&buf[..n]);
+    }
+    Ok(hash.finalize().iter().map(|b| format!("{b:02x}")).collect())
+}
+
+#[cfg(test)]
+mod checksum_tests {
+    #[test]
+    fn hashes_a_file() {
+        let p = std::env::temp_dir().join("swiftdl-sha-test.txt");
+        std::fs::write(&p, b"abc").unwrap();
+        assert_eq!(super::sha256_file(&p).unwrap(), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+        let _ = std::fs::remove_file(p);
+    }
 }

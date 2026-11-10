@@ -262,7 +262,7 @@ function renderInspector() {
   segBar(bar, null, undefined, pct(it));
   const row = (k: string, v: string) => `<dt>${k}</dt><dd><span>${v}</span></dd>`;
   const stats = it.status === "completed"
-    ? row("Size", bytes(it.size)) + row("Finished", when(it.completedAt) || "—")
+    ? row("Size", bytes(it.size)) + row("Finished", when(it.completedAt) || "—") + (it.verified ? row("Checksum", "SHA-256 matches") : "")
     : row("Downloaded", it.size ? `${bytes(it.downloaded)} of ${bytes(it.size)}` : bytes(it.downloaded)) +
       (dl && !finishing ? row("Speed", speed(it.speed)) + row("Time left", dur(eta(it))) : "") +
       (dl && it.connections ? row("Connections", String(it.connections)) : "");
@@ -491,6 +491,13 @@ function showMenu(x: number, y: number, entries: MenuLine[], above = false) {
   menu.style.left = `${Math.max(8, Math.min(x, innerWidth - r.width - 8))}px`;
   menu.style.top = `${Math.max(8, Math.min(y, innerHeight - r.height - 8))}px`;
 }
+// A link that expired: copy the fresh one, then this carries on where it stopped.
+async function replaceLink(it: Item) {
+  const url = await readClip();
+  if (!url) return toast("Copy the new link first, then choose this again");
+  try { await invoke("set_url", { id: it.id, url }); toast("Link replaced, resuming", "ok"); }
+  catch (e) { toast(esc(String(e)), "err"); }
+}
 function itemMenu(it: Item, x: number, y: number, above = false) {
   showMenu(x, y, [
     { icon: "open", label: "Open", keys: ["Enter"], enabled: it.status === "completed", run: () => act("open", it) },
@@ -498,6 +505,7 @@ function itemMenu(it: Item, x: number, y: number, above = false) {
     "-",
     isActive(it) ? { icon: "pause", label: "Pause", keys: ["Space"], run: () => pause([it.id]) }
       : { icon: it.status === "error" ? "retry" : "play", label: it.status === "error" ? "Retry" : "Resume", keys: ["Space"], enabled: it.status !== "completed", run: () => resume([it.id]) },
+    { icon: "link", label: "Replace link from clipboard", enabled: it.status === "error" || it.status === "paused", run: () => replaceLink(it) },
     { icon: "link", label: "Copy link", keys: ["C"], run: () => act("copy", it) },
     "-",
     { icon: "trash", label: it.status === "completed" ? "Remove…" : "Cancel download…", keys: ["Del"], danger: true, run: () => askDelete(it) },

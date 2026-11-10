@@ -119,6 +119,7 @@ fn main() {
             commands::probe_media,
             commands::probe_note,
             commands::add_links,
+            commands::set_url,
             commands::is_media_url,
             commands::is_torrent_url,
             commands::probe_torrent,
