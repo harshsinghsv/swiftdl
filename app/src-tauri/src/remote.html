@@ -7,57 +7,86 @@
 <title>SwiftDL Remote</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14.5' fill='%2317181c'/%3E%3Cg fill='%23fff' transform='translate(13 13) scale(1.1875)'%3E%3Crect x='4.5' y='3' width='4.4' height='12' rx='2.2'/%3E%3Crect x='10.9' y='3' width='4.4' height='17' rx='2.2'/%3E%3Crect x='16.7' y='3' width='4.4' height='17' rx='2.2'/%3E%3Crect x='23.1' y='3' width='4.4' height='12' rx='2.2'/%3E%3Cpath d='M6 21.5 16 28l10-6.5' fill='none' stroke='%23fff' stroke-width='4.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/g%3E%3C/svg%3E">
 <style>
-  :root { --bg:#101114; --panel:#16171b; --line:#25272d; --text:#e6e8ec; --muted:#8a8e98; --faint:#5b5f69; --accent:#0a84ff; --green:#2f9e6a; --amber:#d9a441; --red:#e0605e; --track:#26282e; }
-  @media (prefers-color-scheme: light) { :root { --bg:#f6f7f9; --panel:#fff; --line:#e3e5ea; --text:#1b1d22; --muted:#6b707b; --faint:#9a9fa9; --track:#e6e8ed; } }
+  /* The same colours and spacing as SwiftDL's own window. */
+  :root { --bg:#f3f3f5; --panel:#fff; --group:rgba(248,248,250,.94); --border:rgba(15,15,25,.08); --border-2:rgba(15,15,25,.13); --text:#17171c; --text-2:#3c3d45; --muted:#6c6e78; --faint:#a2a4ad; --accent:#007aff; --btn:rgba(15,15,25,.055); --btn-h:rgba(15,15,25,.09); --hover:rgba(15,15,25,.04); --pbg:#18181b; --ptext:#fff; --green:#23864f; --amber:#b9780c; --red:#cf4540; --track:rgba(15,15,25,.08); color-scheme:light; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#090a0c; --panel:#101114; --group:rgba(20,21,25,.94); --border:rgba(255,255,255,.07); --border-2:rgba(255,255,255,.12); --text:#eef0f3; --text-2:#c7cad1; --muted:#8a8e98; --faint:#5c6069; --accent:#0a84ff; --btn:rgba(255,255,255,.07); --btn-h:rgba(255,255,255,.11); --hover:rgba(255,255,255,.035); --pbg:#eceef1; --ptext:#0e0f12; --green:#3fa877; --amber:#d9a03e; --red:#e0605a; --track:rgba(255,255,255,.08); color-scheme:dark; } }
   * { box-sizing: border-box; }
-  html, body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, "Segoe UI", sans-serif; }
-  main { max-width: 760px; margin: 0 auto; padding: 16px; }
-  header { display: flex; align-items: center; gap: 10px; padding: 6px 0 14px; }
-  header svg { width: 26px; height: 26px; flex: none; }
-  header b { font-size: 16px; letter-spacing: -.01em; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 13.5px/1.4 "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .card { max-width: 920px; margin: 0 auto; min-height: 100vh; background: var(--panel); }
+  @media (min-width: 960px) { body { padding: 20px 0; } .card { min-height: calc(100vh - 40px); border-radius: 12px; box-shadow: 0 0 0 1px var(--border); overflow: clip; } }
+
+  header { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 18px; border-bottom: 1px solid var(--border); }
+  header svg.logo { width: 22px; height: 22px; flex: none; }
+  header b { font: 600 14.5px "Segoe UI Variable Display", "Segoe UI", -apple-system, system-ui, sans-serif; letter-spacing: -.01em; }
   header .grow { flex: 1; }
-  #speed { color: var(--muted); font-variant-numeric: tabular-nums; }
-  form.add { display: flex; gap: 8px; margin-bottom: 18px; }
-  input { font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; min-width: 0; }
-  input:focus { outline: none; border-color: var(--accent); }
-  form.add input { flex: 1; }
-  button { font: inherit; cursor: pointer; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 13px; }
-  button:hover { border-color: var(--faint); }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  h2 { margin: 18px 2px 8px; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: none; letter-spacing: .01em; }
-  h2 span { color: var(--faint); margin-left: 6px; font-weight: 500; }
-  .item { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 11px 13px; margin-bottom: 8px; }
-  .top { display: flex; align-items: center; gap: 10px; }
-  .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
-  .acts { display: flex; gap: 6px; flex: none; }
-  .acts button { padding: 4px 10px; font-size: 12.5px; }
-  .bar { height: 5px; border-radius: 3px; background: var(--track); margin: 9px 0 7px; overflow: hidden; }
-  .bar i { display: block; height: 100%; background: var(--accent); }
-  .paused .bar i, .waiting .bar i { background: var(--amber); }
-  .complete .bar i { background: var(--green); }
-  .error .bar i { background: var(--red); }
-  .meta { display: flex; gap: 14px; color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
-  .meta .err { color: var(--red); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .empty { color: var(--faint); padding: 28px 0; text-align: center; }
-  #gate { position: fixed; inset: 0; background: var(--bg); display: none; align-items: center; justify-content: center; padding: 16px; }
+  #spark { width: 84px; height: 22px; flex: none; }
+  #spark path { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
+  #speed { min-width: 70px; text-align: right; color: var(--text-2); font-weight: 550; font-variant-numeric: tabular-nums; }
+
+  .bar { display: flex; gap: 8px; padding: 12px 18px; border-bottom: 1px solid var(--border); }
+  .bar input { flex: 1; min-width: 0; height: 34px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--btn); color: var(--text); font: inherit; }
+  .bar input::placeholder { color: var(--faint); }
+  .bar input:focus { outline: none; box-shadow: inset 0 0 0 1px var(--accent); }
+  button { font: inherit; color: var(--text); background: var(--btn); border: 0; border-radius: 8px; height: 34px; padding: 0 14px; font-weight: 550; cursor: pointer; }
+  button:hover { background: var(--btn-h); }
+  button.primary { background: var(--pbg); color: var(--ptext); }
+  button.primary:hover { opacity: .88; background: var(--pbg); }
+  .tools { display: flex; gap: 6px; justify-content: flex-end; padding: 8px 18px 0; }
+  .tools button { height: 28px; padding: 0 10px; font-size: 12.5px; font-weight: 500; color: var(--muted); background: none; }
+  .tools button:hover { background: var(--hover); color: var(--text); }
+
+  .gh { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 9px; height: 36px; padding: 0 18px; background: var(--group); border-bottom: 1px solid var(--border); font-weight: 550; color: var(--text-2); backdrop-filter: blur(12px); }
+  .gh .gc { color: var(--faint); font-weight: 500; font-variant-numeric: tabular-nums; }
+  .gh .gr { margin-left: auto; color: var(--muted); font-weight: 500; font-size: 12px; font-variant-numeric: tabular-nums; }
+
+  .row { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 10px 18px; border-bottom: 1px solid var(--border); }
+  .row:hover { background: var(--hover); }
+  .st { grid-row: 1 / span 2; width: 16px; height: 16px; align-self: start; margin-top: 2px; }
+  .name { display: flex; align-items: center; gap: 8px; min-width: 0; font-weight: 500; }
+  .name span.n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tag { flex: none; height: 17px; padding: 0 6px; border-radius: 4px; background: var(--btn); color: var(--muted); font-size: 10.5px; font-weight: 650; letter-spacing: .03em; display: grid; place-items: center; }
+  .acts { grid-row: 1 / span 2; grid-column: 3; display: flex; gap: 2px; }
+  .acts button { width: 30px; height: 30px; padding: 0; display: grid; place-items: center; background: none; color: var(--muted); border-radius: 7px; }
+  .acts button:hover { background: var(--btn-h); color: var(--text); }
+  .acts button.sure { width: auto; padding: 0 10px; background: var(--red); color: #fff; font-size: 12px; }
+  .acts svg { width: 15px; height: 15px; }
+  .sub { grid-column: 2; min-width: 0; display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .sub .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sub .err { color: var(--red); }
+  .mini { flex: none; width: 88px; height: 4px; border-radius: 2px; background: var(--track); overflow: hidden; }
+  .mini i { display: block; height: 100%; background: var(--accent); }
+  .paused .mini i { background: var(--amber); }
+  .waiting .mini i { background: var(--faint); }
+  .empty { padding: 48px 18px; text-align: center; color: var(--faint); }
+
+  #gate { position: fixed; inset: 0; z-index: 9; background: var(--bg); display: none; align-items: center; justify-content: center; padding: 18px; }
   #gate.on { display: flex; }
-  #gate form { width: 100%; max-width: 340px; display: grid; gap: 10px; }
-  #gate p { margin: 0; color: var(--muted); }
-  #gate .bad { color: var(--red); min-height: 1.4em; }
-  #toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; display: none; }
+  #gate form { width: 100%; max-width: 330px; display: grid; gap: 10px; padding: 22px; border-radius: 12px; background: var(--panel); box-shadow: 0 0 0 1px var(--border); }
+  #gate .brand { display: flex; align-items: center; gap: 9px; font: 600 15px system-ui; }
+  #gate .brand svg { width: 24px; height: 24px; }
+  #gate p { margin: 0; color: var(--muted); font-size: 13px; }
+  #gate input { height: 36px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--btn); color: var(--text); font: inherit; }
+  #gate input:focus { outline: none; box-shadow: inset 0 0 0 1px var(--accent); }
+  #gate .bad { color: var(--red); font-size: 12.5px; min-height: 1.3em; }
+  #toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--pbg); color: var(--ptext); border-radius: 8px; padding: 8px 14px; font-weight: 550; display: none; z-index: 10; }
   #toast.on { display: block; }
+  @media (max-width: 520px) { header, .bar, .row, .gh { padding-left: 14px; padding-right: 14px; } .mini { display: none; } #spark { display: none; } }
 </style>
 </head>
 <body>
-<main>
+<div class="card">
   <header>
-    <svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" fill="#17181c" stroke="#fff" stroke-opacity=".12"/><g fill="#fff" transform="translate(13 13) scale(1.1875)"><rect x="4.5" y="3" width="4.4" height="12" rx="2.2"/><rect x="10.9" y="3" width="4.4" height="17" rx="2.2"/><rect x="16.7" y="3" width="4.4" height="17" rx="2.2"/><rect x="23.1" y="3" width="4.4" height="12" rx="2.2"/><path d="M6 21.5 16 28l10-6.5" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></g></svg>
-    <b>SwiftDL</b><span class="grow"></span><span id="speed"></span>
+    <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" fill="#17181c"/><g fill="#fff" transform="translate(13 13) scale(1.1875)"><rect x="4.5" y="3" width="4.4" height="12" rx="2.2"/><rect x="10.9" y="3" width="4.4" height="17" rx="2.2"/><rect x="16.7" y="3" width="4.4" height="17" rx="2.2"/><rect x="23.1" y="3" width="4.4" height="12" rx="2.2"/><path d="M6 21.5 16 28l10-6.5" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></g></svg>
+    <b>SwiftDL</b><span class="grow"></span>
+    <svg id="spark" viewBox="0 0 84 22" preserveAspectRatio="none" aria-hidden="true"><path d=""/></svg><span id="speed"></span>
   </header>
-  <form class="add" id="add"><input id="url" type="text" inputmode="url" placeholder="Paste a link to download" autocomplete="off" spellcheck="false"><button class="primary" type="submit">Add</button></form>
+  <form class="bar" id="add"><input id="url" type="text" inputmode="url" placeholder="Paste a link to download" autocomplete="off" spellcheck="false"><button class="primary" type="submit">Download</button></form>
+  <div class="tools"><button type="button" id="pauseall">Pause all</button><button type="button" id="resumeall">Resume all</button></div>
   <div id="list"></div>
-</main>
-<div id="gate"><form id="gateform"><p><b>SwiftDL Remote</b><br>Enter the secret from SwiftDL's Settings, Local API.</p><input id="secret" type="password" placeholder="Secret" autocomplete="off"><div class="bad" id="bad"></div><button class="primary" type="submit">Connect</button></form></div>
+</div>
+<div id="gate"><form id="gateform">
+  <div class="brand"><svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" fill="#17181c"/><g fill="#fff" transform="translate(13 13) scale(1.1875)"><rect x="4.5" y="3" width="4.4" height="12" rx="2.2"/><rect x="10.9" y="3" width="4.4" height="17" rx="2.2"/><rect x="16.7" y="3" width="4.4" height="17" rx="2.2"/><rect x="23.1" y="3" width="4.4" height="12" rx="2.2"/><path d="M6 21.5 16 28l10-6.5" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></g></svg>SwiftDL Remote</div>
+  <p>Enter the secret from SwiftDL's Settings, Local API.</p><input id="secret" type="password" placeholder="Secret" autocomplete="off"><div class="bad" id="bad"></div><button class="primary" type="submit">Connect</button></form></div>
 <div id="toast"></div>
 <script>
 const $ = (id) => document.getElementById(id);
@@ -68,8 +97,7 @@ const KEYS = ["gid", "status", "totalLength", "completedLength", "downloadSpeed"
 async function rpc(calls) {
   const body = { jsonrpc: "2.0", id: "r", method: "system.multicall", params: [calls.map(([m, ...p]) => ({ methodName: m, params: ["token:" + secret, ...p] }))] };
   const r = await fetch("/jsonrpc", { method: "POST", body: JSON.stringify(body) });
-  const j = await r.json();
-  return j.result || [];
+  return (await r.json()).result || [];
 }
 const val = (r) => (Array.isArray(r) ? r[0] : null);
 const unauthorized = (r) => r && !Array.isArray(r) && r.message === "Unauthorized";
@@ -78,32 +106,61 @@ const bytes = (n) => { n = Number(n) || 0; const u = ["B", "KB", "MB", "GB", "TB
 const clock = (s) => (s < 60 ? `${Math.ceil(s)} s` : s < 3600 ? `${Math.floor(s / 60)} min` : `${Math.floor(s / 3600)} h ${Math.floor((s % 3600) / 60)} min`);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const base = (p) => String(p || "").split(/[\\/]/).pop();
+const ext = (n) => { const m = /\.([a-z0-9]{2,5})$/i.exec(n); return m ? m[1].toUpperCase() : ""; };
 
-function card(d) {
+// Status icons, as in the app: a ring that fills, a dotted ring, bars, a check, a mark.
+const icon = (d, pct) => {
+  const ring = (c, extra = "") => `<circle cx="8" cy="8" r="6.4" fill="none" stroke="${c}" stroke-width="1.7" ${extra}/>`;
+  const svg = (inner) => `<svg class="st" viewBox="0 0 16 16" aria-hidden="true">${inner}</svg>`;
+  const circ = 2 * Math.PI * 6.4;
+  if (d.status === "active") return svg(ring("var(--track)") + ring("var(--accent)", `stroke-linecap="round" stroke-dasharray="${(circ * Math.max(pct, 4)) / 100} ${circ}" transform="rotate(-90 8 8)"`));
+  if (d.status === "waiting") return svg(ring("var(--faint)", `stroke-linecap="round" stroke-dasharray="0.1 3.25"`));
+  if (d.status === "paused") return svg(ring("var(--amber)") + `<path d="M6.3 5.6v4.8M9.7 5.6v4.8" stroke="var(--amber)" stroke-width="1.7" stroke-linecap="round"/>`);
+  if (d.status === "error") return svg(`<circle cx="8" cy="8" r="7" fill="var(--red)"/><path d="M8 4.4v4.2M8 11.2v.1" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/>`);
+  return svg(`<circle cx="8" cy="8" r="7" fill="var(--green)"/><path d="m5 8.2 2.1 2.1L11 6.2" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>`);
+};
+const I = {
+  pause: `<svg viewBox="0 0 16 16"><path d="M5.6 3.5v9M10.4 3.5v9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" fill="none"/></svg>`,
+  play: `<svg viewBox="0 0 16 16"><path d="M5.2 3.4v9.2l7.3-4.6z" fill="currentColor"/></svg>`,
+  retry: `<svg viewBox="0 0 16 16"><path d="M13 8a5 5 0 1 1-1.6-3.7M13 2.5v2.8h-2.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`,
+  trash: `<svg viewBox="0 0 16 16"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8h5.8l.6-8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`,
+};
+
+function row(d) {
   const total = Number(d.totalLength), done = Number(d.completedLength), speed = Number(d.downloadSpeed);
   const pct = total ? Math.min(100, (done / total) * 100) : d.status === "complete" ? 100 : 0;
-  const name = esc(base(d.files?.[0]?.path) || "Download");
-  const act = d.status === "active" || d.status === "waiting" ? `<button data-a="pause">Pause</button>` : d.status === "paused" ? `<button data-a="resume">Resume</button>` : d.status === "error" ? `<button data-a="resume">Retry</button>` : "";
-  const meta = d.status === "active" ? `<span>${bytes(done)} of ${bytes(total)}</span><span>${bytes(speed)}/s</span>${speed && total ? `<span>${clock((total - done) / speed)} left</span>` : ""}`
-    : d.status === "error" ? `<span class="err">${esc(d.errorMessage || "Failed")}</span>`
-    : d.status === "complete" ? `<span>${bytes(total || done)}</span><span>Finished</span>`
-    : `<span>${bytes(done)} of ${total ? bytes(total) : "?"}</span><span>${d.status === "paused" ? "Paused" : "Waiting"}</span>`;
-  return `<div class="item ${d.status}" data-g="${d.gid}"><div class="top"><span class="name" title="${name}">${name}</span><span class="acts">${act}<button data-a="remove">Remove</button></span></div><div class="bar"><i style="width:${pct}%"></i></div><div class="meta">${meta}</div></div>`;
+  const file = base(d.files?.[0]?.path) || "Download", e = ext(file);
+  const act = d.status === "active" || d.status === "waiting" ? `<button data-a="pause" title="Pause">${I.pause}</button>` : d.status === "paused" ? `<button data-a="resume" title="Resume">${I.play}</button>` : d.status === "error" ? `<button data-a="resume" title="Retry">${I.retry}</button>` : "";
+  const bar = d.status === "complete" || d.status === "error" ? "" : `<span class="mini"><i style="width:${pct}%"></i></span>`;
+  const text = d.status === "active" ? `${bytes(done)} of ${bytes(total)} · ${bytes(speed)}/s${speed && total ? ` · ${clock((total - done) / speed)} left` : ""}`
+    : d.status === "complete" ? `${bytes(total || done)} · Finished`
+    : d.status === "paused" ? `${bytes(done)} of ${total ? bytes(total) : "?"} · Paused`
+    : d.status === "waiting" ? `${total ? bytes(total) : "Waiting"} · Waiting`
+    : "";
+  const sub = d.status === "error" ? `<span class="t err">${esc(d.errorMessage || "Failed")}</span>` : `${bar}<span class="t">${text}</span>`;
+  return `<div class="row ${d.status}" data-g="${d.gid}">${icon(d, pct)}<div class="name"><span class="n" title="${esc(file)}">${esc(file)}</span>${e ? `<span class="tag">${esc(e)}</span>` : ""}</div><div class="acts">${act}<button data-a="remove" title="Remove">${I.trash}</button></div><div class="sub">${sub}</div></div>`;
 }
-const section = (title, list) => (list.length ? `<h2>${title}<span>${list.length}</span></h2>${list.map(card).join("")}` : "");
+const group = (title, list, right = "") => (list.length ? `<div class="gh"><span>${title}</span><span class="gc">${list.length}</span><span class="gr">${right}</span></div>${list.map(row).join("")}` : "");
+
+const hist = [];
+function spark() {
+  const max = Math.max(1, ...hist), n = hist.length;
+  $("spark").querySelector("path").setAttribute("d", n < 2 ? "" : hist.map((v, i) => `${i ? "L" : "M"}${((i / 39) * 84).toFixed(1)} ${(20 - (v / max) * 18).toFixed(1)}`).join(""));
+}
 
 async function refresh() {
   let out;
   try {
     out = await rpc([["aria2.getGlobalStat"], ["aria2.tellActive", KEYS], ["aria2.tellWaiting", 0, 200, KEYS], ["aria2.tellStopped", 0, 200, KEYS]]);
-  } catch { $("speed").textContent = "Can't reach SwiftDL"; return; }
+  } catch { $("speed").textContent = "Offline"; return; }
   if (unauthorized(out[0])) { gate(secret ? "That isn't the right secret" : ""); return; }
   $("gate").classList.remove("on");
-  const stat = val(out[0]) || {};
-  $("speed").textContent = Number(stat.downloadSpeed) ? bytes(stat.downloadSpeed) + "/s" : "Idle";
+  const stat = val(out[0]) || {}, now = Number(stat.downloadSpeed) || 0;
+  $("speed").textContent = now ? bytes(now) + "/s" : "Idle";
+  hist.push(now); if (hist.length > 40) hist.shift(); spark();
   const active = val(out[1]) || [], waiting = val(out[2]) || [], stopped = (val(out[3]) || []).slice().reverse();
-  const html = section("Downloading", active) + section("Waiting", waiting) + section("Finished", stopped);
-  $("list").innerHTML = html || `<p class="empty">No downloads yet. Paste a link above.</p>`;
+  const html = group("Downloading", active, now ? bytes(now) + "/s" : "") + group("Waiting", waiting) + group("Finished", stopped);
+  $("list").innerHTML = html || `<p class="empty">No downloads yet.<br>Paste a link above to start one.</p>`;
 }
 
 function gate(msg) { $("bad").textContent = msg || ""; $("gate").classList.add("on"); $("secret").focus(); }
@@ -125,18 +182,26 @@ $("add").addEventListener("submit", async (e) => {
   if (Array.isArray(r)) { $("url").value = ""; toast("Added"); } else toast(r?.message || "Couldn't add that");
   refresh();
 });
+$("pauseall").onclick = async () => { await rpc([["aria2.pauseAll"]]); toast("Paused everything"); refresh(); };
+$("resumeall").onclick = async () => { await rpc([["aria2.unpauseAll"]]); toast("Resumed"); refresh(); };
 
+// Remove asks twice: a stray tap on a phone shouldn't cancel a download.
+let armed = null, armTimer = 0;
+const disarm = () => { if (armed) { armed.classList.remove("sure"); armed.innerHTML = I.trash; armed = null; } };
 $("list").addEventListener("click", async (e) => {
   const b = e.target.closest("button[data-a]");
   if (!b) return;
-  const gid = b.closest(".item").dataset.g;
-  const m = { pause: "aria2.pause", resume: "aria2.unpause", remove: "aria2.remove" }[b.dataset.a];
-  await rpc([[m, gid]]);
+  const gid = b.closest(".row").dataset.g, a = b.dataset.a;
+  if (a === "remove") {
+    if (armed !== b) { disarm(); armed = b; b.classList.add("sure"); b.textContent = "Remove?"; clearTimeout(armTimer); armTimer = setTimeout(disarm, 3000); return; }
+    disarm();
+  }
+  await rpc([[{ pause: "aria2.pause", resume: "aria2.unpause", remove: "aria2.remove" }[a], gid]]);
   refresh();
 });
 
 refresh();
-setInterval(refresh, 1500);
+setInterval(() => { if (!armed) refresh(); }, 1500);
 </script>
 </body>
 </html>
