@@ -242,6 +242,17 @@ pub async fn probe_media(m: Mgr<'_>, url: String, headers: Vec<(String, String)>
 
 /// A video-site link pasted into the main window: choose its quality in a
 /// "New download" window, like a link caught from the browser.
+/// Opens a link in the browser, marked so the SwiftDL extension lets the
+/// browser keep the download (it carries your signed-in session).
+#[tauri::command]
+pub fn open_in_browser(app: tauri::AppHandle, url: String) -> Result<(), String> {
+    let base = url.trim().split('#').next().unwrap_or_default().to_string();
+    if !(base.starts_with("http://") || base.starts_with("https://")) {
+        return Err("That isn't a web link".into());
+    }
+    app.opener().open_url(format!("{base}#swiftdl-browser"), None::<&str>).map_err(|e| e.to_string())
+}
+
 /// Puts a waiting download first in the queue.
 #[tauri::command]
 pub fn download_next(m: Mgr, id: u64) -> bool {

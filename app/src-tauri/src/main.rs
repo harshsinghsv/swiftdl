@@ -125,6 +125,7 @@ fn main() {
             commands::add_links,
             commands::set_url,
             commands::download_next,
+            commands::open_in_browser,
             commands::is_media_url,
             commands::is_torrent_url,
             commands::probe_torrent,

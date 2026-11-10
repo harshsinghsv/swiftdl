@@ -40,6 +40,8 @@ function statusIcon(it: StatusLike) {
 
 const pct = (it: StatusLike) => (it.size ? Math.min(100, (it.downloaded / it.size) * 100) : it.status === "completed" ? 100 : 0);
 const eta = (it: Item) => (it.speed > 0 && it.size ? (it.size - it.downloaded) / it.speed : Infinity);
+// Place in the waiting line (1 = next).
+const queuePos = (it: Item) => state.items.filter((i) => i.status === "queued").findIndex((i) => i.id === it.id) + 1;
 const isActive = (it: Item) => it.status === "downloading" || it.status === "queued";
 const ext = (name: string) => (/\.([a-z0-9]{1,5})$/i.exec(name || "") || [])[1]?.toUpperCase() || "";
 const STATUS: Record<Status, string> = { downloading: "Downloading", queued: "Queued", paused: "Paused", completed: "Completed", error: "Failed" };
@@ -78,7 +80,11 @@ const GROUPS: [Status, string][] = [
 function grouped(list: Item[]) {
   return GROUPS.map(([s, title]) => {
     const items = list.filter((i) => i.status === s);
-    items.sort(s === "completed" ? (a, b) => (b.completedAt || 0) - (a.completedAt || 0) : (a, b) => b.addedAt - a.addedAt);
+    // Waiting downloads are listed in the order they will start.
+    const queue = new Map(state.items.map((i, n) => [i.id, n]));
+    items.sort(s === "completed" ? (a, b) => (b.completedAt || 0) - (a.completedAt || 0)
+      : s === "queued" ? (a, b) => (queue.get(a.id) || 0) - (queue.get(b.id) || 0)
+      : (a, b) => b.addedAt - a.addedAt);
     return { s, title, items };
   }).filter((g) => g.items.length);
 }
@@ -189,7 +195,7 @@ function meta(it: Item) {
   switch (it.status) {
     case "downloading":
       return `${mini("")}<span class="m-size">${bytes(it.downloaded)} / ${bytes(it.size)}</span><span class="m-speed">${it.speed > 0 ? speed(it.speed) : "Connecting…"}</span><span class="m-eta">${dur(eta(it))}</span>`;
-    case "queued": return `${mini("queued")}<span class="m-size">${it.size ? bytes(it.size) : "—"}</span><span class="m-speed" style="color:var(--muted);font-weight:500">Queued</span><span class="m-eta"></span>`;
+    case "queued": return `${mini("queued")}<span class="m-size">${it.size ? bytes(it.size) : "—"}</span><span class="m-speed" style="color:var(--muted);font-weight:500">Queued · #${queuePos(it)}</span><span class="m-eta"></span>`;
     case "paused": return `${mini("paused")}<span class="m-size">${bytes(it.downloaded)} / ${bytes(it.size)}</span><span class="m-speed" style="color:var(--amber);font-weight:500">Paused</span><span class="m-eta"></span>`;
     case "error": return `<span class="m-size">${bytes(it.size)}</span><span class="m-when">${when(it.addedAt)}</span>`;
     default: return `<span class="cat"><i style="background:${cat(it).color}"></i>${esc(it.category)}</span><span class="m-size">${bytes(it.size)}</span><span class="m-when">${when(it.completedAt)}</span>`;
@@ -282,7 +288,7 @@ function renderInspector() {
   if ($("ins-props").innerHTML !== props) $("ins-props").innerHTML = props;
 
   const primary = it.status === "completed" ? `<button class="btn primary" data-ins="open">Open</button>`
-    : it.status === "error" ? `<button class="btn primary" data-ins="resume">Retry</button>`
+    : it.status === "error" ? `<button class="btn" data-ins="browser" title="Open the link in your browser, which downloads it with your own session">Download in browser</button><button class="btn primary" data-ins="resume">Retry</button>`
     : isActive(it) ? `<button class="btn" data-ins="pause">Pause</button>`
     : `<button class="btn primary" data-ins="resume">Resume</button>`;
   const foot = `<button class="btn" data-ins="folder">Show in folder</button>${primary}<button class="btn icon" data-ins="more" title="More">${icon("more")}</button>`;
@@ -459,6 +465,7 @@ function act(name: string, it: Item | null | undefined, anchor?: HTMLElement) {
     case "folder": return void call("open_folder", { id: it.id });
     case "pause": return pause([it.id]);
     case "resume": return resume([it.id]);
+    case "browser": return void call("open_in_browser", { url: it.url });
     case "copy": return void copy(it.url, "Link copied");
     case "copy-path": return void copy(it.path, "Path copied");
     case "delete": return askDelete(it);
@@ -510,6 +517,7 @@ function itemMenu(it: Item, x: number, y: number, above = false) {
     isActive(it) ? { icon: "pause", label: "Pause", keys: ["Space"], run: () => pause([it.id]) }
       : { icon: it.status === "error" ? "retry" : "play", label: it.status === "error" ? "Retry" : "Resume", keys: ["Space"], enabled: it.status !== "completed", run: () => resume([it.id]) },
     { icon: "play", label: "Download next", enabled: it.status === "queued", run: () => downloadNext(it) },
+    { icon: "open", label: "Download in browser", enabled: it.status === "error", run: () => act("browser", it) },
     { icon: "link", label: "Replace link from clipboard", enabled: it.status === "error" || it.status === "paused", run: () => replaceLink(it) },
     { icon: "link", label: "Copy link", keys: ["C"], run: () => act("copy", it) },
     "-",
