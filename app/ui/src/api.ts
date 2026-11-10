@@ -57,6 +57,8 @@ export interface Settings {
   startAt: number;
   /** Proxy for downloads, like http://127.0.0.1:8080; empty follows the system's. */
   proxy: string;
+  /** Send downloads out from this local address only (a VPN adapter's). */
+  bindAddress: string;
   /** Offer to download a link on the clipboard when switching to SwiftDL. */
   watchClipboard: boolean;
 }

@@ -849,6 +849,7 @@ function openSettings(tab = "general") {
   $("set-notify").checked = s.notifyOnComplete;
   $("set-clip").checked = s.watchClipboard;
   $("set-proxy").value = s.proxy || "";
+  $("set-bind").value = s.bindAddress || "";
   $("set-offer").checked = s.offerExtension;
   $("set-progress-win").checked = s.showProgressWindow;
   $("set-tray").checked = s.closeToTray;
@@ -896,6 +897,7 @@ $("form-settings").addEventListener("submit", async (e) => {
     notifyOnComplete: $("set-notify").checked,
     watchClipboard: $("set-clip").checked,
     proxy: $("set-proxy").value.trim(),
+    bindAddress: $("set-bind").value.trim(),
     offerExtension: $("set-offer").checked,
     showProgressWindow: $("set-progress-win").checked,
     closeToTray: $("set-tray").checked,

@@ -205,7 +205,8 @@ impl DownloadManager {
             app,
             client: {
                 crate::media::set_proxy(&settings.proxy);
-                swiftdl_engine::build_client_with(&settings.proxy)?
+                crate::media::set_bind(&settings.bind_address);
+                swiftdl_engine::build_client_opts(&settings.proxy, &settings.bind_address)?
             },
             limit_off: std::sync::atomic::AtomicBool::new(false),
             limiter: Arc::new(SpeedLimiter::new(settings.speed_limit_kib * 1024)),
@@ -345,6 +346,7 @@ impl DownloadManager {
 
     pub fn set_settings(self: &Arc<Self>, settings: Settings) {
         crate::media::set_proxy(&settings.proxy);
+        crate::media::set_bind(&settings.bind_address);
         self.apply_limit(settings.speed_limit_kib);
         if let Err(e) = crate::browser::offer_extension(settings.offer_extension) {
             crate::log::line(&format!("could not update browser extension offer: {e:#}"));

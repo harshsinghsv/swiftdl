@@ -239,10 +239,21 @@ pub fn set_proxy(proxy: &str) {
     *PROXY.lock().unwrap() = proxy.trim().to_string();
 }
 
+/// The local address from Settings, passed to yt-dlp as --source-address.
+static BIND: LazyLock<Mutex<String>> = LazyLock::new(Default::default);
+
+pub fn set_bind(address: &str) {
+    *BIND.lock().unwrap() = address.trim().to_string();
+}
+
 fn add_headers(cmd: &mut Command, headers: &[(String, String)]) {
     let proxy = PROXY.lock().unwrap().clone();
     if !proxy.is_empty() {
         cmd.arg("--proxy").arg(proxy);
+    }
+    let bind = BIND.lock().unwrap().clone();
+    if !bind.is_empty() {
+        cmd.arg("--source-address").arg(bind);
     }
     for (name, value) in headers.iter().filter(|(_, v)| !v.is_empty()) {
         match name.to_ascii_lowercase().as_str() {
@@ -532,6 +543,11 @@ fn last_error(stderr: &str) -> Option<String> {
     let e = stderr.lines().rev().find_map(|l| l.strip_prefix("ERROR: ")).map(|e| e.trim().to_string())?;
     if e.contains("Requested format is not available") && js_runtime().is_none() {
         return Some("This site needs a JavaScript runtime for yt-dlp. Install Node.js or Deno, then try again.".into());
+    }
+    // yt-dlp's advice names its own flags, which mean nothing here.
+    let lower = e.to_lowercase();
+    if lower.contains("--cookies") || lower.contains("logged-in") || lower.contains("authentication is required") || lower.contains("login required") {
+        return Some("This site needs you to be signed in. Download it with the SwiftDL extension in a browser where you're signed in, so your session is passed on.".into());
     }
     Some(e)
 }
@@ -866,6 +882,13 @@ mod tests {
         assert_eq!(super::headers_for(yt, &h, false).len(), 1);
         assert_eq!(super::headers_for(yt, &h, true).len(), 2);
         assert_eq!(super::headers_for("https://vimeo.com/1", &h, false).len(), 2);
+    }
+
+    #[test]
+    fn sign_in_errors_are_put_plainly() {
+        let vimeo = "ERROR: [vimeo] 1: The web client only works when logged-in. Use --cookies, --cookies-from-browser, --username and --password";
+        assert!(super::last_error(vimeo).unwrap().starts_with("This site needs you to be signed in"));
+        assert_eq!(super::last_error("ERROR: [x] 1: Video unavailable").unwrap(), "[x] 1: Video unavailable");
     }
 
     #[test]

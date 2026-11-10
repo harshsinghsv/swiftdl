@@ -38,6 +38,8 @@ pub struct Settings {
     /// Proxy for downloads, e.g. "http://127.0.0.1:8080". Empty follows the
     /// system's. Downloads use a change after SwiftDL restarts.
     pub proxy: String,
+    /// Send downloads out from this local address only (a VPN adapter's, say).
+    pub bind_address: String,
     /// When switching to SwiftDL, offer to download a link on the clipboard.
     pub watch_clipboard: bool,
 }
@@ -61,6 +63,7 @@ impl Default for Settings {
             when_done: "nothing".into(),
             start_at: 0,
             proxy: String::new(),
+            bind_address: String::new(),
             watch_clipboard: false,
         }
     }

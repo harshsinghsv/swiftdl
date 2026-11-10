@@ -305,3 +305,29 @@ mod refusal_tests {
         assert_eq!(ask("https://www.youtube.com/watch?v=abc"), None, "video pages go through yt-dlp");
     }
 }
+
+#[cfg(test)]
+mod bind_tests {
+    use std::io::{Read, Write};
+
+    #[test]
+    fn downloads_go_out_from_the_chosen_address_only() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        std::thread::spawn(move || {
+            for mut s in listener.incoming().flatten() {
+                let mut buf = [0u8; 1024];
+                let _ = s.read(&mut buf);
+                let _ = s.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nhi");
+            }
+        });
+        let url = format!("http://127.0.0.1:{port}/");
+        let get = |bind: &str| {
+            let client = swiftdl_engine::build_client_opts("", bind).unwrap();
+            tauri::async_runtime::block_on(async { client.get(&url).send().await.map(|r| r.status().as_u16()) })
+        };
+        assert_eq!(get("127.0.0.1").unwrap(), 200, "an address this PC has works");
+        assert!(get("192.0.2.1").is_err(), "an address this PC doesn't have fails, like a dropped VPN");
+        assert_eq!(get("").unwrap(), 200, "empty means any");
+    }
+}

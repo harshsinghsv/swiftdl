@@ -10,7 +10,7 @@ pub mod probe;
 mod segment;
 mod state;
 
-pub use download::{Outcome, Progress, Request, build_client, build_client_with, part_path, rebase_saved, resolve_dest, run, saved_remaining};
+pub use download::{Outcome, Progress, Request, build_client, build_client_opts, build_client_with, part_path, rebase_saved, resolve_dest, run, saved_remaining};
 pub use limiter::SpeedLimiter;
 pub use probe::{RemoteFile, probe};
 pub use reqwest::{Client, header};
