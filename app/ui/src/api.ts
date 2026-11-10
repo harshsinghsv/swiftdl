@@ -69,6 +69,10 @@ export interface Settings {
   debridToken: string;
   /** Interface size in percent (90-150). */
   uiScale: number;
+  /** A local aria2-compatible API; applies after a restart. */
+  apiEnabled: boolean;
+  apiPort: number;
+  apiSecret: string;
 }
 
 export interface Incoming {

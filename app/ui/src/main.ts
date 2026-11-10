@@ -874,6 +874,14 @@ function nextPending() {
 // Interface size: the whole window scales (the download windows keep their size).
 const applyScale = (pct?: number) => { document.documentElement.style.zoom = String((pct && pct >= 80 && pct <= 160 ? pct : 100) / 100); };
 let setScale = 100, setDebridProvider = "realdebrid";
+// The local API needs a secret: make one when it is turned on without one.
+const apiHint = () => { $("set-api-hint").textContent = `http://127.0.0.1:${$("set-api-port").value || 6800}/jsonrpc`; };
+$("set-api").addEventListener("change", () => {
+  if ($("set-api").checked && !$("set-api-secret").value.trim()) {
+    $("set-api-secret").value = [...crypto.getRandomValues(new Uint8Array(12))].map((b) => b.toString(16).padStart(2, "0")).join("");
+  }
+});
+$("set-api-port").addEventListener("input", apiHint);
 function renderScale() { $("set-scale").querySelectorAll<HTMLElement>("[data-v]").forEach((b) => b.classList.toggle("on", Number(b.dataset.v) === setScale)); }
 $("set-scale").addEventListener("click", (e) => { const b = target(e).closest<HTMLElement>("[data-v]"); if (b) { setScale = Number(b.dataset.v); renderScale(); applyScale(setScale); } });
 function renderDebridProvider() { $("set-debrid-provider").querySelectorAll<HTMLElement>("[data-v]").forEach((b) => b.classList.toggle("on", b.dataset.v === setDebridProvider)); }
@@ -938,6 +946,10 @@ function openSettings(tab = "general") {
   renderDebridProvider();
   setScale = s.uiScale || 100;
   renderScale();
+  $("set-api").checked = s.apiEnabled;
+  $("set-api-port").value = String(s.apiPort || 6800);
+  $("set-api-secret").value = s.apiSecret || "";
+  apiHint();
   $("set-offer").checked = s.offerExtension;
   $("set-progress-win").checked = s.showProgressWindow;
   $("set-tray").checked = s.closeToTray;
@@ -990,6 +1002,9 @@ $("form-settings").addEventListener("submit", async (e) => {
     debridProvider: setDebridProvider,
     debridToken: $("set-debrid").value.trim(),
     uiScale: setScale,
+    apiEnabled: $("set-api").checked && !!$("set-api-secret").value.trim(),
+    apiPort: clamp($("set-api-port").value, 1024, 65535, 6800),
+    apiSecret: $("set-api-secret").value.trim(),
     offerExtension: $("set-offer").checked,
     showProgressWindow: $("set-progress-win").checked,
     closeToTray: $("set-tray").checked,

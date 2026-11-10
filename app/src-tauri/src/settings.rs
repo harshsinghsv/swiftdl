@@ -46,6 +46,11 @@ pub struct Settings {
     pub extract_archives: bool,
     /// Interface size in percent (90-150).
     pub ui_scale: u32,
+    /// A local, aria2-compatible API for tools like AriaNg. Needs a restart.
+    pub api_enabled: bool,
+    pub api_port: u16,
+    /// Every API call must carry this secret. The API stays off while it is empty.
+    pub api_secret: String,
     /// Which debrid service the token is for: "realdebrid", "alldebrid" or "premiumize".
     pub debrid_provider: String,
     /// The service's API token. Empty = not used.
@@ -75,6 +80,9 @@ impl Default for Settings {
             watch_clipboard: false,
             extract_archives: false,
             ui_scale: 100,
+            api_enabled: false,
+            api_port: 6800,
+            api_secret: String::new(),
             debrid_provider: "realdebrid".into(),
             debrid_token: String::new(),
         }

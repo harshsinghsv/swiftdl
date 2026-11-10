@@ -13,6 +13,7 @@ mod batch;
 mod debrid;
 mod extract;
 mod ftp;
+mod rpc;
 mod grabber;
 mod metalink;
 mod stream;
@@ -109,6 +110,14 @@ fn main() {
                 crate::log::line(&format!("tray icon not available: {e:#}"));
             }
             mgr.start_ticker();
+            let api = mgr.settings();
+            if api.api_enabled && !api.api_secret.is_empty() {
+                let addr = format!("127.0.0.1:{}", api.api_port);
+                match rpc::serve(&addr, Arc::new(mgr.clone()), api.api_secret) {
+                    Ok(_) => crate::log::line(&format!("local API listening on {addr}")),
+                    Err(e) => crate::log::line(&format!("local API couldn't start on {addr}: {e}")),
+                }
+            }
             // Launched by the browser extension: show only the small
             // download window, like IDM. Otherwise open the main window.
             // Started only to look a video up: stay out of sight (tray).

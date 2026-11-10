@@ -174,6 +174,12 @@
             <div class="set-row"><div class="sr-text"><b>Debrid API token</b><span>From the service's account page: real-debrid.com/apitoken, alldebrid.com/apikeys or premiumize.me/account.</span></div><input id="set-debrid" class="txt" type="password" placeholder="Not used" spellcheck="false" autocomplete="off"></div>
             <div class="set-row"><div class="sr-text"><b>Network address</b><span>Send downloads out only from this address, such as your VPN's. If it goes away, downloads stop instead of using another route. Restart SwiftDL to apply.</span></div><input id="set-bind" class="txt" placeholder="Any" spellcheck="false" autocomplete="off"></div>
           </div>
+          <h2>Local API</h2>
+          <div class="set-group">
+            <label class="set-row"><div class="sr-text"><b>aria2-compatible API</b><span>Lets tools like AriaNg and scripts control SwiftDL. Local only, and every call needs the secret. Restart SwiftDL to apply.</span></div><span class="switch"><input type="checkbox" id="set-api"><i></i></span></label>
+            <div class="set-row"><div class="sr-text"><b>Port</b><span id="set-api-hint">http://127.0.0.1:6800/jsonrpc</span></div><input id="set-api-port" class="txt" type="number" min="1024" max="65535" placeholder="6800"></div>
+            <div class="set-row"><div class="sr-text"><b>Secret</b><span>Used as token:SECRET in each call</span></div><input id="set-api-secret" class="txt" spellcheck="false" autocomplete="off" placeholder="Made when you turn it on"></div>
+          </div>
           <h2>Automation</h2>
           <div class="set-group">
             <div class="set-row col"><div class="sr-text"><b>When all downloads finish</b><span>Happens once, then goes back to doing nothing</span></div>
