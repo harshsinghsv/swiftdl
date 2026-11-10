@@ -68,7 +68,12 @@ jobs:
             args: "--target universal-apple-darwin"
           - platform: ubuntu-22.04
             args: ""
+          - platform: windows-11-arm
+            args: ""
+            experimental: true
     runs-on: ${{ matrix.platform }}
+    # The ARM64 Windows build is new: if it fails, the release still goes out.
+    continue-on-error: ${{ matrix.experimental == true }}
     steps:
       - uses: actions/checkout@v4
         with:
