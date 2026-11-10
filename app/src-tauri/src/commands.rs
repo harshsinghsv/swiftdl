@@ -36,6 +36,12 @@ pub fn get_state(m: Mgr) -> AppState {
 
 #[tauri::command]
 pub async fn probe_url(m: Mgr<'_>, url: String, headers: Vec<(String, String)>) -> Result<ProbeInfo, String> {
+    if crate::ftp::is_ftp(url.trim()) {
+        let u = url.trim().to_string();
+        let (filename, size) = tauri::async_runtime::spawn_blocking(move || crate::ftp::probe(&u)).await.map_err(|e| e.to_string())?.map_err(|e| format!("{e:#}"))?;
+        let category = category_for(&filename).to_string();
+        return Ok(ProbeInfo { dir: m.default_dir(&category), filename, size, resumable: true, category });
+    }
     let remote = swiftdl_engine::probe(m.client(), url.trim(), &to_header_map(&headers)).await.map_err(|e| format!("{e:#}"))?;
     let category = category_for(&remote.filename).to_string();
     Ok(ProbeInfo {
@@ -62,10 +68,10 @@ pub fn add_download(m: Mgr, req: AddRequest) -> Result<u64, String> {
 /// links and .torrent files on this computer.
 fn check_add(req: &AddRequest) -> Result<(), String> {
     let url = req.url.trim();
-    let web = url.starts_with("http://") || url.starts_with("https://");
+    let web = url.starts_with("http://") || url.starts_with("https://") || crate::ftp::is_ftp(url);
     let torrent = req.torrent_files.is_some() && (url.starts_with("magnet:") || std::path::Path::new(url).is_file());
     if !web && !torrent {
-        return Err("Only web links, magnet links and .torrent files are supported".into());
+        return Err("Only web, ftp and magnet links and .torrent files are supported".into());
     }
     if req.filename.trim().is_empty() {
         return Err("File name is empty".into());

@@ -731,7 +731,7 @@ function renderChips() {
 }
 async function probe() {
   const url = $("add-url").value.trim();
-  if (!/^(https?:\/\/|magnet:\?)\S+/i.test(url)) { add.info = null; $("add-file").hidden = true; renderChips(); if (url) setState("error", "Paste a web link (http:// or https://) or a magnet link"); else setState("idle"); return; }
+  if (!/^(https?:\/\/|ftp:\/\/|magnet:\?)\S+/i.test(url)) { add.info = null; $("add-file").hidden = true; renderChips(); if (url) setState("error", "Paste a web link (http://, https:// or ftp://) or a magnet link"); else setState("idle"); return; }
   // A Metalink lists several mirrors of one file: download from all of them.
   if (/\.(meta4|metalink)(\?|#|$)/i.test(url)) {
     try {

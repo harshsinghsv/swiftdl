@@ -571,6 +571,7 @@ impl DownloadManager {
                         },
                     );
                     let kind = match (&item.torrent_files, &item.format) {
+                        _ if crate::ftp::is_ftp(&item.url) => Kind::Ftp,
                         (Some(files), _) => Kind::Torrent(files.clone()),
                         (None, Some(format)) => Kind::Media(format.clone()),
                         (None, None) => Kind::File,
@@ -612,6 +613,7 @@ impl DownloadManager {
                         let job = crate::torrent::Job { url: req.url.clone(), headers: req.headers.clone(), dir, files, seed };
                         crate::torrent::run(&this.client, job, progress, note, cancel).await
                     }
+                    Kind::Ftp => crate::ftp::run(req.url.clone(), req.dest.clone(), progress, cancel).await,
                     Kind::File => swiftdl_engine::run(&this.client, &req, progress, cancel, this.limiter.clone()).await,
                 };
                 let result = this.verify(id, result, &check_note).await;
@@ -904,6 +906,8 @@ impl DownloadManager {
 /// How a download is fetched.
 enum Kind {
     File,
+    /// An ftp:// address.
+    Ftp,
     /// A video site, through yt-dlp, with this format.
     Media(String),
     /// A torrent or magnet link, with these files (empty = all).

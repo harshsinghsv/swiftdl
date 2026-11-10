@@ -11,6 +11,7 @@ mod settings;
 mod torrent;
 mod batch;
 mod extract;
+mod ftp;
 mod grabber;
 mod metalink;
 mod stream;
