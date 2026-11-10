@@ -40,7 +40,7 @@ jobs:
           cat >> notes.md <<'EOF'
 
           ### Install
-          - **Windows:** `SwiftDL_*_x64-setup.exe` (no admin rights needed)
+          - **Windows:** `SwiftDL_*_x64-setup.exe` for x64 or `SwiftDL_*_arm64_setup.exe` for ARM64 (no admin rights needed)
           - **macOS:** `SwiftDL_*_universal.dmg`
           - **Linux:** `.AppImage`, `.deb` or `.rpm`
           - **Browser extension:** included with the app. Open SwiftDL and click *Add the extension* for a short guide (Chrome, Edge, Brave, Vivaldi and Firefox). `swiftdl-extension.zip` (Chromium browsers) and `swiftdl-firefox.xpi` (Firefox) have the same files.
@@ -64,6 +64,8 @@ jobs:
         include:
           - platform: windows-latest
             args: ""
+          - platform: windows-11-arm
+            args: "--target aarch64-pc-windows-msvc --bundles nsis"
           - platform: macos-latest
             args: "--target universal-apple-darwin"
           - platform: ubuntu-22.04
@@ -86,6 +88,11 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
+      - name: Select clang-cl for Windows ARM64
+        if: matrix.platform == 'windows-11-arm'
+        shell: pwsh
+        run: '"CC=clang-cl" >> $env:GITHUB_ENV'
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -97,6 +104,7 @@ jobs:
         run: npm ci && npm run build
 
       - uses: tauri-apps/tauri-action@v0
+        if: matrix.platform != 'windows-11-arm'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -104,6 +112,23 @@ jobs:
           tauriScript: npx --yes @tauri-apps/cli@2
           releaseId: ${{ needs.create-release.outputs.id }}
           args: ${{ matrix.args }}
+
+      - name: Build Windows ARM64 installer
+        if: matrix.platform == 'windows-11-arm'
+        working-directory: app/src-tauri
+        run: npx --yes @tauri-apps/cli@2 build --ci ${{ matrix.args }}
+
+      - name: Upload Windows ARM64 installer
+        if: matrix.platform == 'windows-11-arm'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          # Older updaters pick the first name ending in -setup.exe.
+          $installer = Get-Item 'target/aarch64-pc-windows-msvc/release/bundle/nsis/SwiftDL_*_arm64-setup.exe'
+          $name = $installer.Name -replace '-setup\.exe$', '_setup.exe'
+          $asset = Rename-Item -LiteralPath $installer.FullName -NewName $name -PassThru
+          gh release upload "$env:TAG" "$($asset.FullName)" --clobber
 
   extension:
     needs: create-release
