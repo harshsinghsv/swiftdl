@@ -232,7 +232,18 @@ fn command(program: &Path) -> Command {
 
 /// Passes the browser's headers on to yt-dlp. Stream servers often refuse
 /// requests without the page's cookies, referrer or user agent.
+/// The proxy from Settings, passed to yt-dlp (empty: its own default).
+static PROXY: LazyLock<Mutex<String>> = LazyLock::new(Default::default);
+
+pub fn set_proxy(proxy: &str) {
+    *PROXY.lock().unwrap() = proxy.trim().to_string();
+}
+
 fn add_headers(cmd: &mut Command, headers: &[(String, String)]) {
+    let proxy = PROXY.lock().unwrap().clone();
+    if !proxy.is_empty() {
+        cmd.arg("--proxy").arg(proxy);
+    }
     for (name, value) in headers.iter().filter(|(_, v)| !v.is_empty()) {
         match name.to_ascii_lowercase().as_str() {
             "referer" => { cmd.arg("--referer").arg(value); }

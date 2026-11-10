@@ -242,6 +242,12 @@ pub async fn probe_media(m: Mgr<'_>, url: String, headers: Vec<(String, String)>
 
 /// A video-site link pasted into the main window: choose its quality in a
 /// "New download" window, like a link caught from the browser.
+/// Puts a waiting download first in the queue.
+#[tauri::command]
+pub fn download_next(m: Mgr, id: u64) -> bool {
+    m.download_next(id)
+}
+
 /// Replaces a stopped download's address and resumes it.
 #[tauri::command]
 pub fn set_url(m: Mgr, id: u64, url: String) -> Result<(), String> {

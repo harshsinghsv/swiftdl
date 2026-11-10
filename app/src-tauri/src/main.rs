@@ -33,13 +33,17 @@ pub fn show_main_window(app: &AppHandle) {
 fn build_tray(app: &AppHandle) -> tauri::Result<()> {
     let open = MenuItem::with_id(app, "open", "Open SwiftDL", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit SwiftDL", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&open, &PredefinedMenuItem::separator(app)?, &quit])?;
+    let nolimit = tauri::menu::CheckMenuItem::with_id(app, "nolimit", "Ignore speed limit", true, false, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&open, &nolimit, &PredefinedMenuItem::separator(app)?, &quit])?;
     let mut tray = TrayIconBuilder::with_id("main").tooltip("SwiftDL").menu(&menu).show_menu_on_left_click(false);
     if let Some(icon) = app.default_window_icon() {
         tray = tray.icon(icon.clone());
     }
     tray.on_menu_event(|app, event| match event.id().as_ref() {
         "open" => show_main_window(app),
+        "nolimit" => {
+            app.state::<Arc<DownloadManager>>().toggle_limit();
+        }
         "quit" => {
             app.state::<Arc<DownloadManager>>().save();
             app.exit(0);
@@ -120,6 +124,7 @@ fn main() {
             commands::probe_note,
             commands::add_links,
             commands::set_url,
+            commands::download_next,
             commands::is_media_url,
             commands::is_torrent_url,
             commands::probe_torrent,

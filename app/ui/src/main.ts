@@ -491,6 +491,10 @@ function showMenu(x: number, y: number, entries: MenuLine[], above = false) {
   menu.style.left = `${Math.max(8, Math.min(x, innerWidth - r.width - 8))}px`;
   menu.style.top = `${Math.max(8, Math.min(y, innerHeight - r.height - 8))}px`;
 }
+async function downloadNext(it: Item) {
+  const ok = await invoke("download_next", { id: it.id }).catch(() => false);
+  toast(ok ? "Will download next" : "It's not waiting in the queue", ok ? "ok" : undefined);
+}
 // A link that expired: copy the fresh one, then this carries on where it stopped.
 async function replaceLink(it: Item) {
   const url = await readClip();
@@ -505,6 +509,7 @@ function itemMenu(it: Item, x: number, y: number, above = false) {
     "-",
     isActive(it) ? { icon: "pause", label: "Pause", keys: ["Space"], run: () => pause([it.id]) }
       : { icon: it.status === "error" ? "retry" : "play", label: it.status === "error" ? "Retry" : "Resume", keys: ["Space"], enabled: it.status !== "completed", run: () => resume([it.id]) },
+    { icon: "play", label: "Download next", enabled: it.status === "queued", run: () => downloadNext(it) },
     { icon: "link", label: "Replace link from clipboard", enabled: it.status === "error" || it.status === "paused", run: () => replaceLink(it) },
     { icon: "link", label: "Copy link", keys: ["C"], run: () => act("copy", it) },
     "-",
@@ -687,6 +692,17 @@ function openComposer(incoming?: ComposerInput) {
   if (incoming?.url) probe();
   else readClip().then((u) => { if (u && !$("add-url").value) { $("add-url").value = u; $("add-url").select(); probe(); } });
 }
+// Opt-in: switching back to SwiftDL after copying a download link offers to download it.
+let lastClip = "";
+window.addEventListener("focus", async () => {
+  if (!state.settings?.watchClipboard || $("dlg-add").open || $("dlg-settings").open) return;
+  const u = await readClip();
+  if (!u || u === lastClip) return;
+  const file = /\.(zip|rar|7z|iso|exe|msi|dmg|pkg|deb|rpm|apk|mp4|mkv|mp3|flac|pdf|torrent)(\?|#|$)/i.test(u) || /^magnet:/i.test(u);
+  if (!file && !(await invoke("is_media_url", { url: u }).catch(() => false))) return;
+  lastClip = u;
+  openComposer();
+});
 const readClip = (): Promise<string | undefined> => (navigator.clipboard?.readText?.() || Promise.resolve("")).then(firstUrl).catch(() => undefined);
 function setState(kind: "idle" | "loading" | "error" | "done", msg = "") {
   const el = $("add-state");
@@ -831,6 +847,8 @@ function openSettings(tab = "general") {
   $("set-sort").checked = s.sortIntoCategories;
   $("set-ask").checked = s.askBeforeDownload;
   $("set-notify").checked = s.notifyOnComplete;
+  $("set-clip").checked = s.watchClipboard;
+  $("set-proxy").value = s.proxy || "";
   $("set-offer").checked = s.offerExtension;
   $("set-progress-win").checked = s.showProgressWindow;
   $("set-tray").checked = s.closeToTray;
@@ -876,6 +894,8 @@ $("form-settings").addEventListener("submit", async (e) => {
     speedLimitKib: setLimitKib,
     askBeforeDownload: $("set-ask").checked,
     notifyOnComplete: $("set-notify").checked,
+    watchClipboard: $("set-clip").checked,
+    proxy: $("set-proxy").value.trim(),
     offerExtension: $("set-offer").checked,
     showProgressWindow: $("set-progress-win").checked,
     closeToTray: $("set-tray").checked,

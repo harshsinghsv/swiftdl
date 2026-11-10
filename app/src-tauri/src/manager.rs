@@ -177,6 +177,8 @@ pub struct DownloadManager {
     app: AppHandle,
     client: Client,
     limiter: Arc<SpeedLimiter>,
+    /// The tray's "Ignore speed limit" is on.
+    limit_off: std::sync::atomic::AtomicBool,
     data_dir: PathBuf,
     inner: Mutex<Inner>,
 }
@@ -201,7 +203,11 @@ impl DownloadManager {
         let next_id = items.iter().map(|i| i.id).max().unwrap_or(0) + 1;
         Ok(Arc::new(Self {
             app,
-            client: swiftdl_engine::build_client()?,
+            client: {
+                crate::media::set_proxy(&settings.proxy);
+                swiftdl_engine::build_client_with(&settings.proxy)?
+            },
+            limit_off: std::sync::atomic::AtomicBool::new(false),
             limiter: Arc::new(SpeedLimiter::new(settings.speed_limit_kib * 1024)),
             data_dir,
             inner: Mutex::new(Inner {
@@ -338,7 +344,8 @@ impl DownloadManager {
     }
 
     pub fn set_settings(self: &Arc<Self>, settings: Settings) {
-        self.limiter.set_rate(settings.speed_limit_kib * 1024);
+        crate::media::set_proxy(&settings.proxy);
+        self.apply_limit(settings.speed_limit_kib);
         if let Err(e) = crate::browser::offer_extension(settings.offer_extension) {
             crate::log::line(&format!("could not update browser extension offer: {e:#}"));
         }
@@ -347,6 +354,41 @@ impl DownloadManager {
         self.inner.lock().unwrap().settings = settings;
         self.save();
         self.schedule();
+    }
+
+    fn apply_limit(&self, kib: u64) {
+        let off = self.limit_off.load(Ordering::Relaxed);
+        self.limiter.set_rate(if off { 0 } else { kib * 1024 });
+    }
+
+    /// The tray's "Ignore speed limit": flips it, and returns whether it is on.
+    pub fn toggle_limit(&self) -> bool {
+        let off = !self.limit_off.fetch_xor(true, Ordering::Relaxed);
+        let kib = self.inner.lock().unwrap().settings.speed_limit_kib;
+        self.apply_limit(kib);
+        off
+    }
+
+    /// Moves a waiting download to the front of the queue.
+    pub fn download_next(&self, id: u64) -> bool {
+        let moved = {
+            let mut g = self.inner.lock().unwrap();
+            let pos = g.items.iter().position(|i| i.id == id && i.status == Status::Queued);
+            let first = g.items.iter().position(|i| i.status == Status::Queued);
+            match (pos, first) {
+                (Some(pos), Some(first)) => {
+                    let item = g.items.remove(pos);
+                    g.items.insert(first, item);
+                    true
+                }
+                _ => false,
+            }
+        };
+        if moved {
+            self.changed();
+            self.save();
+        }
+        moved
     }
 
     pub fn item(&self, id: u64) -> Option<Item> {

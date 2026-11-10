@@ -18,7 +18,7 @@ declare global { interface Window { __video?: unknown } }
   let settings: Settings = {
     downloadDir: "C:\\Users\\you\\Downloads", connections: 8, maxConcurrent: 3, speedLimitKib: 0,
     sortIntoCategories: true, askBeforeDownload: true, notifyOnComplete: true,
-    offerExtension: true, onboardingDismissed: false, showProgressWindow: true, closeToTray: true, theme: "system", seedUntil: "stop", whenDone: "nothing", startAt: 0,
+    offerExtension: true, onboardingDismissed: false, showProgressWindow: true, closeToTray: true, theme: "system", seedUntil: "stop", whenDone: "nothing", startAt: 0, proxy: "", watchClipboard: false,
   };
   if (VIDEO) Object.assign(settings, { downloadDir: "C:\\Users\\Harsh\\Downloads", onboardingDismissed: true });
   const catFor = (name: string) => {
@@ -184,7 +184,7 @@ declare global { interface Window { __video?: unknown } }
     open_store: () => {}, open_extensions_page: () => {}, open_log: () => {},
     get_item: ({ id }) => JSON.parse(JSON.stringify(items.find((i) => i.id === id) || null)),
     confirm_info: () => (location.search.includes("torrent") ? { url: "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c&dn=Blender+Open+Movies", filename: "" } : VIDEO && !location.search.includes("yt") ? { url: "https://releases.ubuntu.com/26.04.1/ubuntu-26.04.1-desktop-amd64.iso", filename: "", referrer: "https://ubuntu.com/download/desktop" } : location.search.includes("yt") ? { url: "https://www.youtube.com/watch?v=aqz-KE-bpKQ", filename: "" } : { url: "https://cdn.example.net/releases/Obsidian-2.4.1-setup.exe", filename: "", referrer: "https://obsidian.example.net/download" }),
-    forget_confirm: () => {}, probe_note: () => null, set_url: () => {}, add_links: ({ text }: { text: string }) => text.split(/\s+/).filter((t) => /^https?:/i.test(t)).length, show_main: () => {},
+    forget_confirm: () => {}, probe_note: () => null, set_url: () => {}, download_next: () => true, add_links: ({ text }: { text: string }) => text.split(/\s+/).filter((t) => /^https?:/i.test(t)).length, show_main: () => {},
     check_update: () => ({ version: "0.3.2", page: "https://github.com/harshsinghsv/swiftdl/releases/latest", asset: null }),
     install_update: () => {},
     is_media_url: ({ url }) => /(^|\.)(youtube\.com|youtu\.be|vimeo\.com)\//.test(url.replace(/^https?:\/\//, "").replace(/^www\./, "")),

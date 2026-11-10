@@ -55,6 +55,10 @@ export interface Settings {
   whenDone: string;
   /** The queue is held until this time (ms since epoch); 0 = no schedule. */
   startAt: number;
+  /** Proxy for downloads, like http://127.0.0.1:8080; empty follows the system's. */
+  proxy: string;
+  /** Offer to download a link on the clipboard when switching to SwiftDL. */
+  watchClipboard: boolean;
 }
 
 export interface Incoming {
@@ -91,6 +95,7 @@ export interface Commands {
   probe_note: [void, string | null];
   add_links: [{ text: string }, number];
   set_url: [{ id: number; url: string }, void];
+  download_next: [{ id: number }, boolean];
   is_media_url: [{ url: string }, boolean];
   is_torrent_url: [{ url: string; filename: string | null }, boolean];
   probe_torrent: [{ url: string; headers: Header[] }, TorrentInfo];

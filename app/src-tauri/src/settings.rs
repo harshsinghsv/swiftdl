@@ -35,6 +35,11 @@ pub struct Settings {
     pub when_done: String,
     /// Hold the queue until this time (ms since epoch). 0 = no schedule.
     pub start_at: u64,
+    /// Proxy for downloads, e.g. "http://127.0.0.1:8080". Empty follows the
+    /// system's. Downloads use a change after SwiftDL restarts.
+    pub proxy: String,
+    /// When switching to SwiftDL, offer to download a link on the clipboard.
+    pub watch_clipboard: bool,
 }
 
 impl Default for Settings {
@@ -55,6 +60,8 @@ impl Default for Settings {
             seed_until: "stop".into(),
             when_done: "nothing".into(),
             start_at: 0,
+            proxy: String::new(),
+            watch_clipboard: false,
         }
     }
 }
