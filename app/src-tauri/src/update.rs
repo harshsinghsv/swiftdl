@@ -33,12 +33,11 @@ pub fn is_newer(remote: &str, local: &str) -> bool {
 
 /// This platform's installer among the release's assets.
 fn pick_asset(names: &[(String, String)]) -> Option<String> {
-    let suffix = if cfg!(windows) {
-        "-setup.exe"
-    } else if cfg!(target_os = "macos") {
-        ".dmg"
-    } else {
-        return None; // Linux: .deb, .rpm or AppImage; let the user choose on the page.
+    let suffix = match (std::env::consts::OS, std::env::consts::ARCH) {
+        ("windows", "aarch64") => "_arm64_setup.exe",
+        ("windows", "x86_64") => "_x64-setup.exe",
+        ("macos", _) => ".dmg",
+        _ => return None, // Let the user choose on the release page.
     };
     names.iter().find(|(name, _)| name.ends_with(suffix)).map(|(_, url)| url.clone())
 }
@@ -95,6 +94,20 @@ pub async fn run_installer(_client: &Client, _url: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::is_newer;
+
+    #[cfg(windows)]
+    #[test]
+    fn picks_only_the_current_windows_architecture() {
+        use super::pick_asset;
+        let arm64 = ("SwiftDL_0.4.0_arm64_setup.exe".to_string(), "arm64".to_string());
+        let x64 = ("SwiftDL_0.4.0_x64-setup.exe".to_string(), "x64".to_string());
+        assert!(x64.0.ends_with("-setup.exe"));
+        assert!(!arm64.0.ends_with("-setup.exe"));
+
+        let (current, other) = if cfg!(target_arch = "aarch64") { (arm64, x64) } else { (x64, arm64) };
+        assert_eq!(pick_asset(&[other.clone(), current.clone()]), Some(current.1));
+        assert_eq!(pick_asset(&[other]), None);
+    }
 
     #[test]
     fn compares_versions() {

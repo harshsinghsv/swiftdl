@@ -6,6 +6,9 @@ uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Native Windows ARM64 installer, with in-app updates selecting the installer for the running architecture.
+
 ## [0.3.5] - 2026-11-07
 
 ### Fixed

@@ -48,3 +48,21 @@ jobs:
         working-directory: app
         run: npm ci && npm run build
       - run: cargo check -p swiftdl-app
+
+  windows-arm64:
+    runs-on: windows-11-arm
+    env:
+      CC: clang-cl
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Build the interface
+        working-directory: app
+        run: npm ci && npm run build
+      - run: cargo test -p swiftdl-app update::tests

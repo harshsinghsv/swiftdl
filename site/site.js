@@ -51,6 +51,7 @@ const OS_NAMES = { windows: "Windows", macos: "macOS", linux: "Linux" };
 // What each release file is, in the order it should be offered.
 const KINDS = [
   { test: /-setup\.exe$/i, os: "windows", label: "Installer", ext: ".exe", note: "Recommended. Installs for your user, no admin rights needed.", primary: true },
+  { test: /_arm64_setup\.exe$/i, os: "windows", label: "ARM64 installer", ext: ".exe", note: "For Windows on Arm. Installs for your user, no admin rights needed." },
   { test: /\.msi$/i, os: "windows", label: "MSI package", ext: ".msi", note: "For managed installs and IT deployment." },
   { test: /\.dmg$/i, os: "macos", label: "Disk image", ext: ".dmg", note: "Recommended. Universal: Apple silicon and Intel.", primary: true },
   { test: /\.app\.tar\.gz$/i, os: "macos", label: "App archive", ext: ".app.tar.gz", note: "The app bundle on its own, for scripted installs." },

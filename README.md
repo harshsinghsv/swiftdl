@@ -57,7 +57,7 @@ Everything lands in one place: live speed, every connection, queue, pause and re
 
 | Platform | Installer |
 | --- | --- |
-| **Windows** 10 and 11 | [`SwiftDL_x.y.z_x64-setup.exe`](https://github.com/harshsinghsv/swiftdl/releases/latest), installs per user, no admin rights needed |
+| **Windows** 10 and 11 | [`SwiftDL_x.y.z_x64-setup.exe` or `SwiftDL_x.y.z_arm64_setup.exe`](https://github.com/harshsinghsv/swiftdl/releases/latest), installs per user, no admin rights needed |
 | **macOS** (Apple silicon and Intel) | [`SwiftDL_x.y.z_universal.dmg`](https://github.com/harshsinghsv/swiftdl/releases/latest) |
 | **Linux** | [`.AppImage`, `.deb` or `.rpm`](https://github.com/harshsinghsv/swiftdl/releases/latest) |
 
