@@ -919,6 +919,7 @@ function openSettings(tab = "general") {
   $("set-extract").checked = s.extractArchives;
   $("set-proxy").value = s.proxy || "";
   $("set-bind").value = s.bindAddress || "";
+  $("set-debrid").value = s.debridToken || "";
   $("set-offer").checked = s.offerExtension;
   $("set-progress-win").checked = s.showProgressWindow;
   $("set-tray").checked = s.closeToTray;
@@ -968,6 +969,7 @@ $("form-settings").addEventListener("submit", async (e) => {
     extractArchives: $("set-extract").checked,
     proxy: $("set-proxy").value.trim(),
     bindAddress: $("set-bind").value.trim(),
+    debridToken: $("set-debrid").value.trim(),
     offerExtension: $("set-offer").checked,
     showProgressWindow: $("set-progress-win").checked,
     closeToTray: $("set-tray").checked,

@@ -36,6 +36,11 @@ pub fn get_state(m: Mgr) -> AppState {
 
 #[tauri::command]
 pub async fn probe_url(m: Mgr<'_>, url: String, headers: Vec<(String, String)>) -> Result<ProbeInfo, String> {
+    // A link on a Real-Debrid host: name and size come from Real-Debrid.
+    if let Some(direct) = crate::debrid::resolve(m.client(), &m.debrid_token(), url.trim()).await.map_err(|e| format!("{e:#}"))? {
+        let category = category_for(&direct.filename).to_string();
+        return Ok(ProbeInfo { dir: m.default_dir(&category), filename: direct.filename, size: direct.size, resumable: true, category });
+    }
     if crate::ftp::is_ftp(url.trim()) {
         let u = url.trim().to_string();
         let (filename, size) = tauri::async_runtime::spawn_blocking(move || crate::ftp::probe(&u)).await.map_err(|e| e.to_string())?.map_err(|e| format!("{e:#}"))?;

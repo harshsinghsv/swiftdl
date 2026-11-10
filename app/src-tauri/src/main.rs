@@ -10,6 +10,7 @@ mod native_host;
 mod settings;
 mod torrent;
 mod batch;
+mod debrid;
 mod extract;
 mod ftp;
 mod grabber;

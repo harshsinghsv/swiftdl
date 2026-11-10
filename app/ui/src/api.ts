@@ -63,6 +63,8 @@ export interface Settings {
   watchClipboard: boolean;
   /** Unpack finished archives beside themselves. */
   extractArchives: boolean;
+  /** Real-Debrid API token; empty = not used. */
+  debridToken: string;
 }
 
 export interface Incoming {

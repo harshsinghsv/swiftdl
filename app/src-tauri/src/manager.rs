@@ -424,6 +424,10 @@ impl DownloadManager {
         moved
     }
 
+    pub fn debrid_token(&self) -> String {
+        self.inner.lock().unwrap().settings.debrid_token.clone()
+    }
+
     pub fn item(&self, id: u64) -> Option<Item> {
         self.inner.lock().unwrap().items.iter().find(|i| i.id == id).cloned()
     }
@@ -614,7 +618,20 @@ impl DownloadManager {
                         crate::torrent::run(&this.client, job, progress, note, cancel).await
                     }
                     Kind::Ftp => crate::ftp::run(req.url.clone(), req.dest.clone(), progress, cancel).await,
-                    Kind::File => swiftdl_engine::run(&this.client, &req, progress, cancel, this.limiter.clone()).await,
+                    Kind::File => {
+                        // A file-hosting link goes through Real-Debrid, when set up.
+                        let mut req = req;
+                        let token = this.inner.lock().unwrap().settings.debrid_token.clone();
+                        match crate::debrid::resolve(&this.client, &token, &req.url).await {
+                            Ok(Some(direct)) => {
+                                req.url = direct.url;
+                                req.headers = Default::default();
+                                swiftdl_engine::run(&this.client, &req, progress, cancel, this.limiter.clone()).await
+                            }
+                            Ok(None) => swiftdl_engine::run(&this.client, &req, progress, cancel, this.limiter.clone()).await,
+                            Err(e) => Err(e),
+                        }
+                    }
                 };
                 let result = this.verify(id, result, &check_note).await;
                 this.finish(id, result);
