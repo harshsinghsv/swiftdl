@@ -47,14 +47,19 @@
          large video "Download video" broke onto two lines. */
       .wrap { position: fixed; width: max-content; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; transform: translateX(-100%); opacity: 0; transition: opacity .15s; pointer-events: none; }
       .wrap.on { opacity: 1; pointer-events: auto; }
-      .btn { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px 0 8px; white-space: nowrap; border: 0; border-radius: 9px;
-        background: rgba(20, 21, 26, .86); color: #fff; font-size: 12.5px; font-weight: 600; letter-spacing: -.005em; cursor: pointer;
-        box-shadow: 0 0 0 1px rgba(255,255,255,.12), 0 6px 20px rgba(0,0,0,.35); backdrop-filter: blur(14px) saturate(1.5); }
-      .btn:hover { background: rgba(30, 31, 38, .94); }
-      .btn .chev { opacity: .6; margin-left: 2px; transition: transform .15s; }
+      .btn { display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 10px 0 7px; white-space: nowrap; border: 0; border-radius: 8px;
+        background: #17181c; color: #f2f3f5; font-size: 12.5px; font-weight: 550; cursor: pointer;
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,.14), 0 2px 8px rgba(0,0,0,.3); }
+      .btn:hover { background: #1f2025; }
+      .btn .chev { opacity: .5; transition: transform .15s; }
+      .btn .tick { display: none; }
+      .btn.done .chev { display: none; }
+      .btn.done .tick { display: block; }
       .wrap.open .btn .chev { transform: rotate(180deg); }
-      .panel { width: 320px; padding: 6px; border-radius: 12px; background: rgba(22, 23, 28, .94); color: #eef0f3;
-        box-shadow: 0 0 0 1px rgba(255,255,255,.1), 0 16px 48px rgba(0,0,0,.5); backdrop-filter: blur(18px) saturate(1.5); display: none; }
+      .panel { width: 320px; padding: 5px; border-radius: 10px; background: #17181c; color: #eef0f3;
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), 0 8px 24px rgba(0,0,0,.35); display: none; }
+      /* one line of news (looking, reading, a problem): as wide as the words */
+      .panel.note { width: auto; max-width: 280px; padding: 8px 11px; }
       .wrap.open .panel { display: block; animation: pop .14s ease-out; }
       @keyframes pop { from { opacity: 0; transform: translateY(-4px); } }
       .head { padding: 6px 8px 6px; font-size: 11.5px; font-weight: 600; color: #8a8e98; }
@@ -74,10 +79,11 @@
       .qrow:hover { background: rgba(255,255,255,.08); }
       .qrow .sz { margin-left: auto; font-weight: 500; font-size: 12px; color: #8a8e98; }
       .qsep { height: 1px; margin: 4px 6px; background: rgba(255,255,255,.08); }
-      .msg { padding: 10px 8px 12px; font-size: 12.5px; color: #a4a8b1; line-height: 1.5; }
-      .msg.ok { color: #4cb782; } .msg.err { color: #eb6b6b; }
+      .msg { font-size: 12.5px; color: #c7cad1; line-height: 1.45; }
+      .panel:not(.note) .msg { padding: 8px 8px 10px; color: #a4a8b1; }
+      .msg.err { color: #f0b3ae; }
     </style>
-    <div class="wrap"><button class="btn" title="Download with SwiftDL">${LOGO}<span>Download video</span><svg class="chev" width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5l3 3 3-3" stroke="#fff" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg></button><div class="panel"></div></div>`;
+    <div class="wrap"><button class="btn" title="Download with SwiftDL">${LOGO}<span>Download video</span><svg class="chev" width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5l3 3 3-3" stroke="#fff" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg><svg class="tick" width="11" height="11" viewBox="0 0 12 12"><path d="M2.4 6.3l2.4 2.4 4.8-5.2" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button><div class="panel"></div></div>`;
     wrap = root.querySelector(".wrap");
     btn = root.querySelector(".btn");
     panel = root.querySelector(".panel");
@@ -90,6 +96,18 @@
     wrap.addEventListener("mouseenter", () => clearTimeout(hideTimer));
     wrap.addEventListener("mouseleave", () => scheduleHide());
     mount();
+  }
+
+  // News in the panel (looking, reading, a problem), sized to its words.
+  function note(html) {
+    panel.classList.remove("q");
+    panel.classList.add("note");
+    panel.innerHTML = `<div class="msg">${html}</div>`;
+  }
+  // The button says what is happening itself; "Sent" gets a tick.
+  function label(text, done = false) {
+    btn.querySelector("span").textContent = text || "Download video";
+    btn.classList.toggle("done", done);
   }
 
   function mount() {
@@ -164,7 +182,7 @@
 
   async function toggle() {
     if (open) { setOpen(false); return; }
-    panel.classList.remove("q");
+    panel.classList.remove("q", "note");
     setOpen(true);
     if (/(^|\.)youtube\.com$/i.test(location.hostname) && (await youtubeMenu())) return;
     let res;
@@ -175,7 +193,7 @@
     if (hls?.qualities?.length) { qualityMenu(hls.url, title(), hls.qualities); return; }
     if (hls && (await streamMenu(hls.url))) return;
     if (onVideoSite()) return grab(location.href, title());
-    panel.innerHTML = `<div class="msg">Looking for downloadable files…</div>`;
+    note("Looking for downloadable files…");
     const items = [...(res?.items || [])];
     const src = video?.currentSrc;
     if (src && /^https?:/i.test(src) && !items.some((m) => m.url === src)) items.unshift({ url: src, kind: "file", mime: "video/mp4", size: 0 });
@@ -197,6 +215,7 @@
       html += `<div class="head">Stream</div><button class="item" data-url="${encodeURI(stream.url).replace(/"/g, "%22")}" data-name="${name.replace(/"/g, "'")}.mp4"><span class="tag stream">${stream.kind.toUpperCase()}</span><span class="meta"><b>This video</b><span>Choose the quality in SwiftDL</span></span></button>`;
     }
     if (!files.length && !stream) html = `<div class="msg">No downloadable file found yet. Play the video for a moment, then try again.</div>`;
+    panel.classList.remove("note");
     panel.innerHTML = html;
   }
 
@@ -256,6 +275,7 @@
   function qualityMenu(url, name, qualities) {
     const row = (q, i) => `<button class="qrow" data-q="${i}"><span>${q.label}</span><span class="sz">${q.size ? bytes(q.size) : ""}</span></button>`;
     const audio = qualities.findIndex((q) => q.label === "Audio only");
+    panel.classList.remove("note");
     panel.classList.add("q");
     panel.innerHTML = qualities.map((q, i) => (i === audio ? `<div class="qsep"></div>` : "") + row(q, i)).join("");
     panel.querySelectorAll("[data-q]").forEach((b) => b.addEventListener("click", (e) => {
@@ -265,7 +285,7 @@
     }));
   }
   async function streamMenu(url) {
-    panel.innerHTML = `<div class="msg">Reading qualities…</div>`;
+    note("Reading qualities…");
     let res;
     try { res = await chrome.runtime.sendMessage({ type: "streamQualities", url }); } catch { res = null; }
     if (!res?.qualities?.length) return false;
@@ -274,12 +294,20 @@
   }
 
   async function grab(url, filename, extra = {}) {
-    panel.classList.remove("q");
-    panel.innerHTML = `<div class="msg">Sending to SwiftDL…</div>`;
+    // Close the menu; the button itself reports progress.
+    setOpen(false);
+    label("Sending…");
     let res;
     try { res = await chrome.runtime.sendMessage({ type: "grab", url: decodeURI(url), filename, ...extra }); } catch (e) { res = { ok: false, error: String(e?.message || e) }; }
-    panel.innerHTML = res?.ok ? `<div class="msg ok">Sent to SwiftDL ✓</div>` : `<div class="msg err">${failure(res?.error || "")}</div>`;
-    setTimeout(() => { setOpen(false); scheduleHide(); }, 1800);
+    if (res?.ok) {
+      label("Sent", true);
+      setTimeout(() => { label(); scheduleHide(); }, 1800);
+    } else {
+      label();
+      note(`<span class="err">${failure(res?.error || "")}</span>`);
+      setOpen(true);
+      setTimeout(() => { setOpen(false); scheduleHide(); }, 7000);
+    }
   }
 
   // Find the video under the pointer, even when the site layers controls
