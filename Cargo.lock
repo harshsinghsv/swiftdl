@@ -5164,7 +5164,7 @@ dependencies = [
 
 [[package]]
 name = "swiftdl-app"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "aes",
  "anyhow",
@@ -5198,7 +5198,7 @@ dependencies = [
 
 [[package]]
 name = "swiftdl-cli"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -5210,7 +5210,7 @@ dependencies = [
 
 [[package]]
 name = "swiftdl-engine"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "anyhow",
  "futures-util",

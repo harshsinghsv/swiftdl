@@ -6,6 +6,14 @@ uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-11-14
+
+### Changed
+- The video button on web pages is calmer: a flat button, and after sending it
+  says "Sent" with a tick in the button itself instead of opening a box with
+  one line of green text. Short messages and problems appear in a note sized
+  to its words.
+
 ## [0.4.0] - 2026-11-10
 
 ### Added
@@ -290,7 +298,8 @@ uses [Semantic Versioning](https://semver.org/).
 - GitHub Actions for CI and tagged releases (Windows, macOS, Linux and the
   extension zip).
 
-[Unreleased]: https://github.com/harshsinghsv/swiftdl/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/harshsinghsv/swiftdl/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/harshsinghsv/swiftdl/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/harshsinghsv/swiftdl/compare/v0.3.5...v0.4.0
 [0.3.5]: https://github.com/harshsinghsv/swiftdl/compare/v0.3.3...v0.3.5
 [0.3.3]: https://github.com/harshsinghsv/swiftdl/compare/v0.3.2...v0.3.3
