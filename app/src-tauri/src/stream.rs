@@ -393,7 +393,7 @@ async fn load(f: &Fetcher, url: &str) -> Result<Playlist> {
 
 pub async fn run(client: &Client, job: Job, progress: Arc<Progress>, note: crate::media::Note, cancel: CancellationToken) -> Result<Outcome> {
     let f = Arc::new(Fetcher { client: client.clone(), headers: job.headers.clone() });
-    let set = |t: &str| *note.lock().unwrap() = Some(t.to_string());
+    let set = |t: &str| *note.lock().unwrap() = Some(crate::i18n::note(t));
     // Joining needs ffmpeg; fetch it now (first time only) if it's missing.
     crate::media::ensure_ffmpeg(client, &note).await?;
     set("Starting");

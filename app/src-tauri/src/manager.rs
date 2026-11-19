@@ -207,6 +207,7 @@ impl DownloadManager {
             }
         }
         let next_id = items.iter().map(|i| i.id).max().unwrap_or(0) + 1;
+        crate::i18n::set(crate::i18n::Lang::from_setting(&settings.language));
         Ok(Arc::new(Self {
             app,
             client: {
@@ -360,9 +361,25 @@ impl DownloadManager {
         }
         // Open windows (download windows) follow the theme at once.
         let _ = self.app.emit("settings", &settings);
+        let lang = crate::i18n::Lang::from_setting(&settings.language);
+        let lang_changed = crate::i18n::get() != lang;
         self.inner.lock().unwrap().settings = settings;
         self.save();
         self.schedule();
+        if lang_changed {
+            crate::i18n::set(lang);
+            crate::rebuild_tray(&self.app);
+        }
+    }
+
+    /// The language the front end actually resolved ("system" is already
+    /// resolved to "en" or "zh-CN" by the time it gets here).
+    pub fn set_ui_language(&self, code: &str) {
+        let lang = crate::i18n::Lang::from_code(code);
+        if crate::i18n::get() != lang {
+            crate::i18n::set(lang);
+            crate::rebuild_tray(&self.app);
+        }
     }
 
     fn apply_limit(&self, kib: u64) {
@@ -559,7 +576,7 @@ impl DownloadManager {
             g.confirms.insert(token, inc);
             token
         };
-        if let Err(e) = crate::windows::open(&self.app, &format!("new-{token}"), &format!("confirm={token}"), "New download") {
+        if let Err(e) = crate::windows::open(&self.app, &format!("new-{token}"), &format!("confirm={token}"), crate::i18n::tr("New download")) {
             crate::log::line(&format!("could not open the New download window: {e:#}"));
         }
     }
@@ -771,7 +788,7 @@ impl DownloadManager {
         }
         if let Some(name) = notify {
             use tauri_plugin_notification::NotificationExt;
-            let _ = self.app.notification().builder().title("Download complete").body(name).show();
+            let _ = self.app.notification().builder().title(crate::i18n::tr("Download complete")).body(name).show();
         }
         if let Some(path) = unpack {
             let app = self.app.clone();
@@ -781,11 +798,15 @@ impl DownloadManager {
                 match crate::extract::unpack(&path) {
                     Ok(dir) => {
                         crate::log::line(&format!("unpacked {name} into {}", dir.display()));
-                        let _ = app.notification().builder().title("Unpacked").body(format!("{name} is in {}", dir.display())).show();
+                        let body = match crate::i18n::get() {
+                            crate::i18n::Lang::ZhCn => format!("{name} 已解压到 {}", dir.display()),
+                            _ => format!("{name} is in {}", dir.display()),
+                        };
+                        let _ = app.notification().builder().title(crate::i18n::tr("Unpacked")).body(body).show();
                     }
                     Err(e) => {
                         crate::log::line(&format!("couldn't unpack {name}: {e:#}"));
-                        let _ = app.notification().builder().title("Couldn't unpack").body(format!("{name}: {e}")).show();
+                        let _ = app.notification().builder().title(crate::i18n::tr("Couldn't unpack")).body(format!("{name}: {e}")).show();
                     }
                 }
             });
@@ -817,7 +838,7 @@ impl DownloadManager {
             return result;
         }
         let Some((want, path)) = self.item(id).and_then(|i| i.checksum.clone().map(|c| (c, i.path.clone()))) else { return result };
-        *note.lock().unwrap() = Some("Checking the file".into());
+        *note.lock().unwrap() = Some(crate::i18n::note("Checking the file"));
         match tauri::async_runtime::spawn_blocking(move || sha256_file(&path)).await {
             Ok(Ok(got)) if got.eq_ignore_ascii_case(want.trim()) => {
                 if let Some(i) = self.inner.lock().unwrap().items.iter_mut().find(|i| i.id == id) {
@@ -825,8 +846,16 @@ impl DownloadManager {
                 }
                 result
             }
-            Ok(Ok(got)) => Err(anyhow::anyhow!("The file's SHA-256 doesn't match. Expected {}, got {got}. It may be corrupted or not the file you meant.", want.trim())),
-            _ => Err(anyhow::anyhow!("The file finished, but couldn't be read to check it.")),
+            Ok(Ok(got)) => Err(anyhow::anyhow!(match crate::i18n::get() {
+                crate::i18n::Lang::ZhCn => {
+                    format!("文件的 SHA-256 不匹配。期望 {}，实际为 {got}。文件可能已损坏，或者不是你想要的文件。", want.trim())
+                }
+                _ => format!("The file's SHA-256 doesn't match. Expected {}, got {got}. It may be corrupted or not the file you meant.", want.trim()),
+            })),
+            _ => Err(anyhow::anyhow!(match crate::i18n::get() {
+                crate::i18n::Lang::ZhCn => "文件已下载完成，但无法读取以进行校验。",
+                _ => "The file finished, but couldn't be read to check it.",
+            })),
         }
     }
 
@@ -835,16 +864,16 @@ impl DownloadManager {
     pub fn set_url(self: &Arc<Self>, id: u64, url: &str) -> Result<(), String> {
         let url = url.trim();
         if !(url.starts_with("http://") || url.starts_with("https://")) {
-            return Err("That isn't a web link".into());
+            return Err(crate::i18n::text("That isn't a web link"));
         }
         {
             let mut g = self.inner.lock().unwrap();
-            let Some(item) = g.items.iter_mut().find(|i| i.id == id) else { return Err("Download not found".into()) };
+            let Some(item) = g.items.iter_mut().find(|i| i.id == id) else { return Err(crate::i18n::text("Download not found")) };
             if item.format.is_some() || item.torrent_files.is_some() {
-                return Err("Only regular file downloads can change address".into());
+                return Err(crate::i18n::text("Only regular file downloads can change address"));
             }
             if matches!(item.status, Status::Completed | Status::Downloading) {
-                return Err("Pause the download first".into());
+                return Err(crate::i18n::text("Pause the download first"));
             }
             item.url = url.to_string();
             item.error = None;
@@ -862,8 +891,13 @@ impl DownloadManager {
             self.app.exit(0);
             return;
         }
-        let body = if kind == "sleep" { "Going to sleep in a few seconds." } else { "Shutting down in 60 seconds. To cancel, run: shutdown /a" };
-        let _ = self.app.notification().builder().title("Downloads finished").body(body).show();
+        let body = match (crate::i18n::get(), kind) {
+            (crate::i18n::Lang::ZhCn, "sleep") => "几秒后将进入睡眠。",
+            (crate::i18n::Lang::ZhCn, _) => "将在 60 秒后关机。要取消，请运行：shutdown /a",
+            (_, "sleep") => "Going to sleep in a few seconds.",
+            _ => "Shutting down in 60 seconds. To cancel, run: shutdown /a",
+        };
+        let _ = self.app.notification().builder().title(crate::i18n::tr("Downloads finished")).body(body).show();
         let kind = kind.to_string();
         std::thread::spawn(move || {
             std::thread::sleep(Duration::from_secs(5));

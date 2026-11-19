@@ -27,6 +27,13 @@
   }, true);
 
   const MIN_W = 200, MIN_H = 112;
+  // The browser's UI language, from the extension's _locales.
+  const t = (key, ...subs) => {
+    try { return chrome.i18n.getMessage(key, subs.length ? subs.map(String) : undefined) || key; } catch { return key; }
+  };
+  // Quality labels stay English inside the app's format selectors; only the
+  // ones we show are translated.
+  const qualLabel = (label) => (label === "Audio only" ? t("audioOnly") : label === "Original" ? t("original") : label);
   // Video sites SwiftDL downloads through yt-dlp: the page itself is sent,
   // and the quality is chosen in SwiftDL.
   const VIDEO_SITE = /(^|\.)(youtube\.com|youtube-nocookie\.com|vimeo\.com|x\.com|twitter\.com|reddit\.com|instagram\.com|tiktok\.com|facebook\.com|twitch\.tv|dailymotion\.com|bilibili\.com)$/i;
@@ -83,7 +90,7 @@
       .panel:not(.note) .msg { padding: 8px 8px 10px; color: #a4a8b1; }
       .msg.err { color: #f0b3ae; }
     </style>
-    <div class="wrap"><button class="btn" title="Download with SwiftDL">${LOGO}<span>Download video</span><svg class="chev" width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5l3 3 3-3" stroke="#fff" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg><svg class="tick" width="11" height="11" viewBox="0 0 12 12"><path d="M2.4 6.3l2.4 2.4 4.8-5.2" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button><div class="panel"></div></div>`;
+    <div class="wrap"><button class="btn" title="${t("downloadWith")}">${LOGO}<span>${t("downloadVideo")}</span><svg class="chev" width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5l3 3 3-3" stroke="#fff" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg><svg class="tick" width="11" height="11" viewBox="0 0 12 12"><path d="M2.4 6.3l2.4 2.4 4.8-5.2" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button><div class="panel"></div></div>`;
     wrap = root.querySelector(".wrap");
     btn = root.querySelector(".btn");
     panel = root.querySelector(".panel");
@@ -106,7 +113,7 @@
   }
   // The button says what is happening itself; "Sent" gets a tick.
   function label(text, done = false) {
-    btn.querySelector("span").textContent = text || "Download video";
+    btn.querySelector("span").textContent = text || t("downloadVideo");
     btn.classList.toggle("done", done);
   }
 
@@ -193,7 +200,7 @@
     if (hls?.qualities?.length) { qualityMenu(hls.url, title(), hls.qualities); return; }
     if (hls && (await streamMenu(hls.url))) return;
     if (onVideoSite()) return grab(location.href, title());
-    note("Looking for downloadable files…");
+    note(t("looking"));
     const items = [...(res?.items || [])];
     const src = video?.currentSrc;
     if (src && /^https?:/i.test(src) && !items.some((m) => m.url === src)) items.unshift({ url: src, kind: "file", mime: "video/mp4", size: 0 });
@@ -204,17 +211,17 @@
     const name = title();
     let html = "";
     if (files.length) {
-      html += `<div class="head">Video and audio on this page</div>`;
+      html += `<div class="head">${t("videoAndAudio")}</div>`;
       html += files.map((m) => {
         const ext = extOf(m.url, m.mime || "");
-        const kind = /^audio/.test(m.mime) || /mp3|m4a|aac|ogg|opus|flac|wav/.test(ext) ? "Audio" : "Video";
+        const kind = /^audio/.test(m.mime) || /mp3|m4a|aac|ogg|opus|flac|wav/.test(ext) ? t("audio") : t("video");
         return `<button class="item" data-url="${encodeURI(m.url).replace(/"/g, "%22")}" data-name="${name.replace(/"/g, "'")}.${ext}"><span class="tag">${ext.toUpperCase()}</span><span class="meta"><b>${kind}${m.size ? ` · ${bytes(m.size)}` : ""}</b><span>${new URL(m.url).hostname}</span></span></button>`;
       }).join("");
     }
     if (stream) {
-      html += `<div class="head">Stream</div><button class="item" data-url="${encodeURI(stream.url).replace(/"/g, "%22")}" data-name="${name.replace(/"/g, "'")}.mp4"><span class="tag stream">${stream.kind.toUpperCase()}</span><span class="meta"><b>This video</b><span>Choose the quality in SwiftDL</span></span></button>`;
+      html += `<div class="head">${t("stream")}</div><button class="item" data-url="${encodeURI(stream.url).replace(/"/g, "%22")}" data-name="${name.replace(/"/g, "'")}.mp4"><span class="tag stream">${stream.kind.toUpperCase()}</span><span class="meta"><b>${t("thisVideo")}</b><span>${t("chooseQuality")}</span></span></button>`;
     }
-    if (!files.length && !stream) html = `<div class="msg">No downloadable file found yet. Play the video for a moment, then try again.</div>`;
+    if (!files.length && !stream) html = `<div class="msg">${t("noFile")}</div>`;
     panel.classList.remove("note");
     panel.innerHTML = html;
   }
@@ -224,9 +231,9 @@
   // already open until they're reloaded.
   function failure(error) {
     const text = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
-    if (/context invalidated|receiving end does not exist/i.test(error) || !chrome.runtime?.id) return "SwiftDL's extension was updated. Reload this page and try again.";
-    if (/host not found|not allowed/i.test(error)) return "SwiftDL isn't set up in this browser yet. Open the SwiftDL app once, then try again.";
-    return `SwiftDL couldn't take this download: ${text(error) || "no answer from the app"}.`;
+    if (/context invalidated|receiving end does not exist/i.test(error) || !chrome.runtime?.id) return t("extUpdated");
+    if (/host not found|not allowed/i.test(error)) return t("notSetUp");
+    return t("couldntTake", text(error) || t("noAnswer"));
   }
 
   // ---------- YouTube: qualities straight from the page ----------
@@ -278,7 +285,7 @@
   }
 
   function qualityMenu(url, name, qualities) {
-    const row = (q, i) => `<button class="qrow" data-q="${i}"><span>${q.label}</span><span class="sz">${q.size ? bytes(q.size) : ""}</span></button>`;
+    const row = (q, i) => `<button class="qrow" data-q="${i}"><span>${qualLabel(q.label)}</span><span class="sz">${q.size ? bytes(q.size) : ""}</span></button>`;
     const audio = qualities.findIndex((q) => q.label === "Audio only");
     panel.classList.remove("note");
     panel.classList.add("q");
@@ -290,7 +297,7 @@
     }));
   }
   async function streamMenu(url) {
-    note("Reading qualities…");
+    note(t("reading"));
     let res;
     try { res = await chrome.runtime.sendMessage({ type: "streamQualities", url }); } catch { res = null; }
     if (!res?.qualities?.length) return false;
@@ -301,11 +308,11 @@
   async function grab(url, filename, extra = {}) {
     // Close the menu; the button itself reports progress.
     setOpen(false);
-    label("Sending…");
+    label(t("sending"));
     let res;
     try { res = await chrome.runtime.sendMessage({ type: "grab", url: decodeURI(url), filename, ...extra }); } catch (e) { res = { ok: false, error: String(e?.message || e) }; }
     if (res?.ok) {
-      label("Sent", true);
+      label(t("sent"), true);
       setTimeout(() => { label(); scheduleHide(); }, 1800);
     } else {
       label();

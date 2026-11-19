@@ -27,6 +27,8 @@ The free, open-source download manager for Windows, macOS and Linux.
 
 [Why SwiftDL](#your-browser-is-the-bottleneck) · [Download](#download) · [Features](#features) · [How it works](#how-it-works) · [Browser extension](#browser-extension) · [FAQ](#faq) · [Build from source](#build-from-source)
 
+**English** · [简体中文](README.zh-CN.md)
+
 </div>
 
 ---

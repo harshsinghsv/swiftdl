@@ -8,30 +8,30 @@
 <body>
   <header>
     <img src="logo.svg" alt="" width="28" height="28">
-    <span class="id"><b>SwiftDL</b><span class="status" id="status"><i></i><span>Checking</span></span></span>
-    <button id="open" class="icon" title="Open SwiftDL">
+    <span class="id"><b>SwiftDL</b><span class="status" id="status"><i></i><span data-i18n="checking">Checking</span></span></span>
+    <button id="open" class="icon" data-i18n-title="openApp" title="Open SwiftDL">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>
     </button>
   </header>
 
   <main id="main">
     <section id="found" hidden>
-      <div class="label">On this page</div>
+      <div class="label" data-i18n="onThisPage">On this page</div>
       <div id="media"></div>
     </section>
 
     <label class="row">
-      <span class="txt">Catch downloads</span>
+      <span class="txt" data-i18n="catchDownloads">Catch downloads</span>
       <span class="switch"><input type="checkbox" id="enabled"><i></i></span>
     </label>
     <label class="row" id="site-row">
-      <span class="txt">On <span id="site" class="host"></span></span>
+      <span class="txt"><span data-i18n="onSite">On</span> <span id="site" class="host"></span></span>
       <span class="switch"><input type="checkbox" id="site-on"><i></i></span>
     </label>
     <label class="row">
-      <span class="txt">Skip files under</span>
+      <span class="txt" data-i18n="skipFilesUnder">Skip files under</span>
       <span class="select"><select id="min-size">
-        <option value="0">Off</option>
+        <option value="0" data-i18n="off">Off</option>
         <option value="512">512 KB</option>
         <option value="1024">1 MB</option>
         <option value="5120">5 MB</option>
@@ -39,13 +39,13 @@
       </select></span>
     </label>
 
-    <p class="hint">Hold <kbd>Alt</kbd> while clicking to download in the browser</p>
+    <p class="hint" data-i18n-html="holdAlt">Hold <kbd>Alt</kbd> while clicking to download in the browser</p>
   </main>
 
   <div class="missing" id="missing" hidden>
-    <b>Can't reach SwiftDL</b>
-    <span id="why">Open the app once. If it's already open, restart the browser.</span>
-    <a href="https://github.com/harshsinghsv/swiftdl/releases/latest" target="_blank" class="btn">Download SwiftDL</a>
+    <b data-i18n="cantReach">Can't reach SwiftDL</b>
+    <span id="why" data-i18n="openAppOnce">Open the app once. If it's already open, restart the browser.</span>
+    <a href="https://github.com/harshsinghsv/swiftdl/releases/latest" target="_blank" class="btn" data-i18n="downloadSwiftdl">Download SwiftDL</a>
   </div>
 
   <script src="popup.js"></script>

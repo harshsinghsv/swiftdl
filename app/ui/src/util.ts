@@ -1,6 +1,7 @@
 // Shared by the main window and the download windows: icons, file
 // categories and number formatting.
 
+import { t, locale } from "./i18n";
 const P: Record<string, string> = {
   search: '<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>',
   compose: '<path d="M12 4H6.5A2.5 2.5 0 0 0 4 6.5v11A2.5 2.5 0 0 0 6.5 20h11a2.5 2.5 0 0 0 2.5-2.5V12"/><path d="M17.6 3.6a2 2 0 0 1 2.8 2.8L12.5 14.3 9 15l.7-3.5z"/>',
@@ -83,19 +84,19 @@ export function dur(sec: number): string {
   if (!isFinite(sec) || sec <= 0) return "—";
   sec = Math.ceil(sec);
   const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
-  return h ? `${h}h ${m}m` : m ? `${m}m ${s}s` : `${s}s`;
+  return h ? t("{h}h {m}m", { h, m }) : m ? t("{m}m {s}s", { m, s }) : t("{s}s", { s });
 }
 /** A short, relative time: "Just now", "5m ago", "3:42 PM", "Yesterday", "Nov 1". */
 export function when(ms: number | null | undefined): string {
   if (!ms) return "";
   const d = new Date(ms), now = new Date();
   const mins = Math.round((now.getTime() - d.getTime()) / 60000);
-  if (mins < 1) return "Just now";
-  if (mins < 60) return `${mins}m ago`;
-  if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  if (mins < 1) return t("Just now");
+  if (mins < 60) return t("{n}m ago", { n: mins });
+  if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString(locale(), { hour: "numeric", minute: "2-digit" });
   const y = new Date(now); y.setDate(now.getDate() - 1);
-  if (d.toDateString() === y.toDateString()) return "Yesterday";
-  return d.toLocaleDateString([], { month: "short", day: "numeric" });
+  if (d.toDateString() === y.toDateString()) return t("Yesterday");
+  return d.toLocaleDateString(locale(), { month: "short", day: "numeric" });
 }
 const ESC: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
 export const esc = (s: unknown): string => String(s ?? "").replace(/[&<>"']/g, (c) => ESC[c]);

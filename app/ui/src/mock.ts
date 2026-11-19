@@ -18,9 +18,12 @@ declare global { interface Window { __video?: unknown } }
   let settings: Settings = {
     downloadDir: "C:\\Users\\you\\Downloads", connections: 8, maxConcurrent: 3, speedLimitKib: 0,
     sortIntoCategories: true, askBeforeDownload: true, notifyOnComplete: true,
-    offerExtension: true, onboardingDismissed: false, showProgressWindow: true, closeToTray: true, theme: "system", seedUntil: "stop", whenDone: "nothing", startAt: 0, proxy: "", bindAddress: "", watchClipboard: false, extractArchives: false, debridProvider: "realdebrid", debridToken: "", uiScale: 100, videoDefault: "ask", apiEnabled: false, apiPort: 6800, apiSecret: "", apiLan: false,
+    offerExtension: true, onboardingDismissed: false, showProgressWindow: true, closeToTray: true, language: "system", theme: "system", seedUntil: "stop", whenDone: "nothing", startAt: 0, proxy: "", bindAddress: "", watchClipboard: false, extractArchives: false, debridProvider: "realdebrid", debridToken: "", uiScale: 100, videoDefault: "ask", apiEnabled: false, apiPort: 6800, apiSecret: "", apiLan: false,
   };
   if (VIDEO) Object.assign(settings, { downloadDir: "C:\\Users\\Harsh\\Downloads", onboardingDismissed: true });
+  // Screenshot runs can ask for a language: ?lang=zh-CN
+  const forcedLang = new URLSearchParams(location.search).get("lang");
+  if (forcedLang) settings = { ...settings, language: forcedLang };
   const catFor = (name: string) => {
     const ext = (name.split(".").pop() || "").toLowerCase();
     if (["zip", "rar", "7z", "gz", "iso", "xz", "tar"].includes(ext)) return "Compressed";
@@ -153,6 +156,7 @@ declare global { interface Window { __video?: unknown } }
     resume: ({ ids }) => { items.filter((i) => ids.includes(i.id) && ["paused", "error"].includes(i.status)).forEach((i) => { i.status = "queued"; i.error = null; }); schedule(); },
     remove: ({ ids }) => { for (const id of ids) { const k = items.findIndex((i) => i.id === id); if (k >= 0) items.splice(k, 1); sims.delete(id); } },
     set_settings: ({ settings: s }) => { settings = s; schedule(); },
+    set_ui_language: () => {},
     pick_folder: () => "C:\\Users\\you\\Desktop",
     open_file: () => {}, open_folder: () => {}, open_url: () => {}, open_extension_folder: () => {},
     extension_dir: () => "C:\\Users\\you\\AppData\\Local\\SwiftDL\\extension",

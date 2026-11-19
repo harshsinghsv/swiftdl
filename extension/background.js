@@ -286,9 +286,10 @@ chrome.tabs.onRemoved.addListener((tabId) => chrome.storage.session.remove(key(t
 // ---------- right-click menu ----------
 
 function createMenus() {
+  const title = chrome.i18n.getMessage("downloadWith") || "Download with SwiftDL";
   chrome.contextMenus.removeAll(() => {
-    chrome.contextMenus.create({ id: "swiftdl-link", title: "Download with SwiftDL", contexts: ["link"] });
-    chrome.contextMenus.create({ id: "swiftdl-media", title: "Download with SwiftDL", contexts: ["video", "audio", "image"] });
+    chrome.contextMenus.create({ id: "swiftdl-link", title, contexts: ["link"] });
+    chrome.contextMenus.create({ id: "swiftdl-media", title, contexts: ["video", "audio", "image"] });
   });
 }
 chrome.runtime.onInstalled.addListener(() => { createMenus(); ping(); });

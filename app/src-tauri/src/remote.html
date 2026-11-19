@@ -19,6 +19,8 @@
   header svg.logo { width: 22px; height: 22px; flex: none; }
   header b { font: 600 14.5px "Segoe UI Variable Display", "Segoe UI", -apple-system, system-ui, sans-serif; letter-spacing: -.01em; }
   header .grow { flex: 1; }
+  #lang { height: 26px; padding: 0 9px; background: none; color: var(--muted); font-size: 12px; font-weight: 550; }
+  #lang:hover { background: var(--hover); color: var(--text); }
   #spark { width: 84px; height: 22px; flex: none; }
   #spark path { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
   #speed { min-width: 70px; text-align: right; color: var(--text-2); font-weight: 550; font-variant-numeric: tabular-nums; }
@@ -77,21 +79,80 @@
 <div class="card">
   <header>
     <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" fill="#17181c"/><g fill="#fff" transform="translate(13 13) scale(1.1875)"><rect x="4.5" y="3" width="4.4" height="12" rx="2.2"/><rect x="10.9" y="3" width="4.4" height="17" rx="2.2"/><rect x="16.7" y="3" width="4.4" height="17" rx="2.2"/><rect x="23.1" y="3" width="4.4" height="12" rx="2.2"/><path d="M6 21.5 16 28l10-6.5" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></g></svg>
-    <b>SwiftDL</b><span class="grow"></span>
+    <b>SwiftDL</b><span class="grow"></span><button type="button" id="lang" title="Language">中文</button>
     <svg id="spark" viewBox="0 0 84 22" preserveAspectRatio="none" aria-hidden="true"><path d=""/></svg><span id="speed"></span>
   </header>
-  <form class="bar" id="add"><input id="url" type="text" inputmode="url" placeholder="Paste a link to download" autocomplete="off" spellcheck="false"><button class="primary" type="submit">Download</button></form>
-  <div class="tools"><button type="button" id="pauseall">Pause all</button><button type="button" id="resumeall">Resume all</button></div>
+  <form class="bar" id="add"><input id="url" type="text" inputmode="url" data-i18n-placeholder="paste" placeholder="Paste a link to download" autocomplete="off" spellcheck="false"><button class="primary" type="submit" data-i18n="download">Download</button></form>
+  <div class="tools"><button type="button" id="pauseall" data-i18n="pauseAll">Pause all</button><button type="button" id="resumeall" data-i18n="resumeAll">Resume all</button></div>
   <div id="list"></div>
 </div>
 <div id="gate"><form id="gateform">
   <div class="brand"><svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" fill="#17181c"/><g fill="#fff" transform="translate(13 13) scale(1.1875)"><rect x="4.5" y="3" width="4.4" height="12" rx="2.2"/><rect x="10.9" y="3" width="4.4" height="17" rx="2.2"/><rect x="16.7" y="3" width="4.4" height="17" rx="2.2"/><rect x="23.1" y="3" width="4.4" height="12" rx="2.2"/><path d="M6 21.5 16 28l10-6.5" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></g></svg>SwiftDL Remote</div>
-  <p>Enter the secret from SwiftDL's Settings, Local API.</p><input id="secret" type="password" placeholder="Secret" autocomplete="off"><div class="bad" id="bad"></div><button class="primary" type="submit">Connect</button></form></div>
+  <p data-i18n="gateHint">Enter the secret from SwiftDL's Settings, Local API.</p><input id="secret" type="password" data-i18n-placeholder="secret" placeholder="Secret" autocomplete="off"><div class="bad" id="bad"></div><button class="primary" type="submit" data-i18n="connect">Connect</button></form></div>
 <div id="toast"></div>
 <script>
 const $ = (id) => document.getElementById(id);
 let secret = "";
 try { secret = localStorage.getItem("swiftdl-remote-secret") || ""; } catch {}
+
+// ---------- language ----------
+// Small enough to live here: the page is one file served by the app.
+const STRINGS = {
+  en: {
+    paste: "Paste a link to download",
+    download: "Download", pauseAll: "Pause all", resumeAll: "Resume all",
+    gateHint: "Enter the secret from SwiftDL's Settings, Local API.",
+    secret: "Secret", connect: "Connect", wrongSecret: "That isn't the right secret",
+    offline: "Offline", idle: "Idle",
+    downloading: "Downloading", waitingGroup: "Waiting", finishedGroup: "Finished",
+    empty: "No downloads yet.<br>Paste a link above to start one.",
+    pause: "Pause", resume: "Resume", retry: "Retry", remove: "Remove", removeSure: "Remove?",
+    active: "{done} of {total} · {speed}/s",
+    left: " · {time} left",
+    complete: "{size} · Finished",
+    paused: "{done} of {total} · Paused",
+    queued: "{total} · Waiting",
+    queuedNoSize: "Waiting",
+    failed: "Failed",
+    seconds: "{n} s", minutes: "{n} min", hours: "{n} h {m} min",
+    added: "Added", couldntAdd: "Couldn't add that",
+    pausedAll: "Paused everything", resumed: "Resumed",
+  },
+  "zh-CN": {
+    paste: "粘贴链接开始下载",
+    download: "下载", pauseAll: "全部暂停", resumeAll: "全部继续",
+    gateHint: "输入 SwiftDL 设置 → 本地 API 中的密钥。",
+    secret: "密钥", connect: "连接", wrongSecret: "密钥不正确",
+    offline: "离线", idle: "空闲",
+    downloading: "下载中", waitingGroup: "排队中", finishedGroup: "已完成",
+    empty: "还没有下载。<br>在上面粘贴一个链接开始吧。",
+    pause: "暂停", resume: "继续", retry: "重试", remove: "移除", removeSure: "确定移除？",
+    active: "{done} / {total} · {speed}/秒",
+    left: " · 剩余 {time}",
+    complete: "{size} · 已完成",
+    paused: "{done} / {total} · 已暂停",
+    queued: "{total} · 排队中",
+    queuedNoSize: "等待中",
+    failed: "失败",
+    seconds: "{n} 秒", minutes: "{n} 分钟", hours: "{n} 小时 {m} 分",
+    added: "已添加", couldntAdd: "无法添加",
+    pausedAll: "已全部暂停", resumed: "已继续",
+  },
+};
+const browserLang = /^zh/i.test(navigator.language || "") ? "zh-CN" : "en";
+let lang = browserLang;
+try { lang = localStorage.getItem("swiftdl-remote-lang") || browserLang; } catch {}
+function t(key, vars) {
+  let s = (STRINGS[lang] && STRINGS[lang][key]) || STRINGS.en[key] || key;
+  if (vars) for (const [k, v] of Object.entries(vars)) s = s.split(`{${k}}`).join(String(v));
+  return s;
+}
+function applyLang() {
+  document.documentElement.lang = lang;
+  $("lang").textContent = lang === "zh-CN" ? "EN" : "中文";
+  for (const el of document.querySelectorAll("[data-i18n]")) el.textContent = t(el.dataset.i18n);
+  for (const el of document.querySelectorAll("[data-i18n-placeholder]")) el.placeholder = t(el.dataset.i18nPlaceholder);
+}
 const KEYS = ["gid", "status", "totalLength", "completedLength", "downloadSpeed", "errorMessage", "files"];
 
 async function rpc(calls) {
@@ -103,7 +164,7 @@ const val = (r) => (Array.isArray(r) ? r[0] : null);
 const unauthorized = (r) => r && !Array.isArray(r) && r.message === "Unauthorized";
 
 const bytes = (n) => { n = Number(n) || 0; const u = ["B", "KB", "MB", "GB", "TB"]; let i = 0; while (n >= 1024 && i < 4) { n /= 1024; i++; } return (i ? n.toFixed(n >= 100 ? 0 : 1) : n) + " " + u[i]; };
-const clock = (s) => (s < 60 ? `${Math.ceil(s)} s` : s < 3600 ? `${Math.floor(s / 60)} min` : `${Math.floor(s / 3600)} h ${Math.floor((s % 3600) / 60)} min`);
+const clock = (s) => (s < 60 ? t("seconds", { n: Math.ceil(s) }) : s < 3600 ? t("minutes", { n: Math.floor(s / 60) }) : t("hours", { n: Math.floor(s / 3600), m: Math.floor((s % 3600) / 60) }));
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const base = (p) => String(p || "").split(/[\\/]/).pop();
 const ext = (n) => { const m = /\.([a-z0-9]{2,5})$/i.exec(n); return m ? m[1].toUpperCase() : ""; };
@@ -130,15 +191,15 @@ function row(d) {
   const total = Number(d.totalLength), done = Number(d.completedLength), speed = Number(d.downloadSpeed);
   const pct = total ? Math.min(100, (done / total) * 100) : d.status === "complete" ? 100 : 0;
   const file = base(d.files?.[0]?.path) || "Download", e = ext(file);
-  const act = d.status === "active" || d.status === "waiting" ? `<button data-a="pause" title="Pause">${I.pause}</button>` : d.status === "paused" ? `<button data-a="resume" title="Resume">${I.play}</button>` : d.status === "error" ? `<button data-a="resume" title="Retry">${I.retry}</button>` : "";
+  const act = d.status === "active" || d.status === "waiting" ? `<button data-a="pause" title="${t("pause")}">${I.pause}</button>` : d.status === "paused" ? `<button data-a="resume" title="${t("resume")}">${I.play}</button>` : d.status === "error" ? `<button data-a="resume" title="${t("retry")}">${I.retry}</button>` : "";
   const bar = d.status === "complete" || d.status === "error" ? "" : `<span class="mini"><i style="width:${pct}%"></i></span>`;
-  const text = d.status === "active" ? `${bytes(done)} of ${bytes(total)} · ${bytes(speed)}/s${speed && total ? ` · ${clock((total - done) / speed)} left` : ""}`
-    : d.status === "complete" ? `${bytes(total || done)} · Finished`
-    : d.status === "paused" ? `${bytes(done)} of ${total ? bytes(total) : "?"} · Paused`
-    : d.status === "waiting" ? `${total ? bytes(total) : "Waiting"} · Waiting`
+  const text = d.status === "active" ? t("active", { done: bytes(done), total: bytes(total), speed: bytes(speed) }) + (speed && total ? t("left", { time: clock((total - done) / speed) }) : "")
+    : d.status === "complete" ? t("complete", { size: bytes(total || done) })
+    : d.status === "paused" ? t("paused", { done: bytes(done), total: total ? bytes(total) : "?" })
+    : d.status === "waiting" ? t(total ? "queued" : "queuedNoSize", { total: bytes(total) })
     : "";
-  const sub = d.status === "error" ? `<span class="t err">${esc(d.errorMessage || "Failed")}</span>` : `${bar}<span class="t">${text}</span>`;
-  return `<div class="row ${d.status}" data-g="${d.gid}">${icon(d, pct)}<div class="name"><span class="n" title="${esc(file)}">${esc(file)}</span>${e ? `<span class="tag">${esc(e)}</span>` : ""}</div><div class="acts">${act}<button data-a="remove" title="Remove">${I.trash}</button></div><div class="sub">${sub}</div></div>`;
+  const sub = d.status === "error" ? `<span class="t err">${esc(d.errorMessage || t("failed"))}</span>` : `${bar}<span class="t">${text}</span>`;
+  return `<div class="row ${d.status}" data-g="${d.gid}">${icon(d, pct)}<div class="name"><span class="n" title="${esc(file)}">${esc(file)}</span>${e ? `<span class="tag">${esc(e)}</span>` : ""}</div><div class="acts">${act}<button data-a="remove" title="${t("remove")}">${I.trash}</button></div><div class="sub">${sub}</div></div>`;
 }
 const group = (title, list, right = "") => (list.length ? `<div class="gh"><span>${title}</span><span class="gc">${list.length}</span><span class="gr">${right}</span></div>${list.map(row).join("")}` : "");
 
@@ -152,15 +213,15 @@ async function refresh() {
   let out;
   try {
     out = await rpc([["aria2.getGlobalStat"], ["aria2.tellActive", KEYS], ["aria2.tellWaiting", 0, 200, KEYS], ["aria2.tellStopped", 0, 200, KEYS]]);
-  } catch { $("speed").textContent = "Offline"; return; }
-  if (unauthorized(out[0])) { gate(secret ? "That isn't the right secret" : ""); return; }
+  } catch { $("speed").textContent = t("offline"); return; }
+  if (unauthorized(out[0])) { gate(secret ? t("wrongSecret") : ""); return; }
   $("gate").classList.remove("on");
   const stat = val(out[0]) || {}, now = Number(stat.downloadSpeed) || 0;
-  $("speed").textContent = now ? bytes(now) + "/s" : "Idle";
+  $("speed").textContent = now ? bytes(now) + "/s" : t("idle");
   hist.push(now); if (hist.length > 40) hist.shift(); spark();
   const active = val(out[1]) || [], waiting = val(out[2]) || [], stopped = (val(out[3]) || []).slice().reverse();
-  const html = group("Downloading", active, now ? bytes(now) + "/s" : "") + group("Waiting", waiting) + group("Finished", stopped);
-  $("list").innerHTML = html || `<p class="empty">No downloads yet.<br>Paste a link above to start one.</p>`;
+  const html = group(t("downloading"), active, now ? bytes(now) + "/s" : "") + group(t("waitingGroup"), waiting) + group(t("finishedGroup"), stopped);
+  $("list").innerHTML = html || `<p class="empty">${t("empty")}</p>`;
 }
 
 function gate(msg) { $("bad").textContent = msg || ""; $("gate").classList.add("on"); $("secret").focus(); }
@@ -179,11 +240,11 @@ $("add").addEventListener("submit", async (e) => {
   const url = $("url").value.trim();
   if (!url) return;
   const r = (await rpc([["aria2.addUri", [url]]]))[0];
-  if (Array.isArray(r)) { $("url").value = ""; toast("Added"); } else toast(r?.message || "Couldn't add that");
+  if (Array.isArray(r)) { $("url").value = ""; toast(t("added")); } else toast(r?.message || t("couldntAdd"));
   refresh();
 });
-$("pauseall").onclick = async () => { await rpc([["aria2.pauseAll"]]); toast("Paused everything"); refresh(); };
-$("resumeall").onclick = async () => { await rpc([["aria2.unpauseAll"]]); toast("Resumed"); refresh(); };
+$("pauseall").onclick = async () => { await rpc([["aria2.pauseAll"]]); toast(t("pausedAll")); refresh(); };
+$("resumeall").onclick = async () => { await rpc([["aria2.unpauseAll"]]); toast(t("resumed")); refresh(); };
 
 // Remove asks twice: a stray tap on a phone shouldn't cancel a download.
 let armed = null, armTimer = 0;
@@ -193,12 +254,21 @@ $("list").addEventListener("click", async (e) => {
   if (!b) return;
   const gid = b.closest(".row").dataset.g, a = b.dataset.a;
   if (a === "remove") {
-    if (armed !== b) { disarm(); armed = b; b.classList.add("sure"); b.textContent = "Remove?"; clearTimeout(armTimer); armTimer = setTimeout(disarm, 3000); return; }
+    if (armed !== b) { disarm(); armed = b; b.classList.add("sure"); b.textContent = t("removeSure"); clearTimeout(armTimer); armTimer = setTimeout(disarm, 3000); return; }
     disarm();
   }
   await rpc([[{ pause: "aria2.pause", resume: "aria2.unpause", remove: "aria2.remove" }[a], gid]]);
   refresh();
 });
+
+applyLang();
+$("lang").onclick = () => {
+  lang = lang === "zh-CN" ? "en" : "zh-CN";
+  try { localStorage.setItem("swiftdl-remote-lang", lang); } catch {}
+  applyLang();
+  $("bad").textContent = "";
+  refresh();
+};
 
 refresh();
 setInterval(() => { if (!armed) refresh(); }, 1500);

@@ -12,6 +12,15 @@ function pickStream(items) {
 
 const DEFAULTS = { enabled: true, minSizeKB: 0, disabledSites: [] };
 const $ = (id) => document.getElementById(id);
+// The browser's own UI language decides, from _locales/en and _locales/zh_CN.
+const t = (key, ...subs) => chrome.i18n.getMessage(key, subs.length ? subs.map(String) : undefined) || key;
+
+function translate() {
+  document.documentElement.lang = /^zh/i.test(chrome.i18n.getUILanguage()) ? "zh-CN" : "en";
+  for (const el of document.querySelectorAll("[data-i18n]")) el.textContent = t(el.dataset.i18n);
+  for (const el of document.querySelectorAll("[data-i18n-html]")) el.innerHTML = t(el.dataset.i18nHtml);
+  for (const el of document.querySelectorAll("[data-i18n-title]")) el.title = t(el.dataset.i18nTitle);
+}
 const DL_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 20h14"/></svg>`;
 const CHECK = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5.5 12.5 4 4 9-9"/></svg>`;
 
@@ -25,6 +34,7 @@ const VIDEO_SITE = /(^|\.)(youtube\.com|youtube-nocookie\.com|vimeo\.com|x\.com|
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
 async function main() {
+  translate();
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const settings = await chrome.storage.sync.get(DEFAULTS);
   // Only real websites get the per-site switch, not browser or extension pages.
@@ -44,14 +54,14 @@ async function main() {
 
   chrome.runtime.sendMessage({ type: "ping" }).then((r) => {
     $("status").className = `status ${r?.ok ? "ok" : "off"}`;
-    $("status").querySelector("span").textContent = r?.ok ? "Connected" : "Not connected";
+    $("status").querySelector("span").textContent = t(r?.ok ? "connected" : "notConnected");
     $("missing").hidden = !!r?.ok;
     if (!r?.ok) {
       const e = String(r?.error || "");
       // The browser's own words, in plain terms.
       $("why").textContent = /not found|forbidden|not allowed/i.test(e)
-        ? "This browser can't find SwiftDL's helper. Install SwiftDL with its installer (not just the .exe file), open it once, then reload this extension."
-        : e ? `The browser said: ${e}` : "Open the app once. If it's already open, restart the browser.";
+        ? t("helperMissing")
+        : e ? t("browserSaid", e) : t("openAppOnce");
     }
     $("main").hidden = !r?.ok;
     $("open").hidden = !r?.ok;
@@ -67,12 +77,12 @@ async function main() {
   let html = files.map((m, i) => {
     const e = ext(m);
     const audio = /^audio/.test(m.mime) || /mp3|m4a|aac|ogg|opus|flac|wav/.test(e);
-    return `<div class="m"><span class="tag">${e.toUpperCase()}</span><span class="mt"><b>${audio ? "Audio" : "Video"}</b><span title="${esc(m.url)}">${m.size ? bytes(m.size) : esc(new URL(m.url).hostname)}</span></span><button class="dl" data-i="${i}" title="Download with SwiftDL">${DL_ICON}</button></div>`;
+    return `<div class="m"><span class="tag">${e.toUpperCase()}</span><span class="mt"><b>${t(audio ? "audio" : "video")}</b><span title="${esc(m.url)}">${m.size ? bytes(m.size) : esc(new URL(m.url).hostname)}</span></span><button class="dl" data-i="${i}" title="${esc(t("downloadWith"))}">${DL_ICON}</button></div>`;
   }).join("");
-  if (stream) html += `<div class="m"><span class="tag stream">${stream.kind.toUpperCase()}</span><span class="mt"><b>Stream</b><span>Choose the quality in SwiftDL</span></span><button class="dl" data-stream title="Download with SwiftDL">${DL_ICON}</button></div>`;
+  if (stream) html += `<div class="m"><span class="tag stream">${stream.kind.toUpperCase()}</span><span class="mt"><b>${esc(t("stream"))}</b><span>${esc(t("chooseQuality"))}</span></span><button class="dl" data-stream title="${esc(t("downloadWith"))}">${DL_ICON}</button></div>`;
   // Video sites go through SwiftDL's quality picker, whatever the page loaded.
   if (host && VIDEO_SITE.test(host)) {
-    html = `<div class="m"><span class="tag">PAGE</span><span class="mt"><b>This video</b><span>Choose the quality in SwiftDL</span></span><button class="dl" data-page title="Download with SwiftDL">${DL_ICON}</button></div>`;
+    html = `<div class="m"><span class="tag">${esc(t("pageTag"))}</span><span class="mt"><b>${esc(t("thisVideo"))}</b><span>${esc(t("chooseQuality"))}</span></span><button class="dl" data-page title="${esc(t("downloadWith"))}">${DL_ICON}</button></div>`;
   }
   $("media").innerHTML = html;
   $("found").hidden = !html;

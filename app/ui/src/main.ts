@@ -5,6 +5,7 @@ import "./styles.css";
 import { invoke, listen, currentWindow, $ } from "./api";
 import type { Item, Settings, IntegrationStatus, BrowserStatus, Incoming, ProbeInfo, Header, Status, Commands, UpdateInfo } from "./api";
 import { icon, CATS, catOf, parts, bytes, speed, dur, when, esc, host, segBar } from "./util";
+import { t, tn, tt, tb, locale, setLang, resolveLang } from "./i18n";
 
 const appWindow = currentWindow();
 const target = (e: Event) => e.target as HTMLElement;
@@ -144,14 +145,14 @@ function renderNav() {
   const count = (fn: (i: Item) => boolean) => state.items.filter(fn).length;
   const live = state.items.some((i) => i.status === "downloading");
   const item = (view: string, label: string, ic: string, n: number, extra = "") =>
-    `<button class="nav-item ${state.view === view ? "on" : ""}" data-view="${view}"><span class="ni-icon">${ic}</span><span class="ni-label">${label}</span>${extra}<span class="ni-count">${n || ""}</span></button>`;
-  let html = item("all", "All downloads", icon("inbox"), state.items.length) +
-    item("active", "In progress", icon("arrowDown"), count(VIEWS.active.test), live ? '<span class="ni-live"></span>' : "") +
-    item("completed", "Completed", icon("doneCircle"), count(VIEWS.completed.test));
+    `<button class="nav-item ${state.view === view ? "on" : ""}" data-view="${view}"><span class="ni-icon">${ic}</span><span class="ni-label">${esc(label)}</span>${extra}<span class="ni-count">${n || ""}</span></button>`;
+  let html = item("all", t("All downloads"), icon("inbox"), state.items.length) +
+    item("active", t("In progress"), icon("arrowDown"), count(VIEWS.active.test), live ? '<span class="ni-live"></span>' : "") +
+    item("completed", t("Completed"), icon("doneCircle"), count(VIEWS.completed.test));
   const failed = count(VIEWS.failed.test);
-  if (failed || state.view === "failed") html += item("failed", "Failed", icon("alert"), failed);
-  html += `<button class="nav-sec ${state.typesOpen ? "" : "closed"}" data-toggle="types">Types ${icon("chevDown")}</button>`;
-  if (state.typesOpen) for (const name of Object.keys(CATS)) html += item(name, name, typeIcon(name), count((i) => i.category === name));
+  if (failed || state.view === "failed") html += item("failed", t("Failed"), icon("alert"), failed);
+  html += `<button class="nav-sec ${state.typesOpen ? "" : "closed"}" data-toggle="types">${t("Types")} ${icon("chevDown")}</button>`;
+  if (state.typesOpen) for (const name of Object.keys(CATS)) html += item(name, tt(name), typeIcon(name), count((i) => i.category === name));
   if ($("nav").innerHTML !== html) $("nav").innerHTML = html;
 
   const active = state.items.filter((i) => i.status === "downloading");
@@ -161,9 +162,11 @@ function renderNav() {
   $("net-speed").textContent = v;
   $("net-unit").textContent = `${u}/s`;
   const left = active.reduce((s, i) => s + Math.max(0, (i.size || 0) - i.downloaded), 0);
-  $("net-foot").textContent = active.length ? `${active.length} active${queued ? `, ${queued} queued` : ""} · ${bytes(left)} left` : queued ? `${queued} queued` : "Idle";
+  $("net-foot").textContent = active.length
+    ? `${queued ? t("{n} active, {q} queued", { n: active.length, q: queued }) : t("{n} active", { n: active.length })} · ${t("{x} left", { x: bytes(left) })}`
+    : queued ? t("{q} queued", { q: queued }) : t("Idle");
   const lim = state.settings?.speedLimitKib || 0;
-  $("limit-btn").textContent = lim ? `≤ ${bytes(lim * 1024)}/s` : "No limit";
+  $("limit-btn").textContent = lim ? t("≤ {x}/s", { x: bytes(lim * 1024) }) : t("No limit");
   $("limit-btn").classList.toggle("on", !!lim);
   areaChart($("net-graph"), state.totalHist);
 }
@@ -172,7 +175,7 @@ function renderNav() {
 function renderHeader(list: Item[]) {
   const v = VIEWS[state.view];
   $("h-icon").innerHTML = v ? icon(v.icon) : typeIcon(state.view);
-  $("h-name").textContent = v ? v.name : state.view;
+  $("h-name").textContent = v ? tt(v.name) : tt(state.view);
   $("h-count").textContent = list.length ? String(list.length) : "";
   $("btn-pause-all").hidden = !list.some(isActive);
   $("btn-resume-all").hidden = !list.some((i) => i.status === "paused" || i.status === "error");
@@ -194,18 +197,18 @@ function meta(it: Item) {
   const mini = (cls: string) => `<span class="mini ${cls}"><i style="width:${pct(it)}%"></i></span><span class="pct">${it.size ? p + "%" : ""}</span>`;
   switch (it.status) {
     case "downloading":
-      return `${mini("")}<span class="m-size">${bytes(it.downloaded)} / ${bytes(it.size)}</span><span class="m-speed">${it.speed > 0 ? speed(it.speed) : "Connecting…"}</span><span class="m-eta">${dur(eta(it))}</span>`;
-    case "queued": return `${mini("queued")}<span class="m-size">${it.size ? bytes(it.size) : "—"}</span><span class="m-speed" style="color:var(--muted);font-weight:500">Queued · #${queuePos(it)}</span><span class="m-eta"></span>`;
-    case "paused": return `${mini("paused")}<span class="m-size">${bytes(it.downloaded)} / ${bytes(it.size)}</span><span class="m-speed" style="color:var(--amber);font-weight:500">Paused</span><span class="m-eta"></span>`;
+      return `${mini("")}<span class="m-size">${bytes(it.downloaded)} / ${bytes(it.size)}</span><span class="m-speed">${it.speed > 0 ? speed(it.speed) : t("Connecting…")}</span><span class="m-eta">${dur(eta(it))}</span>`;
+    case "queued": return `${mini("queued")}<span class="m-size">${it.size ? bytes(it.size) : "—"}</span><span class="m-speed" style="color:var(--muted);font-weight:500">${t("Queued · #{n}", { n: queuePos(it) })}</span><span class="m-eta"></span>`;
+    case "paused": return `${mini("paused")}<span class="m-size">${bytes(it.downloaded)} / ${bytes(it.size)}</span><span class="m-speed" style="color:var(--amber);font-weight:500">${t("Paused")}</span><span class="m-eta"></span>`;
     case "error": return `<span class="m-size">${bytes(it.size)}</span><span class="m-when">${when(it.addedAt)}</span>`;
-    default: return `<span class="cat"><i style="background:${cat(it).color}"></i>${esc(it.category)}</span><span class="m-size">${bytes(it.size)}</span><span class="m-when">${when(it.completedAt)}</span>`;
+    default: return `<span class="cat"><i style="background:${cat(it).color}"></i>${esc(tt(it.category))}</span><span class="m-size">${bytes(it.size)}</span><span class="m-when">${when(it.completedAt)}</span>`;
   }
 }
 function updateRow(el: RowEl, it: Item) {
   el.classList.toggle("sel", state.selected === it.id || state.picked.has(it.id));
   set(el, 0, statusIcon(it));
   const e = ext(it.filename);
-  set(el, 1, `<span class="r-name" title="${esc(it.filename)}">${esc(it.filename.replace(/\.[^.]+$/, "") || it.filename)}</span>${e ? `<span class="r-ext">${e}</span>` : ""}${it.status === "error" ? `<span class="r-err">${esc(it.error || "Failed")}</span>` : ""}`);
+  set(el, 1, `<span class="r-name" title="${esc(it.filename)}">${esc(it.filename.replace(/\.[^.]+$/, "") || it.filename)}</span>${e ? `<span class="r-ext">${e}</span>` : ""}${it.status === "error" ? `<span class="r-err">${esc(tb(it.error) || t("Failed"))}</span>` : ""}`);
   set(el, 2, meta(it));
 }
 function renderList() {
@@ -215,7 +218,7 @@ function renderList() {
     let h = headEls.get(g.s);
     if (!h) { h = document.createElement("div"); h.className = "ghead"; headEls.set(g.s, h); }
     const right = g.s === "downloading" ? speed(g.items.reduce((s, i) => s + (i.speed || 0), 0)) : g.s === "completed" ? bytes(g.items.reduce((s, i) => s + (i.size || 0), 0)) : "";
-    const html = `${statusIcon({ status: g.s, size: 4, downloaded: 3 })}<span>${g.title}</span><span class="gc">${g.items.length}</span><span class="gr">${right}</span>${g.s === "completed" ? `<button type="button" class="gclear" data-clear title="Remove finished downloads from the list (the files stay)">Clear</button>` : ""}`;
+    const html = `${statusIcon({ status: g.s, size: 4, downloaded: 3 })}<span>${tt(g.title)}</span><span class="gc">${g.items.length}</span><span class="gr">${right}</span>${g.s === "completed" ? `<button type="button" class="gclear" data-clear title="${esc(t("Remove finished downloads from the list (the files stay)"))}">${t("Clear")}</button>` : ""}`;
     if (h.innerHTML !== html) h.innerHTML = html;
     nodes.push(h);
     for (const it of g.items) {
@@ -232,8 +235,8 @@ function renderList() {
   $("empty").hidden = list.length > 0;
   if (!list.length) {
     const q = state.search.trim();
-    $("empty-title").textContent = q ? "No results" : state.items.length ? "Nothing here" : "No downloads yet";
-    $("empty-text").textContent = q ? `No downloads match “${q}”.` : state.items.length ? "Downloads in this view will show up here." : "Paste a link, drop one onto this window, or start a download in your browser.";
+    $("empty-title").textContent = q ? t("No results") : state.items.length ? t("Nothing here") : t("No downloads yet");
+    $("empty-text").textContent = q ? t("No downloads match “{q}”.", { q }) : state.items.length ? t("Downloads in this view will show up here.") : t("Paste a link, drop one onto this window, or start a download in your browser.");
     $("empty-actions").hidden = !!q || state.items.length > 0;
   }
   return list;
@@ -251,15 +254,15 @@ function renderInspector() {
   if (insKey !== key) {
     insKey = key;
     panel.innerHTML = `<div class="ins-scroll">
-        <div class="ins-top"><span class="ins-glyph">${icon(cat(it).icon)}</span><div class="ins-head"><div class="ins-title">${esc(it.filename)}</div><div class="ins-meta" id="ins-chips"></div></div><button class="sq-btn" data-ins="close" title="Close (Esc)">${icon("x")}</button></div>
-        <div class="ins-sec"><div class="ins-sec-head">Progress<span id="ins-pct"></span></div><div class="segbar" id="ins-bar"></div><dl class="props" id="ins-stats"></dl></div>
-        <div class="ins-sec" id="ins-graph-sec"><div class="ins-sec-head">Speed<span id="ins-peak"></span></div><canvas id="ins-graph"></canvas></div>
-        <div class="ins-sec"><div class="ins-sec-head">Details</div><dl class="props" id="ins-props"></dl></div>
+        <div class="ins-top"><span class="ins-glyph">${icon(cat(it).icon)}</span><div class="ins-head"><div class="ins-title">${esc(it.filename)}</div><div class="ins-meta" id="ins-chips"></div></div><button class="sq-btn" data-ins="close" title="${esc(t("Close (Esc)"))}">${icon("x")}</button></div>
+        <div class="ins-sec"><div class="ins-sec-head">${t("Progress")}<span id="ins-pct"></span></div><div class="segbar" id="ins-bar"></div><dl class="props" id="ins-stats"></dl></div>
+        <div class="ins-sec" id="ins-graph-sec"><div class="ins-sec-head">${t("Speed")}<span id="ins-peak"></span></div><canvas id="ins-graph"></canvas></div>
+        <div class="ins-sec"><div class="ins-sec-head">${t("Details")}</div><dl class="props" id="ins-props"></dl></div>
       </div>
       <div class="ins-foot" id="ins-foot"></div>`;
   }
   const finishing = dl && !!it.size && it.downloaded >= it.size;
-  const meta = `<span class="st-${it.status}">${finishing ? "Finishing…" : STATUS[it.status]}</span><span class="trunc">from ${esc(host(it.url))}</span>`;
+  const meta = `<span class="st-${it.status}">${esc(finishing ? t("Finishing…") : tt(STATUS[it.status]))}</span><span class="trunc">${t("from {host}", { host: esc(host(it.url)) })}</span>`;
   if ($("ins-chips").innerHTML !== meta) $("ins-chips").innerHTML = meta;
 
   $("ins-pct").textContent = it.size ? `${Math.floor(pct(it))}%` : "";
@@ -268,30 +271,30 @@ function renderInspector() {
   segBar(bar, null, undefined, pct(it));
   const row = (k: string, v: string) => `<dt>${k}</dt><dd><span>${v}</span></dd>`;
   const stats = it.status === "completed"
-    ? row("Size", bytes(it.size)) + row("Finished", when(it.completedAt) || "—") + (it.verified ? row("Checksum", "SHA-256 matches") : "")
-    : row("Downloaded", it.size ? `${bytes(it.downloaded)} of ${bytes(it.size)}` : bytes(it.downloaded)) +
-      (dl && !finishing ? row("Speed", speed(it.speed)) + row("Time left", dur(eta(it))) : "") +
-      (dl && it.connections ? row("Connections", String(it.connections)) : "");
+    ? row(t("Size"), bytes(it.size)) + row(t("Finished"), when(it.completedAt) || "—") + (it.verified ? row(t("Checksum"), t("SHA-256 matches")) : "")
+    : row(t("Downloaded"), it.size ? t("{a} of {b}", { a: bytes(it.downloaded), b: bytes(it.size) }) : bytes(it.downloaded)) +
+      (dl && !finishing ? row(t("Speed"), speed(it.speed)) + row(t("Time left"), dur(eta(it))) : "") +
+      (dl && it.connections ? row(t("Connections"), String(it.connections)) : "");
   if ($("ins-stats").innerHTML !== stats) $("ins-stats").innerHTML = stats;
 
   const hist = state.speedHist.get(it.id) || [];
   $("ins-graph-sec").hidden = !hist.some((v: number) => v > 0);
-  if (!$("ins-graph-sec").hidden) { areaChart($("ins-graph"), hist, { fill: false }); $("ins-peak").textContent = `Peak ${speed(Math.max(...hist))}`; }
+  if (!$("ins-graph-sec").hidden) { areaChart($("ins-graph"), hist, { fill: false }); $("ins-peak").textContent = t("Peak {x}", { x: speed(Math.max(...hist)) }); }
 
   const dir = it.path.replace(/[\\/][^\\/]*$/, "");
   const props = `
-    <dt>Location</dt><dd><span class="link" data-ins="folder" title="${esc(it.path)}">${esc(dir)}</span><button class="copy" data-ins="copy-path" title="Copy path">${icon("copy")}</button></dd>
-    <dt>Source</dt><dd><span title="${esc(it.url)}">${esc(it.url)}</span><button class="copy" data-ins="copy" title="Copy link">${icon("copy")}</button></dd>
-    <dt>Resumable</dt><dd><span>${it.resumable ? "Yes" : "No, the server doesn't support it"}</span></dd>
-    <dt>Added</dt><dd><span>${new Date(it.addedAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</span></dd>
-    ${it.error ? `<dt>Error</dt><dd><span style="color:var(--red)" title="${esc(it.error)}">${esc(it.error)}</span></dd>` : ""}`;
+    <dt>${t("Location")}</dt><dd><span class="link" data-ins="folder" title="${esc(it.path)}">${esc(dir)}</span><button class="copy" data-ins="copy-path" title="${esc(t("Copy path"))}">${icon("copy")}</button></dd>
+    <dt>${t("Source")}</dt><dd><span title="${esc(it.url)}">${esc(it.url)}</span><button class="copy" data-ins="copy" title="${esc(t("Copy link"))}">${icon("copy")}</button></dd>
+    <dt>${t("Resumable")}</dt><dd><span>${it.resumable ? t("Yes") : t("No, the server doesn't support it")}</span></dd>
+    <dt>${t("Added")}</dt><dd><span>${new Date(it.addedAt).toLocaleString(locale(), { dateStyle: "medium", timeStyle: "short" })}</span></dd>
+    ${it.error ? `<dt>${t("Error")}</dt><dd><span style="color:var(--red)" title="${esc(it.error)}">${esc(tb(it.error))}</span></dd>` : ""}`;
   if ($("ins-props").innerHTML !== props) $("ins-props").innerHTML = props;
 
-  const primary = it.status === "completed" ? `<button class="btn primary" data-ins="open">Open</button>`
-    : it.status === "error" ? `<button class="btn" data-ins="browser" title="Open the link in your browser, which downloads it with your own session">Download in browser</button><button class="btn primary" data-ins="resume">Retry</button>`
-    : isActive(it) ? `<button class="btn" data-ins="pause">Pause</button>`
-    : `<button class="btn primary" data-ins="resume">Resume</button>`;
-  const foot = `<button class="btn" data-ins="folder">Show in folder</button>${primary}<button class="btn icon" data-ins="more" title="More">${icon("more")}</button>`;
+  const primary = it.status === "completed" ? `<button class="btn primary" data-ins="open">${t("Open")}</button>`
+    : it.status === "error" ? `<button class="btn" data-ins="browser" title="${esc(t("Open the link in your browser, which downloads it with your own session"))}">${t("Download in browser")}</button><button class="btn primary" data-ins="resume">${t("Retry")}</button>`
+    : isActive(it) ? `<button class="btn" data-ins="pause">${t("Pause")}</button>`
+    : `<button class="btn primary" data-ins="resume">${t("Resume")}</button>`;
+  const foot = `<button class="btn" data-ins="folder">${t("Show in folder")}</button>${primary}<button class="btn icon" data-ins="more" title="${esc(t("More"))}">${icon("more")}</button>`;
   if ($("ins-foot").innerHTML !== foot) $("ins-foot").innerHTML = foot;
 }
 
@@ -305,7 +308,7 @@ async function loadIntegration() {
   if (now?.lastSeen && now.lastSeen > before && (!before || $("dlg-ext").open)) {
     const who = now.browsers.filter((x) => x.lastSeen).sort((x, y) => (y.lastSeen || 0) - (x.lastSeen || 0))[0];
     if ($("dlg-ext").open) $("dlg-ext").close();
-    if (loadedOnce) toast(`Connected in ${who?.name || "your browser"}`, "ok");
+    if (loadedOnce) toast(who?.name ? t("Connected in {browser}", { browser: who.name }) : t("Connected in your browser"), "ok");
   }
   loadedOnce = true;
   renderOnboard();
@@ -321,11 +324,11 @@ function renderOnboard() {
   // Until the extension is on the Chrome Web Store, store buttons would lead
   // to a missing page, so offer the guided manual install instead.
   const actions = i.storeAvailable
-    ? installedBrowsers().slice(0, 3).map((b) => `<button class="link-btn" data-store="${b.id}">Add to ${b.name}</button>`).join("")
-    : `<button class="link-btn" data-guide>Add the extension</button>`;
+    ? installedBrowsers().slice(0, 3).map((b) => `<button class="link-btn" data-store="${b.id}">${esc(t("Add to {browser}", { browser: b.name }))}</button>`).join("")
+    : `<button class="link-btn" data-guide>${t("Add the extension")}</button>`;
   const html = `<span class="ob-icon">${icon("globe")}</span>
-    <span class="ob-text"><b>Connect your browser</b>Catch downloads automatically and get a download button on videos</span>
-    <span class="ob-actions">${actions}<button class="sq-btn" data-dismiss title="Dismiss">${icon("x")}</button></span>`;
+    <span class="ob-text"><b>${t("Connect your browser")}</b>${t("Catch downloads automatically and get a download button on videos")}</span>
+    <span class="ob-actions">${actions}<button class="sq-btn" data-dismiss title="${esc(t("Dismiss"))}">${icon("x")}</button></span>`;
   // innerHTML never reads back identical, so compare with what we wrote last;
   // rebuilding it on every poll replaced the button mid-click.
   if (card.dataset.html !== html) { card.innerHTML = html; card.dataset.html = html; }
@@ -344,12 +347,13 @@ async function openExtensionGuide(browserId?: string) {
   $("ext-path").textContent = path;
   $("ext-path").title = path;
   const b = installedBrowsers().find((x) => x.id === browserId);
+  const page = `<code>${EXT_PAGE[browserId || ""] || "chrome://extensions"}</code>`;
   $("ext-step1").innerHTML = ff
-    ? "Firefox: open <code>about:debugging</code>, choose This Firefox, then Load Temporary Add-on and pick <code>manifest.json</code> in the folder below"
-    : `Type <code>${EXT_PAGE[browserId || ""] || "chrome://extensions"}</code> in the address bar${b ? `, or open it in ${b.name}:` : ""}`;
+    ? t("Firefox: open {debugging}, choose This Firefox, then Load Temporary Add-on and pick {manifest} in the folder below", { debugging: "<code>about:debugging</code>", manifest: "<code>manifest.json</code>" })
+    : t("Type {page} in the address bar", { page }) + (b ? t(", or open it in {browser}:", { browser: esc(b.name) }) : "");
   const choices = b ? [b] : installedBrowsers().filter((x) => x.id !== "firefox");
-  $("ext-browsers").innerHTML = choices.map((x) => `<button type="button" class="btn sm" data-open-ext="${x.id}"><img class="blogo sm" src="browsers/${x.id}.svg" alt="">Open in ${x.name}</button>`).join("");
-  $("ext-wait").textContent = "Waiting for the extension to connect…";
+  $("ext-browsers").innerHTML = choices.map((x) => `<button type="button" class="btn sm" data-open-ext="${x.id}"><img class="blogo sm" src="browsers/${x.id}.svg" alt="">${esc(t("Open in {browser}", { browser: x.name }))}</button>`).join("");
+  $("ext-wait").textContent = t("Waiting for the extension to connect…");
   if (!$("dlg-ext").open) $("dlg-ext").showModal();
   if (b) openExtPage(b.id);
   // Check often while the guide is open, so it notices the connection at once.
@@ -360,13 +364,13 @@ async function openExtensionGuide(browserId?: string) {
   }, 1500);
 }
 async function openExtPage(id: string) {
-  copy($("ext-path").textContent || "", "Folder path copied, paste it into the picker");
+  copy($("ext-path").textContent || "", t("Folder path copied, paste it into the picker"));
   try { await invoke("open_extensions_page", { browser: id }); }
   catch (e) { toast(esc(String(e)), "err"); }
 }
 $("ext-browsers").addEventListener("click", (e) => { const b = target(e).closest<HTMLElement>("[data-open-ext]"); if (b) openExtPage(b.dataset.openExt!); });
 $("ext-copy").innerHTML = icon("copy");
-$("ext-copy").onclick = () => copy($("ext-path").textContent || "", "Folder path copied");
+$("ext-copy").onclick = () => copy($("ext-path").textContent || "", t("Folder path copied"));
 $("ext-open").onclick = () => call("open_extension_folder");
 $("ext-ff-store").onclick = (e) => { e.preventDefault(); openStore("firefox"); };
 $("onboard").addEventListener("click", async (e) => {
@@ -380,27 +384,29 @@ $("onboard").addEventListener("click", async (e) => {
 });
 async function openStore(browser: string) {
   await call("open_store", { browser });
-  toast(browser === "firefox" ? "Opened Firefox Add-ons. Click “Add to Firefox” there." : "Opened the extension page. Click “Add to browser” there.", "ok");
+  toast(browser === "firefox" ? t("Opened Firefox Add-ons. Click “Add to Firefox” there.") : t("Opened the extension page. Click “Add to browser” there."), "ok");
 }
 function renderBrowserPanel() {
   const i = state.integration;
   if (!i) return;
   const store = i.storeAvailable;
-  const hint = "Click Add next to a browser below";
+  const hint = t("Click Add next to a browser below");
   const connected = i.browsers.filter((b) => b.lastSeen).sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0));
+  const names = connected.map((b) => b.name);
+  const joined = names.length > 1 ? `${names.slice(0, -1).join(", ")} ${t("and")} ${names[names.length - 1]}` : names[0] || "";
   const logo = (b: BrowserStatus, cls = "") => `<img class="blogo ${cls}" src="browsers/${b.id}.svg" alt="" width="28" height="28">`;
   $("ext-status").innerHTML = connected.length
-    ? `${logo(connected[0])}<div class="sr-text"><b>Connected in ${connected.map((b) => b.name).join(", ").replace(/, ([^,]*)$/, " and $1")}</b><span>Last active ${when(connected[0].lastSeen).toLowerCase()}</span></div>`
-    : `<div class="sr-text"><b>Not connected yet</b><span>${hint}</span></div>`;
+    ? `${logo(connected[0])}<div class="sr-text"><b>${esc(t("Connected in {browsers}", { browsers: joined }))}</b><span>${esc(t("Last active {when}", { when: when(connected[0].lastSeen).toLowerCase() }))}</span></div>`
+    : `<div class="sr-text"><b>${t("Not connected yet")}</b><span>${esc(hint)}</span></div>`;
   const rank = (b: BrowserStatus) => (b.lastSeen ? 2 : b.installed ? 1 : 0);
   $("browser-list").innerHTML = [...i.browsers].sort((a, b) => rank(b) - rank(a)).map((b) => {
-    const sub = b.lastSeen ? `Connected · last active ${when(b.lastSeen).toLowerCase()}`
-      : !b.installed ? "Not installed"
-      : store && b.autoOffer ? "Installed · asks to enable the extension on next start" : "Installed";
+    const sub = b.lastSeen ? t("Connected · last active {when}", { when: when(b.lastSeen).toLowerCase() })
+      : !b.installed ? t("Not installed")
+      : store && b.autoOffer ? t("Installed · asks to enable the extension on next start") : t("Installed");
     return `<div class="set-row">
       ${logo(b, b.installed || b.lastSeen ? "" : "off")}
-      <div class="sr-text"><b>${b.name}</b><span>${sub}</span></div>
-      ${!b.lastSeen && b.installed ? `<button type="button" class="btn sm" data-add="${b.id}">Add to ${b.name}</button>` : ""}</div>`;
+      <div class="sr-text"><b>${esc(b.name)}</b><span>${esc(sub)}</span></div>
+      ${!b.lastSeen && b.installed ? `<button type="button" class="btn sm" data-add="${b.id}">${esc(t("Add to {browser}", { browser: b.name }))}</button>` : ""}</div>`;
   }).join("");
   $("ext-saveas").hidden = !connected.length;
   // The automatic offer only works once the extension is on the store.
@@ -446,16 +452,16 @@ function askDelete(it: Item | null | undefined) {
   if (!it) return;
   const dlg = $("dlg-delete");
   const live = it.status !== "completed";
-  $("del-title").textContent = live ? "Cancel this download?" : "Remove from list?";
-  $("del-text").textContent = live ? `“${it.filename}” will stop and its partial data will be deleted.` : `“${it.filename}” will be removed from SwiftDL.`;
-  $("del-ok").textContent = live ? "Cancel download" : "Remove";
+  $("del-title").textContent = live ? t("Cancel this download?") : t("Remove from list?");
+  $("del-text").textContent = live ? t("“{name}” will stop and its partial data will be deleted.", { name: it.filename }) : t("“{name}” will be removed from SwiftDL.", { name: it.filename });
+  $("del-ok").textContent = live ? t("Cancel download") : t("Remove");
   $("del-files").checked = false;
   $("del-files-row").hidden = live;
   dlg.returnValue = "";
   dlg.onclose = () => {
     if (dlg.returnValue !== "ok") return;
     call("remove", { ids: [it.id], deleteFiles: $("del-files").checked });
-    toast(live ? "Download cancelled" : "Removed from list", "ok");
+    toast(live ? t("Download cancelled") : t("Removed from list"), "ok");
   };
   dlg.showModal();
 }
@@ -469,9 +475,9 @@ function askDeleteMany(items: Item[]) {
   if (items.length < 2) return askDelete(items[0]);
   const dlg = $("dlg-delete");
   const live = items.filter((i) => i.status !== "completed").length;
-  $("del-title").textContent = `Remove ${items.length} downloads?`;
-  $("del-text").textContent = live ? `${live} still running or waiting will stop and their partial data will be deleted. The rest will be removed from SwiftDL.` : `${items.length} downloads will be removed from SwiftDL.`;
-  $("del-ok").textContent = `Remove ${items.length}`;
+  $("del-title").textContent = t("Remove {n} downloads?", { n: items.length });
+  $("del-text").textContent = live ? t("{n} still running or waiting will stop and their partial data will be deleted. The rest will be removed from SwiftDL.", { n: live }) : t("{n} downloads will be removed from SwiftDL.", { n: items.length });
+  $("del-ok").textContent = t("Remove {n}", { n: items.length });
   $("del-files").checked = false;
   $("del-files-row").hidden = live === items.length;
   dlg.returnValue = "";
@@ -479,18 +485,18 @@ function askDeleteMany(items: Item[]) {
     if (dlg.returnValue !== "ok") return;
     call("remove", { ids: items.map((i) => i.id), deleteFiles: $("del-files").checked });
     state.picked.clear();
-    toast(`Removed ${items.length} downloads`, "ok");
+    toast(t("Removed {n} downloads", { n: items.length }), "ok");
   };
   dlg.showModal();
 }
 function manyMenu(items: Item[], x: number, y: number) {
   const ids = items.map((i) => i.id);
   showMenu(x, y, [
-    { title: `${items.length} downloads selected` },
-    { icon: "pause", label: `Pause ${items.length}`, run: () => pause(ids) },
-    { icon: "play", label: `Resume ${items.length}`, run: () => resume(ids) },
+    { title: t("{n} downloads selected", { n: items.length }) },
+    { icon: "pause", label: t("Pause {n}", { n: items.length }), run: () => pause(ids) },
+    { icon: "play", label: t("Resume {n}", { n: items.length }), run: () => resume(ids) },
     "-",
-    { icon: "trash", label: `Remove ${items.length}…`, danger: true, run: () => askDeleteMany(items) },
+    { icon: "trash", label: t("Remove {n}…", { n: items.length }), danger: true, run: () => askDeleteMany(items) },
   ]);
 }
 function act(name: string, it: Item | null | undefined, anchor?: HTMLElement) {
@@ -501,8 +507,8 @@ function act(name: string, it: Item | null | undefined, anchor?: HTMLElement) {
     case "pause": return pause([it.id]);
     case "resume": return resume([it.id]);
     case "browser": return void call("open_in_browser", { url: it.url });
-    case "copy": return void copy(it.url, "Link copied");
-    case "copy-path": return void copy(it.path, "Path copied");
+    case "copy": return void copy(it.url, t("Link copied"));
+    case "copy-path": return void copy(it.path, t("Path copied"));
     case "delete": return askDelete(it);
     case "more": { const r = anchor!.getBoundingClientRect(); return itemMenu(it, r.right - 220, r.top - 8, true); }
   }
@@ -535,28 +541,28 @@ function showMenu(x: number, y: number, entries: MenuLine[], above = false) {
 }
 async function downloadNext(it: Item) {
   const ok = await invoke("download_next", { id: it.id }).catch(() => false);
-  toast(ok ? "Will download next" : "It's not waiting in the queue", ok ? "ok" : undefined);
+  toast(ok ? t("Will download next") : t("It's not waiting in the queue"), ok ? "ok" : undefined);
 }
 // A link that expired: copy the fresh one, then this carries on where it stopped.
 async function replaceLink(it: Item) {
   const url = await readClip();
-  if (!url) return toast("Copy the new link first, then choose this again");
-  try { await invoke("set_url", { id: it.id, url }); toast("Link replaced, resuming", "ok"); }
+  if (!url) return toast(t("Copy the new link first, then choose this again"));
+  try { await invoke("set_url", { id: it.id, url }); toast(t("Link replaced, resuming"), "ok"); }
   catch (e) { toast(esc(String(e)), "err"); }
 }
 function itemMenu(it: Item, x: number, y: number, above = false) {
   showMenu(x, y, [
-    { icon: "open", label: "Open", keys: ["Enter"], enabled: it.status === "completed", run: () => act("open", it) },
-    { icon: "folder", label: "Show in folder", keys: ["O"], run: () => act("folder", it) },
+    { icon: "open", label: t("Open"), keys: ["Enter"], enabled: it.status === "completed", run: () => act("open", it) },
+    { icon: "folder", label: t("Show in folder"), keys: ["O"], run: () => act("folder", it) },
     "-",
-    isActive(it) ? { icon: "pause", label: "Pause", keys: ["Space"], run: () => pause([it.id]) }
-      : { icon: it.status === "error" ? "retry" : "play", label: it.status === "error" ? "Retry" : "Resume", keys: ["Space"], enabled: it.status !== "completed", run: () => resume([it.id]) },
-    { icon: "play", label: "Download next", enabled: it.status === "queued", run: () => downloadNext(it) },
-    { icon: "open", label: "Download in browser", enabled: it.status === "error", run: () => act("browser", it) },
-    { icon: "link", label: "Replace link from clipboard", enabled: it.status === "error" || it.status === "paused", run: () => replaceLink(it) },
-    { icon: "link", label: "Copy link", keys: ["C"], run: () => act("copy", it) },
+    isActive(it) ? { icon: "pause", label: t("Pause"), keys: ["Space"], run: () => pause([it.id]) }
+      : { icon: it.status === "error" ? "retry" : "play", label: it.status === "error" ? t("Retry") : t("Resume"), keys: ["Space"], enabled: it.status !== "completed", run: () => resume([it.id]) },
+    { icon: "play", label: t("Download next"), enabled: it.status === "queued", run: () => downloadNext(it) },
+    { icon: "open", label: t("Download in browser"), enabled: it.status === "error", run: () => act("browser", it) },
+    { icon: "link", label: t("Replace link from clipboard"), enabled: it.status === "error" || it.status === "paused", run: () => replaceLink(it) },
+    { icon: "link", label: t("Copy link"), keys: ["C"], run: () => act("copy", it) },
     "-",
-    { icon: "trash", label: it.status === "completed" ? "Remove…" : "Cancel download…", keys: ["Del"], danger: true, run: () => askDelete(it) },
+    { icon: "trash", label: it.status === "completed" ? t("Remove…") : t("Cancel download…"), keys: ["Del"], danger: true, run: () => askDelete(it) },
   ], above);
 }
 document.addEventListener("mousedown", (e) => { if (!target(e).closest<HTMLElement>("#menu") && !target(e).closest<HTMLElement>("#limit-btn") && !target(e).closest<HTMLElement>("[data-ins=more]")) $("menu").hidden = true; });
@@ -571,7 +577,7 @@ $("rows").addEventListener("click", async (e) => {
   const ids = state.items.filter((i) => i.status === "completed").map((i) => i.id);
   if (!ids.length) return;
   await call("remove", { ids, deleteFiles: false });
-  toast(`Cleared ${ids.length} from the list`, "ok");
+  toast(t("Cleared {n} from the list", { n: ids.length }), "ok");
 });
 $("rows").addEventListener("mousedown", (e) => {
   const r = target(e).closest<HTMLElement>(".row"), it = r ? byId(Number(r.dataset.id)) : undefined;
@@ -618,13 +624,13 @@ if (!appWindow) $("win-ctrls").hidden = true;
 
 async function setLimit(k: number) {
   await saveSettings({ ...settings(), speedLimitKib: k });
-  toast(k ? `Speed limited to ${bytes(k * 1024)}/s` : "Speed limit removed", "ok");
+  toast(k ? t("Speed limited to {x}/s", { x: bytes(k * 1024) }) : t("Speed limit removed"), "ok");
 }
 const limitEntries = (): MenuLine[] => [
-  { title: "Speed limit" },
-  ...LIMITS.map((k): MenuEntry => ({ label: k ? `${bytes(k * 1024)}/s` : "No limit", checked: k === settings().speedLimitKib, run: () => setLimit(k) })),
+  { title: t("Speed limit") },
+  ...LIMITS.map((k): MenuEntry => ({ label: k ? `${bytes(k * 1024)}/s` : t("No limit"), checked: k === settings().speedLimitKib, run: () => setLimit(k) })),
   "-",
-  { icon: "sliders", label: "Custom…", run: () => openSettings("speed") },
+  { icon: "sliders", label: t("Custom…"), run: () => openSettings("speed") },
 ];
 $("limit-btn").onclick = (e) => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); showMenu(r.left, r.top - 6, limitEntries(), true); };
 
@@ -675,23 +681,23 @@ function paletteItems(q: string): PalLine[] {
   const match = (s: string) => !q || s.toLowerCase().includes(q);
   const out: PalLine[] = [];
   const actions: PalItem[] = [
-    { icon: "plus", label: "New download", keys: ["Ctrl", "N"], run: () => openComposer() },
-    { icon: "pause", label: "Pause all downloads", run: () => pause(state.items.filter(isActive).map((i) => i.id)) },
-    { icon: "play", label: "Resume all downloads", run: () => resume(state.items.filter((i) => i.status === "paused" || i.status === "error").map((i) => i.id)) },
-    ...LIMITS.map((k): PalItem => ({ icon: "gauge", label: k ? `Limit speed to ${bytes(k * 1024)}/s` : "Remove speed limit", run: () => setLimit(k) })),
-    { icon: "settings", label: "Open settings", keys: ["Ctrl", ","], run: () => openSettings() },
-    { icon: "globe", label: "Set up browser extension", run: () => openExtensionGuide() },
+    { icon: "plus", label: t("New download"), keys: ["Ctrl", "N"], run: () => openComposer() },
+    { icon: "pause", label: t("Pause all downloads"), run: () => pause(state.items.filter(isActive).map((i) => i.id)) },
+    { icon: "play", label: t("Resume all downloads"), run: () => resume(state.items.filter((i) => i.status === "paused" || i.status === "error").map((i) => i.id)) },
+    ...LIMITS.map((k): PalItem => ({ icon: "gauge", label: k ? t("Limit speed to {x}/s", { x: bytes(k * 1024) }) : t("Remove speed limit"), run: () => setLimit(k) })),
+    { icon: "settings", label: t("Open settings"), keys: ["Ctrl", ","], run: () => openSettings() },
+    { icon: "globe", label: t("Set up browser extension"), run: () => openExtensionGuide() },
   ].filter((a) => match(a.label));
   const views: PalItem[] = [
-    ...Object.entries(VIEWS).map(([k, v]): PalItem => ({ icon: v.icon, label: `Go to ${v.name}`, run: () => { state.view = k; render(); } })),
-    ...Object.keys(CATS).map((c): PalItem => ({ type: c, label: `Go to ${c}`, run: () => { state.view = c; render(); } })),
+    ...Object.entries(VIEWS).map(([k, v]): PalItem => ({ icon: v.icon, label: t("Go to {view}", { view: tt(v.name) }), run: () => { state.view = k; render(); } })),
+    ...Object.keys(CATS).map((c): PalItem => ({ type: c, label: t("Go to {view}", { view: tt(c) }), run: () => { state.view = c; render(); } })),
   ].filter((a) => match(a.label));
   const dls = state.items.filter((i) => q && (i.filename.toLowerCase().includes(q) || i.url.toLowerCase().includes(q))).slice(0, 8)
-    .map((i): PalItem => ({ status: i, label: i.filename, sub: STATUS[i.status], run: () => { state.view = "all"; select(i.id); } }));
-  if (dls.length) out.push({ title: "Downloads" }, ...dls);
-  if (actions.length) out.push({ title: "Actions" }, ...actions);
-  if (views.length && q) out.push({ title: "Navigation" }, ...views);
-  else if (!q) out.push({ title: "Navigation" }, ...views.slice(0, 4));
+    .map((i): PalItem => ({ status: i, label: i.filename, sub: tt(STATUS[i.status]), run: () => { state.view = "all"; select(i.id); } }));
+  if (dls.length) out.push({ title: t("Downloads") }, ...dls);
+  if (actions.length) out.push({ title: t("Actions") }, ...actions);
+  if (views.length && q) out.push({ title: t("Navigation") }, ...views);
+  else if (!q) out.push({ title: t("Navigation") }, ...views.slice(0, 4));
   return out;
 }
 function renderPalette() {
@@ -705,7 +711,7 @@ function renderPalette() {
     n++;
     const ic = i.status ? statusIcon(i.status) : i.type ? typeIcon(i.type) : icon(i.icon || "file");
     return `<button class="pal-item ${n === pal.sel ? "on" : ""}" data-n="${n}"><span class="pi-ic">${ic}</span><span class="pi-label">${esc(i.label)}${i.sub ? `<span class="pi-sub">${i.sub}</span>` : ""}</span>${i.keys ? `<span class="pi-right">${i.keys.map((k) => `<kbd>${k}</kbd>`).join("")}</span>` : ""}</button>`;
-  }).join("") : `<div class="pal-empty">No results for “${esc(q)}”</div>`;
+  }).join("") : `<div class="pal-empty">${esc(t("No results for “{q}”", { q }))}</div>`;
   $("pal-list").querySelector(".pal-item.on")?.scrollIntoView({ block: "nearest" });
 }
 function openPalette() {
@@ -771,7 +777,7 @@ const readClip = (): Promise<string | undefined> => (navigator.clipboard?.readTe
 function setState(kind: "idle" | "loading" | "error" | "done", msg = "") {
   const el = $("add-state");
   el.className = `comp-state ${kind === "error" ? "err" : ""}`;
-  el.innerHTML = kind === "loading" ? `<span class="spinner"></span>Fetching file details…` : kind === "error" ? `${icon("alert")}${esc(msg)}` : kind === "idle" ? `SwiftDL checks the file's name and size before downloading.` : "";
+  el.innerHTML = kind === "loading" ? `<span class="spinner"></span>${t("Fetching file details…")}` : kind === "error" ? `${icon("alert")}${esc(msg)}` : kind === "idle" ? t("SwiftDL checks the file's name and size before downloading.") : "";
   el.hidden = kind === "done";
   $("add-start").disabled = $("add-later").disabled = kind !== "done";
 }
@@ -779,15 +785,15 @@ function renderChips() {
   const i = add.info;
   const folder = add.dir.split(/[\\/]/).filter(Boolean).slice(-2).join(" / ") || add.dir;
   $("add-chips").innerHTML = i ? [
-    `<span class="chip">${icon("hash")}<span>${i.size != null ? bytes(i.size) : "Unknown size"}</span></span>`,
-    `<span class="chip"><i class="dot" style="background:${(CATS[i.category] || CATS.Other).color}"></i><span>${esc(i.category)}</span></span>`,
-    i.resumable ? `<span class="chip ok">${icon("bolt")}<span>${state.settings?.connections || 8} connections</span></span>` : `<span class="chip warn">${icon("info")}<span>Single connection, no resume</span></span>`,
+    `<span class="chip">${icon("hash")}<span>${i.size != null ? bytes(i.size) : t("Unknown size")}</span></span>`,
+    `<span class="chip"><i class="dot" style="background:${(CATS[i.category] || CATS.Other).color}"></i><span>${esc(tt(i.category))}</span></span>`,
+    i.resumable ? `<span class="chip ok">${icon("bolt")}<span>${t("{n} connections", { n: state.settings?.connections || 8 })}</span></span>` : `<span class="chip warn">${icon("info")}<span>${t("Single connection, no resume")}</span></span>`,
     `<button type="button" class="chip" id="add-folder" title="${esc(add.dir)}">${icon("folder")}<span>${esc(folder)}</span>${icon("chevDown")}</button>`,
   ].join("") : "";
 }
 async function probe() {
   const url = $("add-url").value.trim();
-  if (!/^(https?:\/\/|ftp:\/\/|magnet:\?)\S+/i.test(url)) { add.info = null; $("add-file").hidden = true; renderChips(); if (url) setState("error", "Paste a web link (http://, https:// or ftp://) or a magnet link"); else setState("idle"); return; }
+  if (!/^(https?:\/\/|ftp:\/\/|magnet:\?)\S+/i.test(url)) { add.info = null; $("add-file").hidden = true; renderChips(); if (url) setState("error", t("Paste a web link (http://, https:// or ftp://) or a magnet link")); else setState("idle"); return; }
   // A playlist page: choose which videos, and video or audio.
   if (await invoke("is_playlist_url", { url }).catch(() => false)) {
     $("dlg-add").close();
@@ -800,8 +806,8 @@ async function probe() {
       const [name, n] = await invoke("add_metalink", { url });
       $("dlg-add").close();
       if (state.view !== "all" && state.view !== "active") state.view = "all";
-      toast(`Downloading ${esc(name)} from ${n} address${n === 1 ? "" : "es"}`, "dl");
-    } catch (e) { setState("error", `Couldn't read that Metalink: ${e}`); }
+      toast(n === 1 ? t("Downloading {name} from {n} address", { name: esc(name), n }) : t("Downloading {name} from {n} addresses", { name: esc(name), n }), "dl");
+    } catch (e) { setState("error", t("Couldn't read that Metalink: {e}", { e: String(e) })); }
     return;
   }
   const seq = ++add.seq;
@@ -829,7 +835,7 @@ async function probe() {
   } catch (e) {
     if (seq !== add.seq) return;
     add.info = null; $("add-file").hidden = true; renderChips();
-    setState("error", `Couldn't reach that link: ${e}`);
+    setState("error", t("Couldn't reach that link: {e}", { e: String(e) }));
   }
 }
 // ---------- playlists ----------
@@ -841,22 +847,22 @@ function renderPlaylist() {
   $("pl-list").innerHTML = pl.items.map((f) => `<label class="grab-row"><input type="checkbox" data-u="${esc(f.url)}"${pl.picked.has(f.url) ? " checked" : ""}><span class="gn" title="${esc(f.title)}">${esc(f.title)}</span><span class="gh">${length(f.duration)}</span></label>`).join("");
   const n = pl.picked.size;
   $("pl-go").disabled = !n;
-  $("pl-go").textContent = n ? `Download ${n} video${n === 1 ? "" : "s"}` : "Download";
-  $("pl-all").textContent = pl.items.length && pl.picked.size === pl.items.length ? "Select none" : "Select all";
+  $("pl-go").textContent = n ? tn("Download {n} video", "Download {n} videos", n) : t("Download");
+  $("pl-all").textContent = pl.items.length && pl.picked.size === pl.items.length ? t("Select none") : t("Select all");
 }
 async function openPlaylist(url: string) {
   pl.items = []; pl.picked.clear(); pl.mode = "high";
   $("pl-title").textContent = "";
-  $("pl-state").textContent = "Reading the playlist…";
+  $("pl-state").textContent = t("Reading the playlist…");
   renderPlaylist();
   $("dlg-playlist").showModal();
   try {
     const info = await invoke("probe_playlist", { url });
     pl.items = info.entries; pl.picked = new Set(info.entries.map((e) => e.url));
     $("pl-title").textContent = info.title;
-    $("pl-state").textContent = `${info.entries.length} videos`;
+    $("pl-state").textContent = t("{n} videos", { n: info.entries.length });
     renderPlaylist();
-  } catch (e) { $("pl-state").textContent = `Couldn't read that playlist: ${e}`; }
+  } catch (e) { $("pl-state").textContent = t("Couldn't read that playlist: {e}", { e: String(e) }); }
 }
 $("pl-x").onclick = () => $("dlg-playlist").close();
 $("pl-chips").addEventListener("click", (e) => { const b = target(e).closest<HTMLElement>("[data-m]"); if (b) { pl.mode = b.dataset.m!; renderPlaylist(); } });
@@ -867,7 +873,7 @@ $("pl-go").onclick = async () => {
   const n = await invoke("add_playlist", { entries, mode: pl.mode }).catch(() => 0);
   $("dlg-playlist").close();
   if (state.view !== "all" && state.view !== "active") state.view = "all";
-  toast(`Adding ${n} download${n === 1 ? "" : "s"}`, "dl");
+  toast(tn("Adding {n} download", "Adding {n} downloads", n), "dl");
 };
 
 // ---------- find files on a page ----------
@@ -880,23 +886,23 @@ function grabVisible(): Found[] {
 function renderGrab() {
   const list = grabVisible();
   const cats = ["File", ...Object.keys(CATS).filter((c) => c !== "Other" && grab.all.some((f) => looksLikeFile(f.name) && catOf(f.name) === c)), "All"];
-  $("grab-chips").innerHTML = cats.map((c) => `<button type="button" class="chip${c === grab.cat ? " on" : ""}" data-c="${c}"><span>${c === "File" ? "All files" : c === "All" ? "Every link" : c}</span></button>`).join("");
-  $("grab-list").innerHTML = list.map((f) => `<label class="grab-row"><input type="checkbox" data-u="${esc(f.url)}"${grab.picked.has(f.url) ? " checked" : ""}><span class="gn" title="${esc(f.url)}">${esc(f.name || f.url)}</span><span class="gh">${esc(host(f.url))}</span></label>`).join("") || `<p class="muted" style="padding:10px 12px">Nothing here.</p>`;
+  $("grab-chips").innerHTML = cats.map((c) => `<button type="button" class="chip${c === grab.cat ? " on" : ""}" data-c="${c}"><span>${c === "File" ? t("All files") : c === "All" ? t("Every link") : esc(tt(c))}</span></button>`).join("");
+  $("grab-list").innerHTML = list.map((f) => `<label class="grab-row"><input type="checkbox" data-u="${esc(f.url)}"${grab.picked.has(f.url) ? " checked" : ""}><span class="gn" title="${esc(f.url)}">${esc(f.name || f.url)}</span><span class="gh">${esc(host(f.url))}</span></label>`).join("") || `<p class="muted" style="padding:10px 12px">${t("Nothing here.")}</p>`;
   const n = grab.picked.size;
   $("grab-go").disabled = !n;
-  $("grab-go").textContent = n ? `Download ${n} file${n === 1 ? "" : "s"}` : "Download";
-  $("grab-all").textContent = list.length && list.every((f) => grab.picked.has(f.url)) ? "Select none" : "Select all";
+  $("grab-go").textContent = n ? tn("Download {n} file", "Download {n} files", n) : t("Download");
+  $("grab-all").textContent = list.length && list.every((f) => grab.picked.has(f.url)) ? t("Select none") : t("Select all");
 }
 async function loadGrab() {
   const url = $("grab-url").value.trim();
   if (!/^https?:\/\//i.test(url)) return;
-  $("grab-state").textContent = "Reading the page…";
+  $("grab-state").textContent = t("Reading the page…");
   try {
     grab.all = await invoke("grab_page", { url });
     grab.picked.clear();
-    $("grab-state").textContent = grab.all.length ? `${grabVisible().length} files on this page` : "No links found on this page";
+    $("grab-state").textContent = grab.all.length ? t("{n} files on this page", { n: grabVisible().length }) : t("No links found on this page");
     renderGrab();
-  } catch (e) { $("grab-state").textContent = `Couldn't read that page: ${e}`; }
+  } catch (e) { $("grab-state").textContent = t("Couldn't read that page: {e}", { e: String(e) }); }
 }
 $("add-grab").onclick = () => {
   const url = $("add-url").value.trim();
@@ -917,7 +923,7 @@ $("grab-go").onclick = async () => {
   const n = await invoke("add_links", { text: [...grab.picked].join("\n") }).catch(() => 0);
   $("dlg-grab").close();
   if (state.view !== "all" && state.view !== "active") state.view = "all";
-  toast(`Adding ${n} download${n === 1 ? "" : "s"}`, "dl");
+  toast(tn("Adding {n} download", "Adding {n} downloads", n), "dl");
 };
 
 // Several links, or a [01-50] pattern: add them all at once.
@@ -926,10 +932,10 @@ $("add-url").addEventListener("paste", async (e) => {
   if (!/\s/.test(text.trim()) && !/\[\d+-\d+\]/.test(text)) return;
   e.preventDefault();
   const n = await invoke("add_links", { text }).catch(() => 0);
-  if (!n) return toast("No links found in what you pasted", "err");
+  if (!n) return toast(t("No links found in what you pasted"), "err");
   $("dlg-add").close();
   if (state.view !== "all" && state.view !== "active") state.view = "all";
-  toast(`Adding ${n} download${n === 1 ? "" : "s"}`, "dl");
+  toast(tn("Adding {n} download", "Adding {n} downloads", n), "dl");
 });
 $("add-url").addEventListener("input", () => { clearTimeout(add.timer); add.timer = window.setTimeout(probe, 400); });
 $("add-chips").addEventListener("click", async (e) => {
@@ -937,7 +943,7 @@ $("add-chips").addEventListener("click", async (e) => {
   const dir = await call("pick_folder", { start: add.dir || null });
   if (dir) { add.dir = dir; add.dirTouched = true; renderChips(); }
 });
-$("add-paste").onclick = async () => { const u = await readClip(); if (u) { $("add-url").value = u; probe(); } else toast("No link on the clipboard"); };
+$("add-paste").onclick = async () => { const u = await readClip(); if (u) { $("add-url").value = u; probe(); } else toast(t("No link on the clipboard")); };
 $("add-x").onclick = () => $("dlg-add").close();
 $("add-later").onclick = () => submitAdd(false);
 $("form-add").addEventListener("submit", (e) => { e.preventDefault(); if (!$("add-start").disabled) submitAdd(true); });
@@ -950,7 +956,7 @@ async function submitAdd(start: boolean) {
   $("dlg-add").close();
   if (state.view !== "all" && state.view !== "active") state.view = "all";
   select(id);
-  toast(start ? `Downloading ${esc(filename)}` : `${esc(filename)} added for later`, start ? "dl" : "ok");
+  toast(start ? t("Downloading {name}", { name: esc(filename) }) : t("{name} added for later", { name: esc(filename) }), start ? "dl" : "ok");
 }
 function nextPending() {
   if ($("dlg-add").open) return;
@@ -970,7 +976,9 @@ let setScale = 100, setDebridProvider = "realdebrid", setVideoDef = "ask";
 function renderVideoDef() { $("set-videodef").querySelectorAll<HTMLElement>("[data-v]").forEach((b) => b.classList.toggle("on", b.dataset.v === setVideoDef)); }
 $("set-videodef").addEventListener("click", (e) => { const b = target(e).closest<HTMLElement>("[data-v]"); if (b) { setVideoDef = b.dataset.v!; renderVideoDef(); } });
 // The local API needs a secret: make one when it is turned on without one.
-const apiHint = () => { $("set-api-hint").textContent = `Web remote: http://127.0.0.1:${$("set-api-port").value || 6800}   ·   For tools: /jsonrpc`; };
+const apiHint = () => {
+  $("set-api-hint").textContent = t("Web remote: http://127.0.0.1:{port}   ·   For tools: /jsonrpc", { port: $("set-api-port").value || 6800 });
+};
 $("set-api").addEventListener("change", () => {
   if ($("set-api").checked && !$("set-api-secret").value.trim()) {
     $("set-api-secret").value = [...crypto.getRandomValues(new Uint8Array(12))].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -981,7 +989,14 @@ function renderScale() { $("set-scale").querySelectorAll<HTMLElement>("[data-v]"
 $("set-scale").addEventListener("click", (e) => { const b = target(e).closest<HTMLElement>("[data-v]"); if (b) { setScale = Number(b.dataset.v); renderScale(); applyScale(setScale); } });
 function renderDebridProvider() { $("set-debrid-provider").querySelectorAll<HTMLElement>("[data-v]").forEach((b) => b.classList.toggle("on", b.dataset.v === setDebridProvider)); }
 $("set-debrid-provider").addEventListener("click", (e) => { const b = target(e).closest<HTMLElement>("[data-v]"); if (b) { setDebridProvider = b.dataset.v!; renderDebridProvider(); } });
-let setDir = "", setLimitKib = 0, setThemeChoice = "system", setSeed = "stop", setWhenDone = "nothing", setStartAt = 0;
+let setDir = "", setLimitKib = 0, setThemeChoice = "system", setSeed = "stop", setWhenDone = "nothing", setStartAt = 0, setLangChoice = "system";
+function renderLangChoice() {
+  $("set-lang").querySelectorAll<HTMLElement>("[data-v]").forEach((b) => b.classList.toggle("on", b.dataset.v === setLangChoice));
+}
+$("set-lang").addEventListener("click", (e) => {
+  const b = target(e).closest<HTMLElement>("[data-v]");
+  if (b) { setLangChoice = b.dataset.v!; renderLangChoice(); }
+});
 function renderWhenDone() {
   $("set-whendone").querySelectorAll<HTMLElement>("[data-v]").forEach((b) => b.classList.toggle("on", b.dataset.v === setWhenDone));
 }
@@ -996,7 +1011,7 @@ function nextTime(hhmm: string): number {
 function renderStartAt() {
   const on = setStartAt > Date.now();
   $("set-startat").value = on ? new Date(setStartAt).toTimeString().slice(0, 5) : "";
-  $("set-startat-hint").textContent = on ? `Downloads wait until ${new Date(setStartAt).toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" })}` : "Downloads wait until this time, once";
+  $("set-startat-hint").textContent = on ? t("Downloads wait until {when}", { when: new Date(setStartAt).toLocaleString(locale(), { weekday: "short", hour: "2-digit", minute: "2-digit" }) }) : t("Downloads wait until this time, once");
 }
 $("set-startat").addEventListener("change", () => { setStartAt = $("set-startat").value ? nextTime($("set-startat").value) : 0; renderStartAt(); });
 $("set-startat-clear").addEventListener("click", () => { setStartAt = 0; renderStartAt(); });
@@ -1020,6 +1035,8 @@ $("dlg-settings").addEventListener("cancel", restoreTheme); // Escape
 $("dlg-settings").addEventListener("close", () => { restoreTheme(); applyScale(state.settings?.uiScale); });
 function openSettings(tab = "general") {
   const s = settings();
+  setLangChoice = s.language || "system";
+  renderLangChoice();
   setThemeChoice = s.theme || "system";
   renderThemeChoice();
   setSeed = s.seedUntil || "stop";
@@ -1060,7 +1077,7 @@ function openSettings(tab = "general") {
   $("dlg-settings").showModal();
 }
 function renderLimits() {
-  $("set-limits").innerHTML = LIMITS.map((k) => `<button type="button" data-k="${k}" class="${k === setLimitKib ? "on" : ""}">${k ? bytes(k * 1024) + "/s" : "Off"}</button>`).join("");
+  $("set-limits").innerHTML = LIMITS.map((k) => `<button type="button" data-k="${k}" class="${k === setLimitKib ? "on" : ""}">${k ? bytes(k * 1024) + "/s" : t("Off")}</button>`).join("");
   const c = $("set-limit-custom");
   if (document.activeElement !== c) c.value = LIMITS.includes(setLimitKib) ? "" : String(setLimitKib);
 }
@@ -1109,13 +1126,16 @@ $("form-settings").addEventListener("submit", async (e) => {
     showProgressWindow: $("set-progress-win").checked,
     closeToTray: $("set-tray").checked,
     onboardingDismissed: settings().onboardingDismissed,
+    language: setLangChoice,
     theme: setThemeChoice,
     seedUntil: setSeed,
     whenDone: setWhenDone,
     startAt: setStartAt,
   });
   $("dlg-settings").close();
-  toast("Settings saved", "ok");
+  applyLanguage(setLangChoice);
+  render();
+  toast(t("Settings saved"), "ok");
 });
 
 // ---------- data ----------
@@ -1144,10 +1164,10 @@ function renderUpdate(busy = false) {
   try { skipped = localStorage.getItem(SKIP_KEY) || ""; } catch {}
   card.hidden = !update || update.version === skipped;
   if (card.hidden || !update) return;
-  const install = update.asset ? (update.asset.endsWith(".exe") ? "Install and restart" : "Download") : "Get it";
+  const install = update.asset ? (update.asset.endsWith(".exe") ? t("Install and restart") : t("Download")) : t("Get it");
   card.innerHTML = `<span class="ob-icon">${icon("download")}</span>
-    <span class="ob-text"><b>SwiftDL ${esc(update.version)} is available</b>${busy ? "Downloading the update…" : "You have " + esc(state.version)}</span>
-    <span class="ob-actions">${busy ? "" : `<button class="link-btn" data-notes>What's new</button><button class="link-btn" data-install>${install}</button><button class="sq-btn" data-skip title="Skip this version">${icon("x")}</button>`}</span>`;
+    <span class="ob-text"><b>${t("SwiftDL {v} is available", { v: esc(update.version) })}</b>${busy ? t("Downloading the update…") : t("You have {v}", { v: esc(state.version) })}</span>
+    <span class="ob-actions">${busy ? "" : `<button class="link-btn" data-notes>${t("What's new")}</button><button class="link-btn" data-install>${install}</button><button class="sq-btn" data-skip title="${esc(t("Skip this version"))}">${icon("x")}</button>`}</span>`;
 }
 async function checkUpdate() {
   try { update = await invoke("check_update"); } catch { return; }
@@ -1163,18 +1183,25 @@ $("update").addEventListener("click", async (e) => {
   } else if (b.hasAttribute("data-install")) {
     renderUpdate(true);
     try { await invoke("install_update", { url: update.asset || update.page }); renderUpdate(); }
-    catch (err) { renderUpdate(); toast(`Update failed: ${err}`); }
+    catch (err) { renderUpdate(); toast(t("Update failed: {e}", { e: String(err) })); }
   }
 });
+/** Switches the interface, then tells Rust so the tray and notifications follow. */
+function applyLanguage(setting: string | null | undefined) {
+  setLang(resolveLang(setting));
+  void invoke("set_ui_language", { language: locale() });
+}
+
 async function boot() {
   hydrate();
   const s = await invoke("get_state");
   state.settings = s.settings;
+  applyLanguage(s.settings.language);
   window.setTheme(s.settings.theme);
   applyScale(s.settings.uiScale);
   state.pending = s.pending;
   state.version = s.version;
-  $("version").textContent = `Version ${s.version}`;
+  $("version").textContent = t("Version {v}", { v: s.version });
   ingest(s.items);
   nextPending();
   loadIntegration();
@@ -1187,7 +1214,12 @@ async function boot() {
   setInterval(checkUpdate, 12 * 60 * 60 * 1000);
   await listen("downloads", (e) => ingest(e.payload));
   // A one-time setting finished (when-done fired, or the queue's start time came).
-  await listen("settings", (e) => { state.settings = e.payload; if ($("dlg-settings").open) openSettings(); });
+  await listen("settings", (e) => {
+    state.settings = e.payload;
+    applyLanguage(state.settings.language);
+    render();
+    if ($("dlg-settings").open) openSettings();
+  });
   await listen("incoming", () => invoke("get_state").then((s) => { state.pending.push(...s.pending); nextPending(); }));
   setInterval(() => {
     if (!state.items.some((i) => i.status === "downloading")) {

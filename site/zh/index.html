@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SwiftDL · 快速开源下载管理器</title>
+  <meta name="description" content="SwiftDL 用多条连接同时下载每个文件，任何中断后都能续传，还能接管浏览器的下载。免费开源，支持 Windows、macOS 和 Linux。">
+  <meta name="theme-color" content="#0a0a0b">
+  <meta property="og:title" content="SwiftDL">
+  <meta property="og:description" content="快速、开源的下载管理器。">
+  <meta property="og:image" content="../assets/app-dark.png">
+  <link rel="icon" href="../assets/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../site.css">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
+  <style type="text/tailwindcss">
+    @theme inline {
+      --color-bg: var(--bg); --color-panel: var(--panel); --color-elev: var(--elev);
+      --color-line: var(--border); --color-ink: var(--text); --color-ink-2: var(--text-2);
+      --color-muted: var(--muted); --color-faint: var(--faint); --color-accent: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <nav class="mx-auto flex h-16 max-w-[1200px] items-center gap-8 px-5 sm:px-8">
+      <a href="index.html" class="flex items-center gap-2.5 text-[15px] font-medium tracking-tight text-ink no-underline"><span class="mark"></span>SwiftDL</a>
+      <div class="hidden items-center gap-7 md:flex">
+        <a class="nav-link" href="#connections">功能</a>
+        <a class="nav-link" href="download.html">下载</a>
+        <a class="nav-link" href="changelog.html">更新日志</a>
+        <a class="nav-link" href="../index.html">English</a>
+      </div>
+      <div class="ml-auto flex items-center gap-2">
+        <a class="btn sm" href="https://github.com/harshsinghsv/swiftdl" target="_blank" rel="noopener" aria-label="GitHub"><span class="logo b-github size-4"></span><span class="hidden sm:inline">GitHub</span></a>
+        <a class="btn sm primary" data-download href="download.html"><span class="logo size-3.5" data-os-logo></span>下载</a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="frame">
+    <!-- Hero -->
+    <section class="px-5 pt-20 pb-16 text-center sm:px-8 sm:pt-28">
+      <div class="flex items-center justify-center gap-4 text-[13px] text-muted">
+        <span>支持</span>
+        <span class="flex items-center gap-3 text-ink-2"><span class="logo b-chrome size-4" title="Chrome"></span><span class="logo b-brave size-4" title="Brave"></span><span class="logo b-vivaldi size-4" title="Vivaldi"></span></span>
+        <span class="text-faint">+ Edge</span>
+      </div>
+      <h1 class="h-hero mx-auto mt-8 max-w-5xl">你的网络很快。<br><span class="dim">下载也该这么快。</span></h1>
+      <p class="lede mx-auto mt-7 max-w-xl">SwiftDL 把每个文件拆到多条连接上同时下载，任何中断都能接着来，还能接管浏览器的下载。</p>
+      <div class="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+        <a class="btn lg primary" data-download href="download.html"><span class="logo size-4" data-os-logo></span><span>下载 <span data-os>Windows</span> 版</span></a>
+        <a class="btn lg" href="https://github.com/harshsinghsv/swiftdl" target="_blank" rel="noopener"><span class="logo b-github size-4"></span>GitHub<span data-stars hidden><span class="sep"></span><span data-icon="star" class="size-3.5 text-[#e8b931]"></span><span data-stars-n></span></span></a>
+      </div>
+      <p class="mt-5 text-[13px] text-faint">免费开源 · <a class="hover:text-muted" href="changelog.html"><span data-version>v0.2.0</span></a> · Windows、macOS 和 Linux</p>
+    </section>
+
+    <div class="stage light rule px-5 pt-14 sm:px-14 sm:pt-20">
+      <img class="mx-auto block w-full max-w-[1040px] rounded-t-[12px] shadow-[0_0_0_1px_rgba(255,255,255,.12),0_40px_100px_-30px_rgba(0,0,0,.9)]" src="../assets/app-dark-zh.png" width="2640" height="1640" alt="SwiftDL 主窗口，按状态分组的下载，带实时速度和详情面板">
+    </div>
+    <div class="rule px-5 py-5 sm:px-12"><div class="strip" data-strip></div></div>
+
+    <!-- Connections -->
+    <section id="connections" class="rule scroll-mt-16">
+      <div class="reveal px-5 pt-24 pb-14 sm:px-12">
+        <div class="label">连接</div>
+        <h2 class="h-sec mt-5 max-w-3xl">一个文件，多条连接。<br><span class="dim">每一段都在同时下载。</span></h2>
+        <p class="lede mt-6 max-w-2xl">服务器常常限制单条连接的速度。SwiftDL 最多同时开 32 条连接；某条提前完成时，会接手剩余最大分段的一半，所以临近结束也不会有连接闲着。</p>
+      </div>
+      <div class="stage blue rule px-5 py-14 sm:px-12 sm:py-20">
+        <div class="win reveal mx-auto max-w-[620px]">
+          <div class="win-bar"><span class="mark"></span><span id="m-title">37% · ubuntu-26.04-desktop-amd64.iso</span></div>
+          <div class="win-body">
+            <div class="w-name">ubuntu-26.04-desktop-amd64.iso</div>
+            <div class="w-sub"><span class="w-dot"></span><span>下载中 · <span id="m-conns">8</span> 条连接 · releases.ubuntu.com</span></div>
+            <div class="mt-5 flex items-center gap-3"><div class="w-bar flex-1"><i id="m-bar" style="width:0%"></i></div><span class="w-12 text-right text-[13px] font-semibold tabular-nums" id="m-pct">0%</span></div>
+            <div class="w-meta"><span id="m-done">0 GB of 6.10 GB</span><span id="m-speed">0 MB/s</span></div>
+            <div class="mt-6 flex items-baseline justify-between text-[12px] text-[#8a8e98]"><b class="font-medium text-[#eef0f3]">连接</b><span id="m-parts">8 条进行中 · 8 个分片</span></div>
+            <div class="lanes mt-3" id="m-lanes"></div>
+            <div class="mt-3" id="m-rows"></div>
+            <div class="mt-5 flex justify-end gap-2"><span class="w-btn">取消</span><span class="w-btn">暂停</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="cells c3 rule">
+        <div><h3>最多 32 条连接</h3><p>每个文件用多少连接由你决定。对大多数服务器来说，8 条是个不错的起点。</p></div>
+        <div><h3>智能拆分</h3><p>提前完成的连接会接手剩余最大分段的一半。</p></div>
+        <div><h3>无需合并</h3><p>文件一开始就按完整大小预留，每条连接直接写入其中。</p></div>
+      </div>
+    </section>
+
+    <!-- Browser -->
+    <section id="browser" class="rule scroll-mt-16">
+      <div class="reveal px-5 pt-24 pb-14 sm:px-12">
+        <div class="label">浏览器</div>
+        <h2 class="h-sec mt-5 max-w-3xl">在浏览器里点下载。<br><span class="dim">剩下的交给 SwiftDL。</span></h2>
+        <p class="lede mt-6 max-w-2xl">扩展随应用一起提供。它会把每个下载连同你的 Cookie 交给 SwiftDL，所以需要登录的文件也能下；随后一个小窗口会询问保存位置。</p>
+      </div>
+      <div class="stage rule px-5 py-14 sm:px-12 sm:py-20">
+        <div class="reveal relative mx-auto max-w-[760px]">
+          <div class="win opacity-90">
+            <div class="win-bar gap-3"><span class="flex gap-1.5"><i class="size-2.5 rounded-full bg-[#ff5f57]"></i><i class="size-2.5 rounded-full bg-[#febc2e]"></i><i class="size-2.5 rounded-full bg-[#28c840]"></i></span><span class="ml-2 flex h-6 flex-1 items-center rounded-md bg-white/5 px-3 font-[var(--mono)] text-[11.5px]">drive.usercontent.google.com/download?id=1z8f…</span></div>
+            <div class="h-56 px-8 pt-8 text-[#8a8e98] sm:h-64">
+              <div class="h-3 w-1/3 rounded bg-white/8"></div>
+              <div class="mt-3 h-3 w-2/3 rounded bg-white/5"></div>
+              <div class="mt-2 h-3 w-1/2 rounded bg-white/5"></div>
+              <div class="mt-8 inline-flex h-8 items-center rounded-md bg-[#1a73e8] px-4 text-[12.5px] font-medium text-white">仍然下载</div>
+            </div>
+          </div>
+          <div class="win absolute right-[-8px] bottom-[-28px] w-[min(400px,88%)] sm:right-[-36px]">
+            <div class="win-bar"><span class="mark"></span>新建下载</div>
+            <div class="win-body">
+              <div class="w-name">Avatar.Fire.and.Ash.2025.1080p.mkv</div>
+              <div class="w-sub">drive.usercontent.google.com</div>
+              <div class="mt-4 grid grid-cols-[72px_1fr] gap-y-1.5 text-[12px]"><span class="text-[#8a8e98]">大小</span><span>3.81 GB · 可续传</span><span class="text-[#8a8e98]">保存到</span><span class="truncate">C:\Users\you\Downloads\Video</span></div>
+              <div class="mt-5 flex justify-end gap-2"><span class="w-btn">稍后</span><span class="w-btn primary">开始下载</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="cells c3 rule">
+        <div><h3>登录状态一起带过来</h3><p>Cookie 和来源页随每个下载一起传递，私有链接也能用。</p></div>
+        <div><h3>下载视频</h3><p>播放器上方的按钮会列出页面加载的视频和音频文件。</p></div>
+        <div><h3>不打扰你</h3><p>按住 <kbd>Alt</kbd> 让浏览器处理某个链接，也可以对单个网站关闭。</p></div>
+      </div>
+    </section>
+
+    <!-- Resume -->
+    <section id="resume" class="rule">
+      <div class="reveal px-5 pt-24 pb-14 sm:px-12">
+        <div class="label">续传</div>
+        <h2 class="h-sec mt-5 max-w-3xl">随时暂停。<br><span class="dim">一点不丢。</span></h2>
+        <p class="lede mt-6 max-w-2xl">SwiftDL 每秒保存一次剩余待下载的内容。Wi-Fi 断开、合上笔记本，甚至程序崩溃：它都会从停下之处继续。</p>
+      </div>
+      <div class="stage light rule px-5 py-14 sm:px-12 sm:py-20">
+        <div class="win reveal mx-auto max-w-[620px]">
+          <div class="win-bar"><span class="mark"></span>ubuntu-26.04-desktop-amd64.iso</div>
+          <div class="win-body tl py-2!">
+            <div class="tl-row"><span class="tl-time">21:41</span><div><span class="tl-tag bg-[#0a84ff]/15 text-[#5aa2fb]">下载中</span><div class="tl-sub">8 条连接 · 31.9 MB/s</div></div></div>
+            <div class="tl-row"><span class="tl-time">21:52</span><div><span class="tl-tag bg-[#e0a33e]/15 text-[#e0a33e]">Wi-Fi 断开</span><div class="tl-sub">在 1.94 GB / 6.10 GB 处暂停。进度已保存。</div></div></div>
+            <div class="tl-row"><span class="tl-time">23:10</span><div><span class="tl-tag bg-white/8 text-[#c9c9ce]">合上笔记本</span><div class="tl-sub">SwiftDL 退出。缺失的分片都还在磁盘上。</div></div></div>
+            <div class="tl-row"><span class="tl-time">08:02</span><div><span class="tl-tag bg-[#0a84ff]/15 text-[#5aa2fb]">继续</span><div class="tl-sub">从 1.94 GB 接着下。没有任何数据下载两次。</div></div></div>
+            <div class="tl-row"><span class="tl-time">08:05</span><div><span class="tl-tag bg-[#3fb27f]/15 text-[#3fb27f]">完成</span><div class="tl-sub">已保存到 Downloads\Compressed</div></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="cells c3 rule">
+        <div><h3>每秒保存</h3><p>崩溃后最多只会重新下载一秒的数据。</p></div>
+        <div><h3>队列与限速</h3><p>设置同时下载的数量，并限制总带宽。</p></div>
+        <div><h3>默认就整齐</h3><p>文件分别放入视频、音乐、程序、压缩包和文档文件夹。</p></div>
+      </div>
+    </section>
+
+    <!-- Everything else -->
+    <section class="rule">
+      <div class="reveal px-5 pt-24 pb-14 sm:px-12">
+        <div class="label">还有更多</div>
+        <h2 class="h-sec mt-5 max-w-3xl">细节也认真做。</h2>
+      </div>
+      <div class="cells c3 rule">
+        <div><h3>命令面板</h3><p>按 <kbd>Ctrl</kbd> <kbd>K</kbd> 查找任意下载或执行任意操作。</p></div>
+        <div><h3>每个下载一个窗口</h3><p>每个文件都有实时进度，完成后给出带“打开”和“在文件夹中显示”的摘要。</p></div>
+        <div><h3>常驻托盘</h3><p>关闭窗口后下载继续进行。</p></div>
+      </div>
+      <div class="cells c3 rule">
+        <div><h3>注重隐私</h3><p>没有账号、统计或遥测，只连接你正在下载的服务器。</p></div>
+        <div><h3>浅色与深色</h3><p>跟随系统，支持 Windows、macOS 和 Linux。</p></div>
+        <div><h3>开源</h3><p>MIT 许可证，用 Rust 构建。可以阅读、修改、再发布。</p></div>
+      </div>
+    </section>
+
+    <div class="rule px-5 py-5 sm:px-12"><div class="strip" data-strip></div></div>
+
+    <!-- Download -->
+    <section id="download" class="rule scroll-mt-16">
+      <div class="reveal px-5 pt-24 pb-14 sm:px-12">
+        <div class="label">下载</div>
+        <h2 class="h-sec mt-5">获取 SwiftDL。<br><span class="dim">Windows、macOS 和 Linux 免费。</span></h2>
+      </div>
+      <div class="cells c3 rule" id="platforms"></div>
+      <div class="rule px-5 py-5 text-sm text-muted sm:px-12"><a class="hover:text-ink" href="download.html">旧版本和安装帮助 →</a></div>
+    </section>
+
+    <!-- FAQ -->
+    <section id="faq" class="rule">
+      <div class="grid gap-10 px-5 pt-24 pb-24 sm:px-12 lg:grid-cols-[280px_1fr]">
+        <div class="reveal"><div class="label">问题</div><h2 class="h-sec mt-5">解答。</h2></div>
+        <div class="reveal">
+          <details class="faq"><summary>真的会更快吗？</summary><p>如果服务器限制了单条连接的速度（很多服务器都会），那么是的，大约能快上连接数的倍数。如果单条连接已经跑满你的宽带，更多连接也不会凭空变出带宽，但续传和队列仍然有用。</p></details>
+          <details class="faq"><summary>能下载 YouTube 的视频吗？</summary><p>可以，也支持 Vimeo、X、Reddit 等视频网站。点击播放器上的视频按钮，选择清晰度，从 4K 到仅音频。SwiftDL 对这类网站使用 yt-dlp，并在第一次需要时自动装好。</p></details>
+          <details class="faq"><summary>为什么 Windows 或 macOS 安装时会警告？</summary><p>安装包还没有代码签名。Windows 上点“更多信息”，再点“仍要运行”。macOS 上右键点击应用并选择“打开”。</p></details>
+          <details class="faq"><summary>SwiftDL 会收集数据吗？</summary><p>不会。没有账号、统计或遥测，只连接你正在下载的服务器。</p></details>
+          <details class="faq border-b hairline"><summary>真的免费吗？</summary><p>是的。SwiftDL 采用 MIT 许可证，代码就在 GitHub 上。</p></details>
+        </div>
+      </div>
+    </section>
+
+    <footer class="rule">
+      <div class="flex flex-col gap-8 px-5 py-12 sm:flex-row sm:items-end sm:px-12">
+        <div>
+          <div class="flex items-center gap-2.5 text-[15px] font-medium"><span class="mark"></span>SwiftDL</div>
+          <p class="mt-3 text-sm text-muted">快速、开源的下载管理器。</p>
+        </div>
+        <div class="flex flex-wrap gap-x-7 gap-y-2 sm:ml-auto">
+          <a class="nav-link" href="download.html">下载</a>
+          <a class="nav-link" href="changelog.html">更新日志</a>
+          <a class="nav-link" href="../index.html">English</a>
+          <a class="nav-link" href="https://github.com/harshsinghsv/swiftdl" target="_blank" rel="noopener">GitHub</a>
+          <a class="nav-link" href="https://github.com/harshsinghsv/swiftdl/issues" target="_blank" rel="noopener">报告问题</a>
+        </div>
+      </div>
+      <div class="rule px-5 py-5 text-[12.5px] text-faint sm:px-12">MIT 许可证 · <span data-year>2026</span></div>
+    </footer>
+  </main>
+
+  <script src="../site.js"></script>
+  <script>
+    hydrateLatest().then((latest) => renderPlatforms(document.getElementById("platforms"), latest));
+    runDemo();
+  </script>
+</body>
+</html>

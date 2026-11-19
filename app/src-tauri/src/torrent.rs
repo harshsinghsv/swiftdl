@@ -128,7 +128,7 @@ pub struct Job {
 /// pieces and continues.
 pub async fn run(client: &Client, job: Job, progress: Arc<Progress>, note: crate::media::Note, cancel: CancellationToken) -> Result<Outcome> {
     let set_note = |t: Option<String>| *note.lock().unwrap() = t;
-    set_note(Some(if job.url.starts_with("magnet:") { "Finding peers".into() } else { "Starting".into() }));
+    set_note(Some(crate::i18n::note(if job.url.starts_with("magnet:") { "Finding peers" } else { "Starting" })));
     let session = session().await?;
     std::fs::create_dir_all(&job.dir)?;
     let add = source(client, &job.url, &job.headers).await?;
@@ -164,12 +164,12 @@ pub async fn run(client: &Client, job: Job, progress: Arc<Progress>, note: crate
                 let seeds = live.snapshot.peer_stats.live_seeders;
                 progress.connections.store(peers as usize, Ordering::Relaxed);
                 set_note(Some(match peers {
-                    0 => "Looking for peers".into(),
-                    1 => "Downloading from 1 peer".into(),
-                    n => format!("Downloading from {n} peers · {seeds} seeding"),
+                    0 => crate::i18n::note("Looking for peers"),
+                    1 => crate::i18n::note("Downloading from 1 peer"),
+                    n => crate::i18n::peers(n, seeds),
                 }));
             }
-            None => set_note(Some("Checking existing pieces".into())),
+            None => set_note(Some(crate::i18n::note("Checking existing pieces"))),
         }
         tokio::select! {
             _ = tokio::time::sleep(Duration::from_millis(500)) => {}

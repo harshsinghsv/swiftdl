@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use clap::Parser;
+use clap::{CommandFactory, FromArgMatches, Parser};
 use indicatif::{HumanBytes, ProgressBar, ProgressStyle};
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -11,7 +11,7 @@ use swiftdl_engine::{CancellationToken, Outcome, Progress, Request, SpeedLimiter
 
 /// swiftdl: a fast, resumable, multi-connection downloader.
 #[derive(Parser)]
-#[command(version, about)]
+#[command(version, about, disable_help_flag = true, disable_version_flag = true)]
 struct Args {
     /// URL to download
     url: String,
@@ -35,15 +35,48 @@ struct Args {
     /// Ignore saved progress and start over
     #[arg(long)]
     restart: bool,
+
+    // The built-in flags, declared so their help text can be translated too.
+    /// Print help
+    #[arg(id = "help", short, long, action = clap::ArgAction::Help, help = "Print help")]
+    #[allow(dead_code)]
+    help: Option<bool>,
+
+    /// Print version
+    #[arg(id = "version", short = 'V', long, action = clap::ArgAction::Version, help = "Print version")]
+    #[allow(dead_code)]
+    version: Option<bool>,
+}
+
+/// The terminal's language: SWIFDL_LANG wins, then the usual Unix variables.
+/// (Windows terminals rarely set LANG, so SWIFDL_LANG is the way in.)
+fn zh() -> bool {
+    let v = std::env::var("SWIFDL_LANG")
+        .ok()
+        .or_else(|| std::env::var("LC_ALL").ok())
+        .or_else(|| std::env::var("LANG").ok())
+        .unwrap_or_default();
+    v.to_ascii_lowercase().starts_with("zh")
+}
+
+/// A fixed message in the terminal's language.
+fn t(en: &'static str, cn: &'static str) -> &'static str {
+    if zh() { cn } else { en }
 }
 
 fn parse_headers(raw: &[String]) -> Result<HeaderMap> {
     let mut map = HeaderMap::new();
     for h in raw {
-        let (name, value) = h.split_once(':').with_context(|| format!("header must be 'Name: value', got {h:?}"))?;
+        let (name, value) = h.split_once(':').with_context(|| {
+            if zh() { format!("请求头格式应为 '名称: 值'，收到的是 {h:?}") } else { format!("header must be 'Name: value', got {h:?}") }
+        })?;
         map.append(
-            HeaderName::from_bytes(name.trim().as_bytes()).with_context(|| format!("bad header name in {h:?}"))?,
-            HeaderValue::from_str(value.trim()).with_context(|| format!("bad header value in {h:?}"))?,
+            HeaderName::from_bytes(name.trim().as_bytes()).with_context(|| {
+                if zh() { format!("请求头名称无效：{h:?}") } else { format!("bad header name in {h:?}") }
+            })?,
+            HeaderValue::from_str(value.trim()).with_context(|| {
+                if zh() { format!("请求头内容无效：{h:?}") } else { format!("bad header value in {h:?}") }
+            })?,
         );
     }
     Ok(map)
@@ -59,13 +92,14 @@ async fn run(args: Args) -> Result<Option<PathBuf>> {
         None => swiftdl_engine::resolve_dest(&std::env::current_dir()?, &remote.filename),
     };
 
-    eprintln!("File:   {}", dest.display());
+    eprintln!("{}", if zh() { format!("文件：  {}", dest.display()) } else { format!("File:   {}", dest.display()) });
     match remote.size {
+        Some(size) if zh() => eprintln!("大小：  {}（{size} 字节）", HumanBytes(size)),
         Some(size) => eprintln!("Size:   {} ({size} bytes)", HumanBytes(size)),
-        None => eprintln!("Size:   unknown"),
+        None => eprintln!("{}", t("Size:   unknown", "大小：  未知")),
     }
     if !remote.resumable {
-        eprintln!("Server does not support ranges: using one connection, no resume.");
+        eprintln!("{}", t("Server does not support ranges: using one connection, no resume.", "服务器不支持分段下载：将使用单连接，无法续传。"));
     }
 
     let progress = Arc::new(Progress::default());
@@ -92,7 +126,11 @@ async fn run(args: Args) -> Result<Option<PathBuf>> {
                     first = false;
                 }
                 bar.set_position(done);
-                bar.set_message(format!("{} conns", progress.connections.load(Ordering::Relaxed)));
+                bar.set_message(if zh() {
+                    format!("{} 个连接", progress.connections.load(Ordering::Relaxed))
+                } else {
+                    format!("{} conns", progress.connections.load(Ordering::Relaxed))
+                });
             }
         })
     };
@@ -118,33 +156,50 @@ async fn run(args: Args) -> Result<Option<PathBuf>> {
     bar.set_position(progress.downloaded.load(Ordering::Relaxed));
     match outcome {
         Ok(Outcome::Completed) => {
-            bar.finish_with_message("done");
+            bar.finish_with_message(t("done", "完成"));
             Ok(Some(dest))
         }
         Ok(Outcome::Paused) => {
-            bar.abandon_with_message("paused");
+            bar.abandon_with_message(t("paused", "已暂停"));
             Ok(None)
         }
         Err(e) => {
-            bar.abandon_with_message("failed");
-            Err(e.context("download stopped; progress saved, run the same command to resume"))
+            bar.abandon_with_message(t("failed", "失败"));
+            Err(e.context(t("download stopped; progress saved, run the same command to resume", "下载已中断；进度已保存，重新运行同一条命令即可续传")))
         }
     }
 }
 
 #[tokio::main]
 async fn main() -> ExitCode {
-    match run(Args::parse()).await {
+    let mut cmd = Args::command();
+    if zh() {
+        // clap's own headings are English; a template and explicit headings
+        // make the whole help screen Chinese.
+        cmd = cmd
+            .about("swiftdl：快速、可续传的多连接下载器")
+            .help_template("{about-with-newline}\n用法: {usage}\n\n{all-args}{after-help}")
+            .mut_arg("url", |a| a.help("要下载的 URL").help_heading("参数"))
+            .mut_arg("output", |a| a.help("输出文件或目录（默认使用服务器的文件名，保存在当前目录）").help_heading("选项"))
+            .mut_arg("connections", |a| a.help("并行连接数").help_heading("选项"))
+            .mut_arg("headers", |a| a.help("附加请求头，例如 -H \"Cookie: session=abc\"（可重复）").help_heading("选项"))
+            .mut_arg("limit", |a| a.help("速度限制，单位 KiB/s（0 表示不限速）").help_heading("选项"))
+            .mut_arg("restart", |a| a.help("忽略已保存的进度，从头开始").help_heading("选项"))
+            .mut_arg("help", |a| a.help("显示帮助信息").help_heading("选项"))
+            .mut_arg("version", |a| a.help("显示版本号").help_heading("选项"));
+    }
+    let args = Args::from_arg_matches(&cmd.get_matches()).expect("clap already validated these");
+    match run(args).await {
         Ok(Some(path)) => {
-            eprintln!("Saved to {}", path.display());
+            eprintln!("{}", if zh() { format!("已保存到 {}", path.display()) } else { format!("Saved to {}", path.display()) });
             ExitCode::SUCCESS
         }
         Ok(None) => {
-            eprintln!("Paused. Run the same command again to resume.");
+            eprintln!("{}", t("Paused. Run the same command again to resume.", "已暂停。重新运行同一条命令即可续传。"));
             ExitCode::from(130)
         }
         Err(e) => {
-            eprintln!("error: {e:#}");
+            eprintln!("{}: {e:#}", t("error", "错误"));
             ExitCode::FAILURE
         }
     }

@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="theme-color" content="#0a0a0b">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>下载 SwiftDL · Windows、macOS 和 Linux</title>
+  <meta name="description" content="下载适用于 Windows、macOS 和 Linux 的 SwiftDL。所有版本，直接来自 GitHub Releases。">
+  <link rel="icon" href="../assets/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../site.css">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
+  <style type="text/tailwindcss">
+    @theme inline {
+      --color-bg: var(--bg); --color-panel: var(--panel); --color-elev: var(--elev);
+      --color-line: var(--border); --color-ink: var(--text); --color-ink-2: var(--text-2);
+      --color-muted: var(--muted); --color-faint: var(--faint); --color-accent: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <nav class="mx-auto flex h-16 max-w-[1200px] items-center gap-8 px-5 sm:px-8">
+      <a href="index.html" class="flex items-center gap-2.5 text-[15px] font-medium tracking-tight text-ink no-underline"><span class="mark"></span>SwiftDL</a>
+      <div class="hidden items-center gap-6 md:flex">
+        <a class="nav-link" href="index.html#connections">功能</a>
+        <a class="nav-link" href="download.html" aria-current="page">下载</a>
+        <a class="nav-link" href="changelog.html">更新日志</a>
+        <a class="nav-link" href="../download.html">English</a>
+      </div>
+      <div class="ml-auto flex items-center gap-2">
+        <a class="btn sm" href="https://github.com/harshsinghsv/swiftdl" target="_blank" rel="noopener"><span class="logo b-github size-4"></span><span class="hidden sm:inline">GitHub</span></a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="mx-auto max-w-6xl px-4 pb-24 sm:px-6">
+    <section class="hero pt-16 text-center sm:pt-24">
+      <h1 class="h-hero">下载 SwiftDL</h1>
+      <p class="mt-4 text-muted"><span data-version>v0.2.0</span> · <span id="released">发布于 2026年10月30日</span> · <a class="text-ink-2 hover:text-ink" href="changelog.html">更新内容</a></p>
+    </section>
+
+    <section class="mt-14">
+      <div class="cells c3 card overflow-hidden" id="platforms"></div>
+    </section>
+
+    <section class="reveal mt-20">
+      <h2 class="text-xl font-semibold text-ink">安装</h2>
+      <div class="mt-6 grid gap-4 md:grid-cols-3">
+        <div class="card p-6">
+          <div class="flex items-center gap-3"><span class="logo os-windows size-5 text-ink"></span><h3 class="font-semibold text-ink">Windows</h3></div>
+          <p class="mt-3 text-[14px] text-muted">运行安装程序即可。它按当前用户安装，不需要管理员权限；缺少 Microsoft WebView2 时会自动装上。</p>
+          <p class="mt-3 text-[14px] text-muted">卸载：设置 → 应用 → 已安装的应用 → SwiftDL。</p>
+        </div>
+        <div class="card p-6">
+          <div class="flex items-center gap-3"><span class="logo os-macos size-5 text-ink"></span><h3 class="font-semibold text-ink">macOS</h3></div>
+          <p class="mt-3 text-[14px] text-muted">打开 .dmg，把 SwiftDL 拖进“应用程序”。需要 macOS 10.13 或更高版本，同一个安装包支持 Apple 芯片和 Intel。</p>
+          <p class="mt-3 text-[14px] text-muted">卸载：把 SwiftDL 从“应用程序”移到废纸篓。</p>
+        </div>
+        <div class="card p-6">
+          <div class="flex items-center gap-3"><span class="logo os-linux size-5 text-ink"></span><h3 class="font-semibold text-ink">Linux</h3></div>
+          <pre class="cmd mono mt-3"><code>chmod +x SwiftDL_*.AppImage
+./SwiftDL_*.AppImage
+
+sudo apt install ./SwiftDL_*.deb
+sudo dnf install ./SwiftDL-*.rpm</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="verify" class="reveal mt-20 scroll-mt-20">
+      <h2 class="text-xl font-semibold text-ink">关于安全警告</h2>
+      <p class="mt-3 text-muted">SwiftDL 的安装包还没有代码签名，因为签名证书每年都要付费。所以第一次打开 SwiftDL 时，系统可能会提示无法识别发布者。</p>
+      <div class="mt-6 grid gap-4 sm:grid-cols-2">
+        <div class="card p-5"><h3 class="font-semibold text-ink">Windows</h3><p class="mt-1.5 text-[14px] text-muted">如果 SmartScreen 提示“Windows 已保护你的电脑”，点<b class="font-medium text-ink-2">更多信息</b>，再点<b class="font-medium text-ink-2">仍要运行</b>。</p></div>
+        <div class="card p-5"><h3 class="font-semibold text-ink">macOS</h3><p class="mt-1.5 text-[14px] text-muted">如果 macOS 提示无法验证开发者，在“应用程序”里右键点击 SwiftDL 选择<b class="font-medium text-ink-2">打开</b>，再点一次<b class="font-medium text-ink-2">打开</b>。</p></div>
+      </div>
+      <p class="mt-4 text-[14px] text-muted">请只从本站或 <a class="text-accent" href="https://github.com/harshsinghsv/swiftdl/releases" target="_blank" rel="noopener">GitHub Releases</a> 下载 SwiftDL。每个文件都由 <a class="text-accent" href="https://github.com/harshsinghsv/swiftdl/actions/workflows/release.yml" target="_blank" rel="noopener">GitHub Actions</a> 从公开源码构建。</p>
+    </section>
+
+    <section class="reveal mt-20">
+      <div class="card flex flex-col gap-4 p-6 sm:flex-row sm:items-center">
+        <span data-icon="puzzle" class="size-6 text-muted"></span>
+        <div class="flex-1">
+          <h2 class="font-semibold text-ink">浏览器扩展</h2>
+          <p class="mt-1 text-[14px] text-muted">应用已自带：打开 SwiftDL，点击<b class="font-medium text-ink-2">添加扩展</b>查看简短指引。支持 Chrome、Edge、Brave 和 Vivaldi。Firefox 请从 <a class="font-medium text-ink-2 underline" href="https://addons.mozilla.org/firefox/addon/swiftdl-integration/">Firefox Add-ons</a> 获取。</p>
+        </div>
+        <a class="btn sm" id="ext-zip" href="https://github.com/harshsinghsv/swiftdl/releases/latest">下载 .zip</a>
+      </div>
+    </section>
+
+    <section class="reveal mt-20">
+      <div class="flex items-baseline justify-between">
+        <h2 class="text-xl font-semibold text-ink">所有版本</h2>
+        <a class="text-sm text-muted hover:text-ink" href="https://github.com/harshsinghsv/swiftdl/releases" target="_blank" rel="noopener">在 GitHub 上</a>
+      </div>
+      <div class="mt-5" id="versions"><p class="text-muted">正在加载版本…</p></div>
+    </section>
+
+    <section class="reveal mt-20">
+      <h2 class="text-xl font-semibold text-ink">从源码构建</h2>
+      <p class="mt-3 text-muted">你需要 Rust，以及对应系统的 <a class="text-accent" href="https://v2.tauri.app/start/prerequisites/" target="_blank" rel="noopener">Tauri 前置依赖</a>。</p>
+      <pre class="cmd mono mt-4"><code>git clone https://github.com/harshsinghsv/swiftdl
+cd swiftdl/app/src-tauri
+cargo install tauri-cli --version "^2"
+cargo tauri build</code></pre>
+    </section>
+  </main>
+
+  <footer class="border-t hairline">
+    <div class="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 text-sm sm:flex-row sm:items-center sm:px-6">
+      <div class="flex items-center gap-2.5 text-muted"><span class="mark size-[18px]! text-muted!"></span><span>SwiftDL · MIT 许可证 · <span data-year>2026</span></span></div>
+      <div class="flex flex-wrap gap-x-6 gap-y-2 sm:ml-auto">
+        <a class="nav-link" href="index.html">首页</a>
+        <a class="nav-link" href="changelog.html">更新日志</a>
+        <a class="nav-link" href="../download.html">English</a>
+        <a class="nav-link" href="https://github.com/harshsinghsv/swiftdl" target="_blank" rel="noopener">GitHub</a>
+        <a class="nav-link" href="https://github.com/harshsinghsv/swiftdl/issues" target="_blank" rel="noopener">报告问题</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="../site.js"></script>
+  <script>
+    function versionBlock(r, i) {
+      const groups = ["windows", "macos", "linux"].map((os) => {
+        const files = filesFor(r, os);
+        if (!files.length) return "";
+        return `<div><div class="mb-2 text-[12px] font-medium text-faint">${OS_NAMES[os]}</div>${files.map((f) =>
+          `<a class="flex items-center justify-between gap-3 rounded-md py-1.5 text-[13.5px] text-ink-2 hover:text-ink" href="${f.asset.browser_download_url}"><span class="truncate">${f.label} <span class="mono text-faint">${f.ext}</span></span><span class="flex-none text-faint">${fmtSize(f.asset.size)}</span></a>`).join("")}</div>`;
+      }).join("");
+      return `<details class="faq"${i === 0 ? " open" : ""}>
+        <summary><span class="flex flex-wrap items-baseline gap-x-3"><span class="text-ink">${esc(r.name || r.tag_name)}</span><span class="text-[13px] font-normal text-faint">${fmtDate(r.published_at)}</span>${i === 0 ? '<span class="text-[12px] font-medium text-accent">最新</span>' : ""}</span></summary>
+        <div class="grid gap-6 pb-6 sm:grid-cols-3">${groups}</div>
+        <div class="-mt-2 flex gap-4 pb-6 text-[13px]"><a class="text-muted hover:text-ink" href="changelog.html#${r.tag_name}">版本说明</a><a class="text-muted hover:text-ink" href="${r.html_url}" target="_blank" rel="noopener">在 GitHub 查看</a></div>
+      </details>`;
+    }
+
+    (async () => {
+      const releases = await getReleases();
+      const latest = releases[0];
+      document.querySelectorAll("[data-version]").forEach((el) => { el.textContent = `v${version(latest)}`; });
+      document.getElementById("released").textContent = `发布于 ${fmtDate(latest.published_at)}`;
+      const zip = latest.assets.find((a) => /extension\.zip$/i.test(a.name));
+      if (zip) document.getElementById("ext-zip").href = zip.browser_download_url;
+
+      renderPlatforms(document.getElementById("platforms"), latest);
+
+      document.getElementById("versions").innerHTML = releases.map(versionBlock).join("");
+    })();
+  </script>
+</body>
+</html>

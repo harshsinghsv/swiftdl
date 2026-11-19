@@ -3,6 +3,7 @@
 
 mod browser;
 mod commands;
+mod i18n;
 mod manager;
 mod log;
 mod media;
@@ -37,9 +38,9 @@ pub fn show_main_window(app: &AppHandle) {
 /// SwiftDL lives in the tray like IDM: closing the main window keeps
 /// downloads (and browser integration) running.
 fn build_tray(app: &AppHandle) -> tauri::Result<()> {
-    let open = MenuItem::with_id(app, "open", "Open SwiftDL", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "Quit SwiftDL", true, None::<&str>)?;
-    let nolimit = tauri::menu::CheckMenuItem::with_id(app, "nolimit", "Ignore speed limit", true, false, None::<&str>)?;
+    let open = MenuItem::with_id(app, "open", i18n::tr("Open SwiftDL"), true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", i18n::tr("Quit SwiftDL"), true, None::<&str>)?;
+    let nolimit = tauri::menu::CheckMenuItem::with_id(app, "nolimit", i18n::tr("Ignore speed limit"), true, false, None::<&str>)?;
     let menu = Menu::with_items(app, &[&open, &nolimit, &PredefinedMenuItem::separator(app)?, &quit])?;
     let mut tray = TrayIconBuilder::with_id("main").tooltip("SwiftDL").menu(&menu).show_menu_on_left_click(false);
     if let Some(icon) = app.default_window_icon() {
@@ -63,6 +64,15 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
     })
     .build(app)?;
     Ok(())
+}
+
+/// Rebuilds the tray after a language change. Tauri keeps one tray per id,
+/// so the old one goes first.
+pub fn rebuild_tray(app: &AppHandle) {
+    app.remove_tray_by_id("main");
+    if let Err(e) = build_tray(app) {
+        crate::log::line(&format!("tray icon not available: {e}"));
+    }
 }
 
 fn main() {
@@ -162,6 +172,7 @@ fn main() {
             commands::open_file,
             commands::open_folder,
             commands::set_settings,
+            commands::set_ui_language,
             commands::open_url,
             commands::extension_dir,
             commands::open_extension_folder,

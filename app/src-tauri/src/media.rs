@@ -93,7 +93,7 @@ fn parse_playlist(v: &Value) -> Result<Playlist> {
         .take(500)
         .collect();
     if entries.is_empty() {
-        bail!("that playlist has no videos SwiftDL can download");
+        bail!("{}", crate::i18n::text("that playlist has no videos SwiftDL can download"));
     }
     Ok(Playlist { title: v["title"].as_str().unwrap_or("Playlist").to_string(), entries })
 }
@@ -101,7 +101,7 @@ fn parse_playlist(v: &Value) -> Result<Playlist> {
 /// The videos in a playlist, for the person to choose from.
 pub async fn playlist(client: &Client, url: &str, headers: Vec<(String, String)>) -> Result<Playlist> {
     if is_spotify(url) {
-        bail!("{SPOTIFY_MSG}");
+        bail!("{}", crate::i18n::text(SPOTIFY_MSG));
     }
     let tools = ensure_tools(client, &PROBE_NOTE, false).await?;
     *PROBE_NOTE.lock().unwrap() = None;
@@ -205,7 +205,7 @@ async fn ensure_tools(client: &Client, note: &Note, need_ffmpeg: bool) -> Result
         let zip = tools_dir().join("ffmpeg.zip");
         let url = "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip";
         fetch(client, url, &zip, note, "Getting ffmpeg").await.context("couldn't download ffmpeg")?;
-        set_note(note, "Unpacking ffmpeg");
+        set_note(note, crate::i18n::note("Unpacking ffmpeg"));
         let unpacked = unpack_ffmpeg(&zip, &tools_dir().join("ffmpeg"));
         let _ = std::fs::remove_file(&zip);
         unpacked.context("couldn't unpack ffmpeg")?;
@@ -218,7 +218,8 @@ async fn ensure_tools(client: &Client, note: &Note, need_ffmpeg: bool) -> Result
 /// once, and resumable if the app is closed halfway. A single connection to
 /// GitHub can crawl along at a few KB/s; ffmpeg alone is over 100 MB.
 async fn fetch(client: &Client, url: &str, dest: &Path, note: &Note, label: &str) -> Result<()> {
-    set_note(note, label);
+    let label = crate::i18n::note(label);
+    set_note(note, &label);
     let req = swiftdl_engine::Request {
         url: url.to_string(),
         dest: dest.to_path_buf(),
@@ -425,7 +426,7 @@ const PROBE_LIMIT: Duration = Duration::from_secs(90);
 /// ask again with the runtime. The download itself always gets the runtime.
 pub async fn probe(client: &Client, url: &str, headers: Vec<(String, String)>) -> Result<MediaInfo> {
     if is_spotify(url) {
-        bail!("{SPOTIFY_MSG}");
+        bail!("{}", crate::i18n::text(SPOTIFY_MSG));
     }
     let tools = ensure_tools(client, &PROBE_NOTE, false).await?;
     *PROBE_NOTE.lock().unwrap() = None;
@@ -699,7 +700,7 @@ pub async fn run(client: &Client, job: Job, progress: Arc<Progress>, note: Note,
     if let Some(dir) = job.dest.parent() {
         std::fs::create_dir_all(dir)?;
     }
-    set_note(&note, "Starting");
+    set_note(&note, crate::i18n::note("Starting"));
 
     // YouTube, looked up ahead of time: fetch the files ourselves, many
     // connections each, the way IDM does. yt-dlp is the fallback.
@@ -710,7 +711,7 @@ pub async fn run(client: &Client, job: Job, progress: Arc<Progress>, note: Note,
             Err(e) => {
                 crate::log::line(&format!("direct download of {} failed, using yt-dlp: {e:#}", job.url));
                 progress.downloaded.store(0, Ordering::Relaxed);
-                set_note(&note, "Starting");
+                set_note(&note, crate::i18n::note("Starting"));
             }
         }
     }
@@ -774,7 +775,7 @@ async fn direct(client: &Client, job: &Job, progress: &Arc<Progress>, note: &Not
     }
     // Not looked up yet (a pasted link, say): do it now, then download directly.
     if wait_for_lookup(&job.url).await.is_none() {
-        set_note(note, "Getting video details");
+        set_note(note, crate::i18n::note("Getting video details"));
         prepare(client, &job.url, job.headers.clone()).await;
     }
     let Some(saved) = wait_for_lookup(&job.url).await else { return Ok(None) };
@@ -827,7 +828,7 @@ async fn direct(client: &Client, job: &Job, progress: &Arc<Progress>, note: &Not
     }
 
     let fetched = started.elapsed();
-    set_note(note, "Joining video and audio");
+    set_note(note, crate::i18n::note("Joining video and audio"));
     let files: Vec<PathBuf> = parts.iter().map(|(_, p)| p.clone()).collect();
     if files.len() == 1 {
         std::fs::rename(&files[0], &job.dest)?;
@@ -969,10 +970,10 @@ fn read_progress(stdout: impl std::io::Read, progress: &Progress, note: &Note) {
             progress.downloaded.store(base + cur, Ordering::Relaxed);
             progress.total.store(hint.max(base + cur_total), Ordering::Relaxed);
         } else if line.starts_with("[Merger]") || line.starts_with("[VideoRemuxer]") {
-            set_note(note, "Merging video and audio");
+            set_note(note, crate::i18n::note("Merging video and audio"));
             progress.connections.store(0, Ordering::Relaxed);
         } else if line.starts_with("[Fixup") || line.starts_with("[ExtractAudio]") {
-            set_note(note, "Finishing");
+            set_note(note, crate::i18n::note("Finishing"));
         }
     }
 }
@@ -1107,7 +1108,9 @@ mod tests {
 
     #[test]
     fn adds_up_progress_across_video_and_audio() {
-        let out = "[download] Destination: a.f396.mp4\nSDL|downloading|1024|15298808|NA\nSDL|finished|15298808|15298808|NA\n\
+        let _guard = crate::i18n::test_lock();
+        crate::i18n::set(crate::i18n::Lang::En);
+        let out ="[download] Destination: a.f396.mp4\nSDL|downloading|1024|15298808|NA\nSDL|finished|15298808|15298808|NA\n\
                    [download] Destination: a.f251.webm\nSDL|downloading|5000000|10202210|NA\nSDL|finished|10202210|10202210|NA\n\
                    [Merger] Merging formats into \"a.mp4\"\n";
         let progress = Progress::default();

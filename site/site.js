@@ -4,6 +4,10 @@
 const REPO = "harshsinghsv/swiftdl";
 const GITHUB = `https://github.com/${REPO}`;
 
+// Pages under site/zh/ say lang="zh-CN"; everything drawn here follows.
+const ZH = (document.documentElement.lang || "").toLowerCase().startsWith("zh");
+const L = (en, zh) => (ZH ? zh : en);
+
 // Used when the GitHub API can't be reached (offline, rate limited), so the
 // download buttons still point at real files.
 const FALLBACK = [{
@@ -50,14 +54,14 @@ const OS_NAMES = { windows: "Windows", macos: "macOS", linux: "Linux" };
 
 // What each release file is, in the order it should be offered.
 const KINDS = [
-  { test: /-setup\.exe$/i, os: "windows", label: "Installer", ext: ".exe", note: "Recommended. Installs for your user, no admin rights needed.", primary: true },
-  { test: /\.msi$/i, os: "windows", label: "MSI package", ext: ".msi", note: "For managed installs and IT deployment." },
-  { test: /\.dmg$/i, os: "macos", label: "Disk image", ext: ".dmg", note: "Recommended. Universal: Apple silicon and Intel.", primary: true },
-  { test: /\.app\.tar\.gz$/i, os: "macos", label: "App archive", ext: ".app.tar.gz", note: "The app bundle on its own, for scripted installs." },
-  { test: /\.AppImage$/i, os: "linux", label: "AppImage", ext: ".AppImage", note: "Recommended. Runs on most distributions without installing.", primary: true },
-  { test: /\.deb$/i, os: "linux", label: "Debian package", ext: ".deb", note: "Ubuntu, Debian, Mint, Pop!_OS." },
-  { test: /\.rpm$/i, os: "linux", label: "RPM package", ext: ".rpm", note: "Fedora, RHEL, openSUSE." },
-  { test: /extension\.zip$/i, os: "extension", label: "Browser extension", ext: ".zip", note: "Already included with the app. Only needed without it." },
+  { test: /-setup\.exe$/i, os: "windows", label: L("Installer", "安装程序"), ext: ".exe", note: L("Recommended. Installs for your user, no admin rights needed.", "推荐。按用户安装，无需管理员权限。"), primary: true },
+  { test: /\.msi$/i, os: "windows", label: L("MSI package", "MSI 安装包"), ext: ".msi", note: L("For managed installs and IT deployment.", "适合批量安装和企业部署。") },
+  { test: /\.dmg$/i, os: "macos", label: L("Disk image", "磁盘映像"), ext: ".dmg", note: L("Recommended. Universal: Apple silicon and Intel.", "推荐。通用版：同时支持 Apple 芯片和 Intel。"), primary: true },
+  { test: /\.app\.tar\.gz$/i, os: "macos", label: L("App archive", "应用归档"), ext: ".app.tar.gz", note: L("The app bundle on its own, for scripted installs.", "单独的应用包，适合脚本安装。") },
+  { test: /\.AppImage$/i, os: "linux", label: "AppImage", ext: ".AppImage", note: L("Recommended. Runs on most distributions without installing.", "推荐。无需安装，可在大多数发行版上直接运行。"), primary: true },
+  { test: /\.deb$/i, os: "linux", label: L("Debian package", "Debian 安装包"), ext: ".deb", note: "Ubuntu, Debian, Mint, Pop!_OS." },
+  { test: /\.rpm$/i, os: "linux", label: L("RPM package", "RPM 安装包"), ext: ".rpm", note: "Fedora, RHEL, openSUSE." },
+  { test: /extension\.zip$/i, os: "extension", label: L("Browser extension", "浏览器扩展"), ext: ".zip", note: L("Already included with the app. Only needed without it.", "应用已自带。没装应用时才需要。") },
 ];
 
 function classify(asset) {
@@ -73,7 +77,7 @@ function fmtSize(n) {
   while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
   return `${n < 10 && i ? n.toFixed(1) : Math.round(n)} ${u[i]}`;
 }
-const fmtDate = (s) => new Date(s).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+const fmtDate = (s) => new Date(s).toLocaleDateString(ZH ? "zh-CN" : undefined, { year: "numeric", month: "long", day: "numeric" });
 const version = (r) => r.tag_name.replace(/^v/, "");
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
@@ -111,7 +115,11 @@ async function hydrateLatest() {
 
 // Three platform cells with the real OS logos: the recommended file as the
 // button, the other formats listed under it.
-const PLATFORM_SUB = { windows: "Windows 10 and 11", macos: "Apple silicon and Intel", linux: "64-bit, most distributions" };
+const PLATFORM_SUB = {
+  windows: L("Windows 10 and 11", "Windows 10 和 11"),
+  macos: L("Apple silicon and Intel", "Apple 芯片和 Intel"),
+  linux: L("64-bit, most distributions", "64 位，支持大多数发行版"),
+};
 function renderPlatforms(el, release) {
   const here = detectOS();
   el.innerHTML = ["windows", "macos", "linux"].map((os) => {
@@ -123,7 +131,7 @@ function renderPlatforms(el, release) {
         <span class="logo os-${os} size-9 text-ink"></span>
         <div><div class="text-lg font-medium text-ink">${OS_NAMES[os]}</div><div class="text-[13px] text-muted">${PLATFORM_SUB[os]}</div></div>
       </div>
-      ${main ? `<a class="btn ${os === here ? "primary" : ""} h-11! w-full" href="${main.asset.browser_download_url}">${icon("download")}Download ${main.ext}<span class="font-normal opacity-55">${fmtSize(main.asset.size)}</span></a>` : `<a class="btn h-11! w-full" href="${release.html_url}">See files on GitHub</a>`}
+      ${main ? `<a class="btn ${os === here ? "primary" : ""} h-11! w-full" href="${main.asset.browser_download_url}">${icon("download")}${L("Download", "下载")} ${main.ext}<span class="font-normal opacity-55">${fmtSize(main.asset.size)}</span></a>` : `<a class="btn h-11! w-full" href="${release.html_url}">${L("See files on GitHub", "在 GitHub 查看文件")}</a>`}
       <div>${rest.map((f) => `<a class="alt-link" href="${f.asset.browser_download_url}"><span>${f.label}</span><span class="ext">${f.ext} · ${fmtSize(f.asset.size)}</span></a>`).join("")}</div>
     </div>`;
   }).join("");
@@ -182,15 +190,15 @@ function runDemo() {
     lanes.innerHTML = segs.map((s) => `<span class="slot ${s.pos >= s.end ? "done" : ""}" style="left:calc(${s.start * 100}% + 1px);width:calc(${(s.end - s.start) * 100}% - 2px)"><i style="width:${((s.pos - s.start) / (s.end - s.start)) * 100}%"></i></span>`).join("");
     $m("m-rows").innerHTML = segs.slice(0, 5).map((s, i) => {
       const f = (s.pos - s.start) / (s.end - s.start), fin = s.pos >= s.end;
-      return `<div class="crow"><span>${i + 1}</span><span>${((s.pos - s.start) * SIZE * 1024).toFixed(0)} MB</span><span class="mini"><i style="width:${f * 100}%"></i></span><span class="${fin ? "" : "live"}">${fin ? "Done" : "Receiving data…"}</span></div>`;
+      return `<div class="crow"><span>${i + 1}</span><span>${((s.pos - s.start) * SIZE * 1024).toFixed(0)} MB</span><span class="mini"><i style="width:${f * 100}%"></i></span><span class="${fin ? "" : "live"}">${fin ? L("Done", "完成") : L("Receiving data…", "接收中…")}</span></div>`;
     }).join("");
     $m("m-bar").style.width = `${pct}%`;
     $m("m-pct").textContent = `${pct}%`;
     $m("m-title").textContent = `${pct}% · ubuntu-26.04-desktop-amd64.iso`;
-    $m("m-done").textContent = `${(done * SIZE).toFixed(2)} GB of ${SIZE.toFixed(2)} GB`;
+    $m("m-done").textContent = `${(done * SIZE).toFixed(2)} GB ${L("of", "/")} ${SIZE.toFixed(2)} GB`;
     $m("m-conns").textContent = active;
-    $m("m-parts").textContent = `${active} active · ${segs.length} parts`;
-    if (moved) $m("m-speed").textContent = `${(moved / (.0011 * 8) * 31.9).toFixed(1)} MB/s · ${Math.max(1, Math.round((1 - done) / (moved * 10)))}s left`;
+    $m("m-parts").textContent = `${active} ${L("active", "条进行中")} · ${segs.length} ${L("parts", "个分片")}`;
+    if (moved) $m("m-speed").textContent = `${(moved / (.0011 * 8) * 31.9).toFixed(1)} MB/s · ${Math.max(1, Math.round((1 - done) / (moved * 10)))}${L("s left", " 秒后完成")}`;
   };
   const tick = () => {
     let moved = 0;
