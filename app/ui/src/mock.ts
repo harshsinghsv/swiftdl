@@ -3,6 +3,7 @@
 // dynamic splitting, so the UI can be developed without building Rust.
 // In the real app this file does nothing.
 import type { Item, Settings, Status, Commands } from "./api";
+import { categoryDir } from "./util";
 
 declare global { interface Window { __video?: unknown } }
 
@@ -31,7 +32,7 @@ declare global { interface Window { __video?: unknown } }
     if (["jpg", "png", "gif", "webp"].includes(ext)) return "Images";
     return "Other";
   };
-  const dirFor = (cat: string) => (settings.sortIntoCategories && cat !== "Other" ? `${settings.downloadDir}\\${cat}` : settings.downloadDir);
+  const dirFor = (cat: string) => categoryDir(settings.downloadDir, cat, settings.sortIntoCategories);
 
   // Each simulated download keeps a list of segments {pos, end} like the engine.
   interface Seg { start: number; pos: number; end: number; rate: number }
