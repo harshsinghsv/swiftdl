@@ -57,6 +57,16 @@ export const CATS: Record<string, Cat> = {
 };
 export const catInfo = (name: string | null | undefined): Cat => CATS[name ?? ""] || CATS.Other;
 
+/** Where a file of `cat` lands: the base download dir plus the category
+ *  subfolder when sorting is on. The separator comes from the base path
+ *  itself — a hardcoded backslash becomes part of the folder name on Linux. */
+export function categoryDir(base: string, cat: string, sort: boolean): string {
+  if (!sort || cat === "Other") return base;
+  const trimmed = base.replace(/[\\/]+$/, "");
+  const sep = trimmed.includes("\\") && !trimmed.includes("/") ? "\\" : "/";
+  return `${trimmed}${sep}${cat}`;
+}
+
 /** The category a file name falls in, by extension (matches the backend). */
 export function catOf(name: string | null | undefined): string {
   const e = (/\.([a-z0-9]{1,5})$/i.exec(name || "") || [])[1]?.toLowerCase() || "";

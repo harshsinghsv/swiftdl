@@ -7,7 +7,7 @@ import "./styles.css";
 import "./download.css";
 import { invoke, listen, currentWindow, LogicalSize, $ } from "./api";
 import type { Item, Incoming, Header, MediaInfo, TorrentInfo, AddRequest, ProbeInfo, Settings, Quality } from "./api";
-import { icon, CATS, catOf, bytes, speed, dur, when, esc, host, catInfo, segBar } from "./util";
+import { icon, CATS, catOf, bytes, speed, dur, when, esc, host, catInfo, categoryDir, segBar } from "./util";
 
 const win = currentWindow();
 
@@ -67,7 +67,7 @@ async function confirmView(token: number) {
   if (await invoke("is_media_url", { url: inc.url })) return mediaView(token, inc, settings, headers);
   if (await invoke("is_torrent_url", { url: inc.url, filename: inc.filename || null })) return torrentView(token, inc, settings, headers);
 
-  const dirFor = (cat: string) => (settings.sortIntoCategories && cat !== "Other" ? `${settings.downloadDir}\\${cat}` : settings.downloadDir);
+  const dirFor = (cat: string) => categoryDir(settings.downloadDir, cat, settings.sortIntoCategories);
   view.innerHTML = `
     <div class="d-head"><span id="c-tile">${glyph("Other")}</span><div class="d-name"><input id="c-name" spellcheck="false" placeholder="Getting file details…"><div class="d-sub"><span class="st">${esc(host(inc.url))}</span></div></div></div>
     <div class="kv">
@@ -132,7 +132,7 @@ async function confirmView(token: number) {
 const safeName = (s: string) => s.replace(/[<>:"/\\|?*\u0000-\u001f]+/g, " ").replace(/\s+/g, " ").trim().replace(/[. ]+$/, "").slice(0, 150) || "video";
 async function mediaView(token: number, inc: Incoming, settings: Settings, headers: Header[]) {
   let dir = settings.downloadDir, dirTouched = false, info: MediaInfo | null = null;
-  const dirFor = (cat: string) => (settings.sortIntoCategories && cat !== "Other" ? `${settings.downloadDir}\\${cat}` : settings.downloadDir);
+  const dirFor = (cat: string) => categoryDir(settings.downloadDir, cat, settings.sortIntoCategories);
   view.innerHTML = `
     <div class="d-head"><span id="c-tile">${glyph("Video")}</span><div class="d-name"><input id="c-name" spellcheck="false" placeholder="Getting video details…"><div class="d-sub"><span class="st">${esc(host(inc.url))}</span></div></div></div>
     <div class="kv">

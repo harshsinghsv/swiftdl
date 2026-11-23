@@ -6,6 +6,11 @@ uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **Linux: "sort by file type" created a folder named `Downloads\Video`.** The
+  category subfolder now uses the path's own separator, so downloads land in
+  `Downloads/Video` (#26).
+
 ## [0.4.3] - 2026-11-23
 
 ### Added
