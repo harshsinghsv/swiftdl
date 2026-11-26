@@ -5,6 +5,7 @@
 //   node render.mjs                 full video -> out/swiftdl-launch.mp4
 //   node render.mjs --still 2,9.5   single frames -> out/still-2.png, ...
 //   node render.mjs --vertical      9:16 cut for Reels/Shorts (same timeline)
+//   node render.mjs --film intro    the introduction film (intro.html, dark)
 
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
@@ -21,6 +22,8 @@ const value = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i +
 
 const FPS = 60;
 const vertical = flag("--vertical");
+const film = value("--film") || "launch";
+const dark = false;
 const [W, H] = vertical ? [1080, 1920] : [1920, 1080];
 const out = join(here, "out");
 mkdirSync(out, { recursive: true });
@@ -37,9 +40,9 @@ const browser = await puppeteer.launch({
 const page = await browser.newPage();
 await page.setViewport({ width: W, height: H, deviceScaleFactor: 1 });
 // Light mode throughout: the app's UI follows the system theme.
-await page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: "light" }]);
+await page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: dark ? "dark" : "light" }]);
 const { server, origin } = await serve();
-await page.goto(`${origin}/video/launch.html${vertical ? "?vertical" : ""}`, { waitUntil: "networkidle0" });
+await page.goto(`${origin}/video/${film}.html${vertical ? "?vertical" : ""}`, { waitUntil: "networkidle0" });
 await page.evaluate(() => window.ready);
 const duration = await page.evaluate(() => window.DURATION);
 
@@ -48,12 +51,12 @@ const shoot = (t, opts) => page.evaluate((t) => window.seek(t), t).then(() => pa
 if (flag("--still")) {
   // The film is stateful (it clicks the real UI), so stills play up to each time.
   for (const t of (value("--still") || "1").split(",").map(Number).sort((a, b) => a - b)) {
-    const path = join(out, `still-${t}${vertical ? "-v" : ""}.png`);
+    const path = join(out, `${film === "launch" ? "" : film + "-"}still-${t}${vertical ? "-v" : ""}.png`);
     await shoot(t, { path, type: "png" });
     console.log(path);
   }
 } else {
-  const file = join(out, vertical ? "swiftdl-launch-vertical.mp4" : "swiftdl-launch.mp4");
+  const file = join(out, `swiftdl-${film}${vertical ? "-vertical" : ""}.mp4`);
   const ff = spawn(FFMPEG, [
     "-y", "-loglevel", "error", "-f", "image2pipe", "-framerate", String(FPS), "-c:v", "mjpeg", "-i", "-",
     // JPEG frames are full-range; convert to the standard (TV) range players

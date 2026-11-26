@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SwiftDL intro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=block" rel="stylesheet">
+<style>
+  /* SwiftDL's introduction film. Cut to "Montagem Ahora (Slowed)": 93.5 BPM,
+     first drop at 12.89 s, breakdown at 32.14 s, second drop at 53.96 s.
+     Every scene starts on a beat; B(k) is the time of beat k.
+     The SwiftDL windows are the app's real UI (app/dist in its ?video mode). */
+  :root { --bg: #f4f5f7; --ink: #0d0e12; --muted: #6b6f78; --faint: #a9acb4; --accent: #2f6bff; --accent2: #7a5cff; color-scheme: light; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); font-family: Inter, system-ui, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+  .abs { position: absolute; }
+  .layer { position: absolute; inset: 0; visibility: hidden; }
+
+  /* backdrop: near black, two slow glows, fine grain */
+  #bg { position: absolute; inset: 0; overflow: hidden; }
+  .glow { position: absolute; width: 1400px; height: 1400px; border-radius: 50%; filter: blur(120px); opacity: 0; }
+  #g1 { background: radial-gradient(circle, rgba(79,140,255,.30), transparent 62%); }
+  #g2 { background: radial-gradient(circle, rgba(150,120,255,.24), transparent 62%); }
+  .grain { position: absolute; inset: 0; opacity: .14; mix-blend-mode: soft-light; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='260' height='260' filter='url(%23n)'/></svg>"); }
+  .vignette { position: absolute; inset: 0; background: radial-gradient(ellipse 80% 75% at 50% 45%, rgba(255,255,255,.55) 0%, transparent 60%, rgba(20,24,40,.06) 100%); }
+  #flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+
+  /* type */
+  .center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  .h1 { font-size: 112px; font-weight: 650; letter-spacing: -.055em; line-height: 1.02; }
+  .h2 { font-size: 64px; font-weight: 600; letter-spacing: -.04em; line-height: 1.1; }
+  .sub { font-size: 34px; font-weight: 500; letter-spacing: -.02em; color: var(--muted); margin-top: 26px; }
+  .mega { font-size: 230px; font-weight: 700; letter-spacing: -.065em; line-height: .95; }
+  .dim { color: var(--muted); }
+  .grad { background: linear-gradient(100deg, #0d0e12 20%, #2f6bff 60%, #7a5cff 90%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+  /* opening: one connection, then many */
+  #rows { position: absolute; left: 410px; top: 0; width: 1100px; height: 1080px; }
+  .row { position: absolute; left: 0; width: 1100px; height: 6px; margin-top: -3px; border-radius: 3px; background: rgba(13,14,18,.07); overflow: hidden; }
+  .row i { display: block; height: 100%; width: 0; border-radius: 3px; background: linear-gradient(90deg, #2f6bff, #7aa2ff); box-shadow: 0 0 14px rgba(47,107,255,.45); }
+  #slow { position: absolute; left: 0; right: 0; top: 650px; text-align: center; font: 500 26px/1 "JetBrains Mono", monospace; color: var(--faint); }
+
+  /* the mark, built bar by bar */
+  #markWrap { position: absolute; left: 50%; top: 50%; width: 300px; height: 300px; margin: -150px 0 0 -150px; }
+  #mark { width: 100%; height: 100%; overflow: visible; }
+  #mark rect { transform-box: fill-box; transform-origin: 50% 0; }
+  #brand { position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+
+  /* connections: a big bar split into parts */
+  #segbar { position: absolute; left: 260px; top: 640px; width: 1400px; height: 30px; border-radius: 15px; background: rgba(13,14,18,.06); overflow: hidden; }
+  .seg { position: absolute; top: 0; height: 100%; }
+  .seg i { position: absolute; left: 0; top: 0; height: 100%; background: linear-gradient(90deg, #2f6bff, #7aa2ff); }
+  .seg::after { content: ""; position: absolute; right: 0; top: 0; width: 2px; height: 100%; background: var(--bg); }
+  #count { font-variant-numeric: tabular-nums; }
+
+  /* the real UI */
+  iframe { border: 0; background: transparent; }
+  #cam { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; }
+  .dlw { width: 552px; height: 760px; transform-origin: 50% 30%; }
+  .appw { width: 1320px; height: 820px; border-radius: 12px; overflow: hidden; box-shadow: 0 0 0 .5px rgba(0,0,0,.25), 0 30px 90px -20px rgba(20,24,40,.35); }
+
+  /* Chrome (light), for the browser scene */
+  .chrome { left: 240px; top: 70px; width: 1440px; height: 944px; border-radius: 12px; overflow: hidden; background: #fff;
+    box-shadow: 0 0 0 .5px rgba(0,0,0,.25), 0 30px 90px -20px rgba(20,24,40,.35); }
+  .strip { height: 42px; background: #e3e7ed; position: relative; display: flex; align-items: flex-end; padding-left: 84px; }
+  .lights { position: absolute; left: 16px; top: 15px; display: flex; gap: 8px; }
+  .lights i { width: 12px; height: 12px; border-radius: 50%; }
+  .tab { position: relative; height: 34px; width: 300px; padding: 0 12px; display: flex; align-items: center; gap: 9px; font: 12.5px/1 Inter, system-ui; color: #1f1f1f; background: #fff; border-radius: 9px 9px 0 0; }
+  .tab img { width: 16px; height: 16px; flex: none; }
+  .tab span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar { height: 42px; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: #fff; }
+  .omni { flex: 1; height: 34px; border-radius: 17px; background: #edf0f4; display: flex; align-items: center; padding: 0 16px; font: 14.5px/1 Inter, system-ui; color: #1f1f1f; }
+  .omni .path { color: #5f6368; }
+  .extico { width: 32px; height: 32px; display: grid; place-items: center; }
+  .viewport { position: absolute; left: 0; top: 84px; width: 1440px; height: 860px; overflow: hidden; background: #fff; }
+  .viewport img { position: absolute; inset: 0; width: 1440px; height: 860px; }
+  .vbtn { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px 0 8px; border-radius: 9px; background: rgba(20,21,26,.86); color: #fff;
+    font: 600 12.5px/1 "Segoe UI Variable Text", "Segoe UI", system-ui; box-shadow: 0 0 0 1px rgba(255,255,255,.12), 0 6px 20px rgba(0,0,0,.35); }
+  .cursor { left: 0; top: 0; width: 26px; height: 38px; transform-origin: 2px 2px; filter: drop-shadow(0 1.5px 2.5px rgba(0,0,0,.5)); }
+  .ring { width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; background: rgba(0,0,0,.12); }
+  .caption { left: 50%; bottom: 56px; padding: 18px 34px; border-radius: 999px; background: rgba(255,255,255,.82); backdrop-filter: blur(24px) saturate(1.4);
+    box-shadow: 0 0 0 .5px rgba(0,0,0,.12), 0 16px 44px -12px rgba(20,24,50,.3); font-size: 36px; font-weight: 600; letter-spacing: -.025em; white-space: nowrap; }
+
+  /* race */
+  .lane { width: 1240px; display: grid; grid-template-columns: 300px 1fr 260px; align-items: center; gap: 36px; margin: 24px 0; text-align: left; }
+  .lane b { display: block; font-size: 34px; font-weight: 600; letter-spacing: -.02em; }
+  .lane span { display: block; font-size: 22px; color: var(--muted); margin-top: 4px; }
+  .track { height: 16px; border-radius: 8px; background: rgba(13,14,18,.07); overflow: hidden; }
+  .track i { display: block; height: 100%; border-radius: 8px; }
+  .time { font-size: 44px; font-weight: 650; letter-spacing: -.03em; text-align: right; font-variant-numeric: tabular-nums; }
+
+  .url { font: 500 34px "JetBrains Mono", monospace; color: #3c3d45; margin-top: 54px; }
+  .os { display: flex; gap: 54px; }
+</style>
+</head>
+<body>
+<div id="bg"><div class="glow" id="g1"></div><div class="glow" id="g2"></div><div class="grain"></div><div class="vignette"></div></div>
+
+<!-- 1. one connection, then many -->
+<div class="layer" id="L_open">
+  <div id="rows"></div>
+  <div id="slow">1 connection · 1.8 MB/s · 56 minutes left</div>
+  <div class="center" style="justify-content:flex-start;padding-top:250px"><div class="h2" id="o1"></div></div>
+</div>
+
+<!-- 2. the mark and the name -->
+<div class="layer" id="L_brand">
+  <div id="markWrap">
+    <svg id="mark" viewBox="0 0 32 32">
+      <defs><linearGradient id="mg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2e3036"/><stop offset="1" stop-color="#0d0e12"/></linearGradient></defs>
+      <rect id="b1" x="4.5" y="3" width="4.4" height="12" rx="2.2" fill="url(#mg)"/>
+      <rect id="b2" x="10.9" y="3" width="4.4" height="17" rx="2.2" fill="url(#mg)"/>
+      <rect id="b3" x="16.7" y="3" width="4.4" height="17" rx="2.2" fill="url(#mg)"/>
+      <rect id="b4" x="23.1" y="3" width="4.4" height="12" rx="2.2" fill="url(#mg)"/>
+      <path id="chev" d="M6 21.5 16 28l10-6.5" fill="none" stroke="url(#mg)" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" pathLength="100" stroke-dasharray="100 100"/>
+    </svg>
+  </div>
+  <div id="brand"><div class="mega" id="bn" style="margin-top:390px">SwiftDL</div><div class="sub" id="bt">Download everything. Faster.</div></div>
+</div>
+
+<!-- 3. connections -->
+<div class="layer" id="L_conn">
+  <div class="center" style="justify-content:flex-start;padding-top:250px">
+    <div class="mega"><span id="count">1</span></div>
+    <div class="h2 dim" id="cl" style="margin-top:22px">connection</div>
+  </div>
+  <div id="segbar"></div>
+</div>
+
+<!-- 4. headline text, used by several scenes -->
+<div class="layer" id="L_text"><div class="center"><div class="h1" id="tH"></div><div class="sub" id="tS"></div></div></div>
+
+<!-- 5. the real UI -->
+<div class="layer" id="L_ui">
+  <div id="cam">
+    <iframe class="abs appw" id="appw" src="../app/dist/index.html?video" style="left:300px;top:130px"></iframe>
+    <div class="chrome abs" id="chrome">
+      <div class="strip"><div class="lights"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
+        <div class="tab"><img src="out/pages/youtube-icon.png" alt=""><span>Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film - YouTube</span></div></div>
+      <div class="bar"><div class="omni">youtube.com<span class="path">/watch?v=aqz-KE-bpKQ</span></div>
+        <div class="extico"><svg width="20" height="20" viewBox="0 0 32 32" fill="#202124"><rect x="4.5" y="3" width="4.4" height="12" rx="2.2"/><rect x="10.9" y="3" width="4.4" height="17" rx="2.2"/><rect x="16.7" y="3" width="4.4" height="17" rx="2.2"/><rect x="23.1" y="3" width="4.4" height="12" rx="2.2"/><path d="M6 21.5 16 28l10-6.5" fill="none" stroke="#202124" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+      <div class="viewport"><img src="out/pages/youtube.png" alt="">
+        <div class="vbtn abs" id="vbtn" style="left:852px;top:82px;opacity:0"><svg width="16" height="16" viewBox="0 0 32 32" fill="#fff"><rect x="4.5" y="3" width="4.4" height="12" rx="2.2"/><rect x="10.9" y="3" width="4.4" height="17" rx="2.2"/><rect x="16.7" y="3" width="4.4" height="17" rx="2.2"/><rect x="23.1" y="3" width="4.4" height="12" rx="2.2"/><path d="M6 21.5 16 28l10-6.5" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Download video</div>
+      </div>
+    </div>
+    <iframe class="abs dlw" id="win1" src="../app/dist/download.html?confirm=1&video" style="left:684px;top:150px"></iframe>
+    <iframe class="abs dlw" id="win2" src="../app/dist/download.html?confirm=2&video&yt" style="left:684px;top:230px"></iframe>
+    <svg class="cursor abs" id="cursor" viewBox="0 0 26 38"><path d="M2 2v26.5l6.3-6.1 4.4 10.1 4.3-1.9-4.3-9.9h8.8z" fill="#000" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>
+    <div class="ring abs" id="ring"></div>
+  </div>
+  <div class="caption abs" id="cap"></div>
+</div>
+
+<!-- 6. the race -->
+<div class="layer" id="L_race"><div class="center">
+  <div class="h1" style="margin-bottom:24px">Same file. Same internet.</div>
+  <div class="sub" style="margin:0 0 64px">A 5.9 GB download</div>
+  <div class="lane"><div><b>Your browser</b><span>1 connection</span></div><div class="track"><i id="raceA" style="background:#a9acb4"></i></div><div class="time dim" id="timeA"></div></div>
+  <div class="lane"><div><b>SwiftDL</b><span>8 connections</span></div><div class="track"><i id="raceB" style="background:linear-gradient(90deg,#2f6bff,#7aa2ff)"></i></div><div class="time" id="timeB"></div></div>
+</div></div>
+
+<!-- 7. the end -->
+<div class="layer" id="L_end"><div class="center">
+  <img src="../site/assets/logo.svg" alt="" id="eI" style="width:170px;height:170px;margin-bottom:44px;filter:drop-shadow(0 28px 44px rgba(20,24,50,.28))">
+  <div class="mega" id="eN" style="font-size:190px">SwiftDL</div>
+  <div class="sub" id="eL">Free and open source for Windows, macOS and Linux.</div>
+  <div class="url" id="eU">swiftdl.harshhh.me</div>
+</div></div>
+
+<div id="flash"></div>
+
+<script>
+window.DURATION = 60.4;
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const expo = (x) => (x >= 1 ? 1 : 1 - Math.pow(2, -10 * x));
+const cubic = (x) => 1 - Math.pow(1 - x, 3);
+const inOut = (x) => (x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const smooth = (x) => x * x * (3 - 2 * x);
+const lerp = (a, b, x) => a + (b - a) * x;
+const css = (el, o) => Object.assign(el.style, o);
+
+// The beat grid: 93.5 BPM, first beat at 0.055 s.
+const BEAT = 60 / 93.5;
+const B = (k) => 0.055 + k * BEAT;
+
+function layer(id, a, b, fadeIn = .25, fadeOut = .2) {
+  const op = cubic(prog(window.__t, a, a + fadeIn)) * (1 - cubic(prog(window.__t, b - fadeOut, b)));
+  css($(id), { opacity: op, visibility: op > .001 ? "visible" : "hidden" });
+  return op;
+}
+// A line of type that arrives with a blur and leaves upward.
+function show(el, t, a, b, { y = 30, blur = 16, inDur = .55, outDur = .3, scale = 0, x = "" } = {}) {
+  const i = expo(prog(t, a, a + inDur)), o = cubic(prog(t, b - outDur, b)), op = i * (1 - o);
+  css(el, { opacity: op, visibility: op > .001 ? "visible" : "hidden", filter: op > .001 && op < .999 ? `blur(${(1 - i) * blur + o * blur * .6}px)` : "none",
+    transform: `${x} translateY(${(1 - i) * y - o * y * .5}px) scale(${1 + scale * (1 - i) - o * .02})` });
+}
+// A word that hits on the beat: in at once, a little too big, then settles.
+function slam(el, t, a, b) {
+  const i = prog(t, a, a + .32), o = cubic(prog(t, b - .05, b)), op = (i > 0 ? 1 : 0) * (1 - o);
+  css(el, { opacity: op, visibility: op > .001 ? "visible" : "hidden", filter: i < 1 ? `blur(${(1 - cubic(i)) * 10}px)` : "none",
+    transform: `scale(${lerp(1.12, 1, expo(i))})` });
+}
+function keys(list, t) {
+  if (t <= list[0][0]) return list[0].slice(1);
+  for (let i = 1; i < list.length; i++) if (t <= list[i][0]) {
+    const [a, b] = [list[i - 1], list[i]], k = inOut(prog(t, a[0], b[0]));
+    return a.slice(1).map((v, j) => lerp(v, b[j + 1], k));
+  }
+  return list.at(-1).slice(1);
+}
+
+// ---------- real UI ----------
+const W1 = $("win1"), W2 = $("win2"), APP = $("appw");
+const doc = (f) => f.contentDocument, win = (f) => f.contentWindow;
+function inFrame(frame, sel) {
+  const el = doc(frame)?.querySelector(sel);
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  return [frame.offsetLeft + r.left + r.width / 2, frame.offsetTop + r.top + r.height / 2];
+}
+const loaded = (f) => new Promise((r) => (f.contentDocument?.readyState === "complete" ? r() : f.addEventListener("load", r, { once: true })));
+
+// opening rows
+const ROWS = 16;
+for (let i = 0; i < ROWS; i++) { const r = document.createElement("div"); r.className = "row"; r.innerHTML = "<i></i>"; $("rows").appendChild(r); }
+// the split bar: 32 parts
+const PARTS = 32;
+for (let i = 0; i < PARTS; i++) { const s = document.createElement("div"); s.className = "seg"; s.innerHTML = "<i></i>"; $("segbar").appendChild(s); }
+
+window.ready = (async () => {
+  await document.fonts.ready;
+  await Promise.all([W1, W2, APP].map(loaded));
+  await Promise.all([...document.images].map((i) => i.decode().catch(() => {})));
+  await new Promise((r) => setTimeout(r, 500));
+})();
+
+// The engine's split, precomputed (a finished part takes half of the biggest one left).
+const SIM = (() => {
+  let seed = 11; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  let segs = Array.from({ length: 8 }, (_, i) => ({ s: i / 8, p: i / 8, e: (i + 1) / 8, r: .6 + rnd() * .8 }));
+  const out = [];
+  for (let n = 0; n < 5000; n++) {
+    const done = segs.reduce((a, x) => a + (x.p - x.s), 0);
+    out.push({ done, segs: segs.map((x) => [x.s, x.p, x.e]).sort((a, b) => a[0] - b[0]) });
+    if (done >= .9999) break;
+    for (const x of segs) if (x.p < x.e) x.p = Math.min(x.e, x.p + .0004 * x.r);
+    const busy = segs.filter((x) => x.p < x.e);
+    if (busy.length < 8) {
+      const big = busy.sort((a, b) => (b.e - b.p) - (a.e - a.p))[0];
+      if (big && big.e - big.p > .01) { const m = big.p + (big.e - big.p) / 2; segs.push({ s: m, p: m, e: big.e, r: .6 + rnd() * .8 }); big.e = m; }
+    }
+  }
+  return out;
+})();
+const simAt = (frac) => { let lo = 0, hi = SIM.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (SIM[m].done < frac) lo = m + 1; else hi = m; } return SIM[lo]; };
+
+// ---------- the timeline ----------
+// 0      - B20  opening: one connection crawls, then it splits and races (the build)
+// B20    - B24  DROP: the mark assembles, SwiftDL
+// B24    - B28  1, 8, 16, 32 connections
+// B28    - B34  the real progress window
+// B34    - B38  resumes
+// B38    - B44  one feature per beat
+// B44    - B48  the main window
+// B48    - B50  Windows. macOS. Linux.
+// B50    - B62  breakdown: the browser and YouTube
+// B62    - B70  the race
+// B70    - B78  free, open source, no account...
+// B78    - B84  build: the mark pumps on every beat
+// B84    -      SECOND DROP: the end card
+
+const CURSOR = [
+  [B(50), 1500, 900], [B(52.6), 240 + 852 + 60, 70 + 84 + 97], [B(53.4), 240 + 852 + 60, 70 + 84 + 97],
+  [B(55.0), W2, "#c-start"], [B(61), W2, "#c-start"],
+];
+const ACTIONS = [
+  [B(26.5), () => doc(W1).querySelector("#c-start").click()],
+  [B(27.2), () => doc(W1).querySelector("[data-a=details]")?.click()],
+  [B(53.0), () => {}],
+  [B(56.0), () => doc(W2).querySelector("#c-start").click()],
+];
+const CLICKS = [B(53.0), B(56.0)];
+const CAPTIONS = [
+  [B(29), B(33.6), "Every connection, working at once."],
+  [B(50.8), B(54.4), "Right inside your browser."],
+  [B(54.8), B(61.6), "Pick a quality. SwiftDL does the rest."],
+];
+// [beat, text, sub] for the headline layer
+const TEXT = [
+  [34, 38, "Picks up where it left off.", "Crash, close the lid, lose the Wi-Fi."],
+  [38, 39, "4K and HDR", "YouTube and most video sites"],
+  [39, 40, "Playlists", "Every video, or just the audio"],
+  [40, 41, "Torrents", "Magnet links and .torrent files"],
+  [41, 42, "Mirrors", "One file, many servers at once"],
+  [42, 43, "Scheduler", "Start tonight, shut down when done"],
+  [43, 44, "Remote", "Control it from your phone"],
+  [70, 71.5, "Free.", ""],
+  [71.5, 73, "Open source.", ""],
+  [73, 74, "No account.", ""],
+  [74, 75, "No ads.", ""],
+  [75, 76, "No tracking.", ""],
+  [76, 78, "Built in Rust.", "Small, fast, and safe by design."],
+];
+const OPEN = [
+  [1.5, B(6.6), "For twenty years,"],
+  [B(7), B(12.6), "downloads have worked the same way."],
+];
+
+const point = (w) => (w.length === 3 && typeof w[2] === "string" ? inFrame(w[1], w[2]) || [960, 540] : [w[1], w[2]]);
+function cursorAt(t) {
+  if (t <= CURSOR[0][0]) return point(CURSOR[0]);
+  for (let i = 1; i < CURSOR.length; i++) if (t <= CURSOR[i][0]) {
+    const a = point(CURSOR[i - 1]), b = point(CURSOR[i]), k = inOut(prog(t, CURSOR[i - 1][0], CURSOR[i][0]));
+    const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1, arc = Math.sin(k * Math.PI) * Math.min(50, len * .1);
+    return [lerp(a[0], b[0], k) - (dy / len) * arc, lerp(a[1], b[1], k) + (dx / len) * arc];
+  }
+  return point(CURSOR.at(-1));
+}
+
+let id1 = null, id2 = null, lastT = -1, done = 0, appTick = 0;
+const GB = 1024 ** 3, MB = 1024 ** 2;
+const mins = (s) => `${Math.floor(s / 60)} min ${String(Math.floor(s % 60)).padStart(2, "0")} s`;
+
+function feed(t) {
+  if (id1 != null) {
+    const S = 5.9 * GB, complete = t >= B(33.2);
+    const frac = complete ? 1 : lerp(.04, 1, inOut(prog(t, B(27.5), B(33.2))));
+    const ramp = inOut(prog(t, B(27.5), B(29)));
+    const speed = complete ? 0 : (1.4 + 27.6 * ramp + Math.sin(t * 5.3) * .6 * ramp) * MB;
+    const f = simAt(frac);
+    win(W1).__video.set(id1, complete
+      ? { status: "completed", downloaded: S, size: S, speed: 0, connections: 0, completedAt: Date.now(), segments: [] }
+      : { status: "downloading", size: S, downloaded: Math.round(frac * S), speed, connections: f.segs.filter(([, p, e]) => p < e).length,
+          segments: f.segs.map(([s, p, e]) => [Math.round(s * S), Math.round(p * S), Math.round(e * S)]) });
+  }
+  if (id2 != null) {
+    const S = 412 * MB, merging = t >= B(60.2) && t < B(61), complete = t >= B(61);
+    const f = merging || complete ? 1 : cubic(prog(t, B(56.3), B(60.2)));
+    win(W2).__video.set(id2, {
+      format: "bv*[height=2160]+ba/b[height=2160]/bv*[height<=2160]+ba/b", size: S, downloaded: Math.round(f * S), connections: merging || complete ? 0 : 16,
+      speed: merging || complete ? 0 : (41.8 + Math.sin(t * 4.7) * 2.4) * MB, note: merging ? "Joining video and audio" : null,
+      status: complete ? "completed" : "downloading", completedAt: complete ? Date.now() : null,
+    });
+  }
+}
+
+function frame(t) {
+  window.__t = t;
+  // backdrop glows breathe, and pump on the beat during the drops
+  const drop = (t >= B(20) && t < B(50)) || t >= B(84);
+  const beatK = ((t - 0.055) / BEAT) % 1, kick = drop ? Math.pow(1 - beatK, 6) : 0;
+  const base = t < B(13) ? .15 * prog(t, 0, 4) : t < B(20) ? lerp(.2, .9, prog(t, B(13), B(20))) : t >= B(84) ? .7 : t >= B(78) ? lerp(.35, 1, prog(t, B(78), B(84))) : drop ? .55 : .32;
+  css($("g1"), { opacity: base * (0.8 + kick * .5), transform: `translate(${-200 + Math.sin(t * .23) * 160}px, ${-300 + Math.cos(t * .19) * 120}px)` });
+  css($("g2"), { opacity: base * (0.7 + kick * .4), transform: `translate(${900 + Math.cos(t * .21) * 180}px, ${200 + Math.sin(t * .17) * 140}px)` });
+  // white flashes on the two drops and the big hit
+  const fl = Math.max(1 - cubic(prog(t, B(20), B(20) + .5)) * (t >= B(20) ? 1 : 0) * 1, 0);
+  const flash = (t >= B(20) && t < B(20) + .5 ? (1 - cubic(prog(t, B(20), B(20) + .5))) * .85 : 0)
+    + (t >= B(48) && t < B(48) + .35 ? (1 - cubic(prog(t, B(48), B(48) + .35))) * .35 : 0)
+    + (t >= B(84) && t < B(84) + .5 ? (1 - cubic(prog(t, B(84), B(84) + .5))) * .85 : 0)
+    + (t >= B(19.5) && t < B(20) ? 0 : 0);
+  $("flash").style.opacity = flash; void fl;
+
+  // 1. the opening
+  const oOp = layer("L_open", 0.2, B(20) - .05, 1.2, .25);
+  if (oOp > 0) {
+    const rows = [...$("rows").children];
+    // how many rows: 1 until B13, then 2, 4, 8, 16 on the beat
+    const n = t < B(13) ? 1 : t < B(14) ? 2 : t < B(15) ? 4 : t < B(16) ? 8 : 16;
+    const gap = 30;
+    rows.forEach((r, i) => {
+      const visible = i < n;
+      const pos = 600 + (i - (n - 1) / 2) * gap;
+      const born = i === 0 ? 1.0 : B(i < 2 ? 13 : i < 4 ? 14 : i < 8 ? 15 : 16);
+      const ap = expo(prog(t, born, born + .4));
+      css(r, { top: `${pos}px`, opacity: visible ? ap : 0, transform: `scaleX(${lerp(.6, 1, ap)})` });
+      // fill: the lone row crawls; once split, each row races (and the race accelerates)
+      const crawl = 0.02 + 0.03 * prog(t, 1, B(13));
+      const race = i === 0 ? crawl : 0;
+      const sprint = t < B(13) ? race : clamp(race + Math.pow(prog(t, born, B(19.6)), 1.6) * (0.75 + ((i * 37) % 23) / 92));
+      r.firstChild.style.width = `${(i === 0 && t < B(13) ? crawl : sprint) * 100}%`;
+    });
+    // the riser: push in and a little shake on the last beats
+    const push = lerp(1, 1.18, inOut(prog(t, B(16), B(19.8))));
+    const shake = t > B(18) && t < B(20) ? Math.sin(t * 90) * 2.5 * prog(t, B(18), B(20)) : 0;
+    css($("rows"), { transform: `translate(${shake}px, 0) scale(${push})`, transformOrigin: "550px 540px" });
+    css($("slow"), { opacity: (1 - cubic(prog(t, B(12.5), B(13)))) * expo(prog(t, 2, 3)) });
+    const line = OPEN.find(([a, b]) => t >= a && t < b);
+    if (line) { $("o1").textContent = line[2]; show($("o1"), t, line[0], line[1], { y: 20 }); } else css($("o1"), { opacity: 0 });
+  }
+
+  // 2. the mark and the name (first drop)
+  const bOp = layer("L_brand", B(20) - .02, B(24), .01, .18);
+  if (bOp > 0) {
+    ["b1", "b2", "b3", "b4"].forEach((id, i) => {
+      const a = B(20) + i * .05, k = expo(prog(t, a, a + .35));
+      css($(id), { transform: `scaleY(${k})`, opacity: k > 0 ? 1 : 0 });
+    });
+    const ck = expo(prog(t, B(20) + .2, B(20) + .6));
+    $("chev").setAttribute("stroke-dasharray", `${ck * 100} 100`);
+    const lift = inOut(prog(t, B(21), B(21.8)));
+    css($("markWrap"), { transform: `translateY(${-160 * lift}px) scale(${lerp(1.25, .62, lift) * (1 + Math.pow(1 - (((t - 0.055) / BEAT) % 1), 8) * .025)})` });
+    show($("bn"), t, B(21.2), 99, { y: 40, blur: 20, scale: .04 });
+    show($("bt"), t, B(22.2), 99, { y: 18 });
+  }
+
+  // 3. connections: 1, 8, 16, 32
+  const cOp = layer("L_conn", B(24), B(28), .05, .15);
+  if (cOp > 0) {
+    const steps = [[24, 1], [25, 8], [26, 16], [27, 32]];
+    const [beat, n] = steps.filter(([b]) => t >= B(b)).at(-1) || steps[0];
+    $("count").textContent = n;
+    $("cl").textContent = n === 1 ? "connection" : "connections, one file";
+    slam($("count").parentElement, t, B(beat), B(28) + 1);
+    const segs = [...$("segbar").children];
+    const fill = prog(t, B(24), B(28));
+    segs.forEach((s, i) => {
+      const w = 1400 / n;
+      css(s, { left: `${i * w}px`, width: `${w}px`, display: i < n ? "block" : "none" });
+      const r = .55 + ((i * 53) % 31) / 60;
+      s.firstChild.style.width = `${clamp(fill * (n / 8) * r * 1.4 + (n === 1 ? fill * .05 : 0)) * 100}%`;
+    });
+  }
+
+  // 4. headlines
+  const cur = TEXT.find(([a, b]) => t >= B(a) && t < B(b));
+  const tOp = layer("L_text", B(34), B(78), .01, .01);
+  if (cur && tOp > 0) {
+    $("tH").textContent = cur[2]; $("tS").textContent = cur[3];
+    const short = cur[1] - cur[0] <= 1.5;
+    $("tH").className = short && cur[0] < 70 ? "mega" : "h1";
+    if (short) { slam($("tH"), t, B(cur[0]), B(cur[1])); show($("tS"), t, B(cur[0]) + .06, B(cur[1]), { y: 10, inDur: .3, outDur: .1 }); }
+    else { show($("tH"), t, B(cur[0]), B(cur[1]), { y: 30 }); show($("tS"), t, B(cur[0]) + .3, B(cur[1]), { y: 14 }); }
+    // the resume scene draws a bar that breaks and carries on
+  } else { css($("tH"), { opacity: 0 }); css($("tS"), { opacity: 0 }); }
+  const resume = t >= B(34) && t < B(38);
+  css($("segbar"), resume ? { visibility: "visible" } : {});
+  if (resume) {
+    const sb = $("segbar"); sb.parentElement !== $("L_text") && $("L_text").appendChild(sb);
+    const segs = [...sb.children];
+    const lost = t >= B(35.5) && t < B(36.5);
+    const frac = t < B(35.5) ? lerp(.35, .62, prog(t, B(34), B(35.5))) : t < B(36.5) ? .62 : lerp(.62, 1, cubic(prog(t, B(36.5), B(37.6))));
+    segs.forEach((s, i) => {
+      css(s, { left: `${i * 1400 / 8}px`, width: `${1400 / 8}px`, display: i < 8 ? "block" : "none" });
+      s.firstChild.style.width = `${clamp(frac * 1.02 + ((i * 7) % 5 - 2) * .02) * 100}%`;
+      s.firstChild.style.background = lost ? "#b4b7bf" : "";
+    });
+    css(sb, { top: "720px", opacity: expo(prog(t, B(34), B(34.5))) * (1 - cubic(prog(t, B(37.7), B(38)))) });
+  } else if ($("segbar").parentElement !== $("L_conn")) { $("L_conn").appendChild($("segbar")); css($("segbar"), { top: "640px", opacity: 1 }); }
+
+  // 5. the real UI
+  const uiOp = Math.max(layer("L_ui", B(28), B(62), .3, .3) * 0, 0);
+  const inA = t >= B(28) && t < B(34), inB = t >= B(44) && t < B(48), inC = t >= B(50) && t < B(62);
+  const uOp = inA ? cubic(prog(t, B(28), B(28) + .35)) * (1 - cubic(prog(t, B(33.7), B(34))))
+    : inB ? cubic(prog(t, B(44), B(44) + .35)) * (1 - cubic(prog(t, B(47.8), B(48))))
+    : inC ? cubic(prog(t, B(50), B(50) + .6)) * (1 - cubic(prog(t, B(61.5), B(62)))) : 0;
+  css($("L_ui"), { opacity: uOp, visibility: uOp > 0 ? "visible" : "hidden" });
+  void uiOp;
+  if (uOp > 0) {
+    css(W1, { opacity: inA ? 1 : 0, visibility: inA ? "visible" : "hidden", transform: inA ? `scale(${lerp(.92, 1, expo(prog(t, B(28), B(29))))})` : "" });
+    const aIn = expo(prog(t, B(44), B(45)));
+    css(APP, { opacity: inB ? 1 : 0, visibility: inB ? "visible" : "hidden",
+      transform: inB ? `perspective(2400px) rotateX(${lerp(14, 0, aIn)}deg) translateY(${lerp(80, 0, aIn)}px) scale(${lerp(.98, 1.1, inOut(prog(t, B(44), B(48))))})` : "" });
+    css($("chrome"), { opacity: inC ? 1 : 0, visibility: inC ? "visible" : "hidden", transform: inC ? `translateY(${lerp(60, 0, expo(prog(t, B(50), B(51))))}px)` : "" });
+    show($("vbtn"), t, B(51.6), B(62), { y: -6, blur: 4, inDur: .3 });
+    const w2 = inC && t >= B(53.3);
+    const w2k = expo(prog(t, B(53.3), B(53.3) + .45));
+    css(W2, { opacity: w2 ? w2k : 0, visibility: w2 ? "visible" : "hidden", transform: `scale(${lerp(.94, 1, w2k)})` });
+
+    // camera
+    const CAM = inA ? [[B(28), 960, 470, 1.08], [B(33.9), 960, 470, 1.2]]
+      : inB ? [[B(44), 960, 540, 1], [B(48), 960, 540, 1.04]]
+      : [[B(50), 960, 540, 1], [B(51.6), 960, 540, 1], [B(52.6), 1150, 300, 1.45], [B(53.4), 1150, 300, 1.45], [B(54.4), 960, 560, 1.3], [B(61.8), 960, 560, 1.4]];
+    let [cx, cy, s] = keys(CAM, t);
+    cx = clamp(cx, 960 / s, 1920 - 960 / s); cy = clamp(cy, 540 / s, 1080 - 540 / s);
+    $("cam").style.transform = `translate(${960 - cx * s}px, ${540 - cy * s}px) scale(${s})`;
+
+    // cursor and clicks (browser scene only)
+    const [mx, my] = cursorAt(t);
+    const cVis = inC ? expo(prog(t, B(51), B(51.5))) * (1 - cubic(prog(t, B(60.5), B(61)))) : 0;
+    const near = CLICKS.find((c) => t >= c - .06 && t < c + .45);
+    const down = near ? Math.sin(prog(t, near - .06, near + .14) * Math.PI) : 0;
+    css($("cursor"), { opacity: cVis, transform: `translate(${mx}px, ${my}px) scale(${1 - down * .12})` });
+    const rq = near ? prog(t, near, near + .45) : 1;
+    css($("ring"), { left: `${mx + 1}px`, top: `${my + 1}px`, opacity: near ? (1 - rq) * cVis : 0, transform: `scale(${.35 + cubic(rq) * .9})` });
+    const cap = CAPTIONS.find(([a, b]) => t >= a && t < b);
+    if (cap) { $("cap").textContent = cap[2]; show($("cap"), t, cap[0], cap[1], { y: 26, x: "translateX(-50%)" }); }
+    else css($("cap"), { opacity: 0, visibility: "hidden" });
+    if (inB) { $("cap").textContent = "Every download, in one place."; show($("cap"), t, B(44.6), B(48), { y: 26, x: "translateX(-50%)" }); }
+  }
+
+  // Windows. macOS. Linux. (the big hit)
+  if (t >= B(48) && t < B(50)) {
+    css($("L_text"), { opacity: 1 - cubic(prog(t, B(49.7), B(50))), visibility: "visible" });
+    $("tH").className = "h1"; $("tS").textContent = "";
+    $("tH").innerHTML = `<span class="os"><span id="os1">Windows.</span><span id="os2">macOS.</span><span id="os3">Linux.</span></span>`;
+    css($("tH"), { opacity: 1, visibility: "visible", filter: "none", transform: "none" });
+    ["os1", "os2", "os3"].forEach((id, i) => slam($(id), t, B(48) + i * BEAT / 2, B(51)));
+  }
+
+  // 6. the race
+  if (layer("L_race", B(62), B(70), .4, .3) > 0) {
+    const rk = prog(t, B(63), B(67.5)), sw = 211, br = 3356;
+    const elapsed = smooth(rk) * sw;
+    $("raceB").style.width = `${(elapsed / sw) * 100}%`;
+    $("raceA").style.width = `${(elapsed / br) * 100}%`;
+    $("timeB").textContent = rk >= 1 ? "3 min 31 s" : mins(elapsed);
+    $("timeA").textContent = rk >= 1 ? "56 min" : `${Math.round((br - elapsed) / 60)} min left`;
+  }
+
+  // the build before the second drop: the mark alone, pumping on every beat
+  if (t >= B(78) && t < B(84)) {
+    css($("L_brand"), { opacity: 1, visibility: "visible" });
+    const k = ((t - 0.055) / BEAT) % 1, pump = Math.pow(1 - k, 5);
+    ["b1", "b2", "b3", "b4"].forEach((id, i) => {
+      const a = B(78) + i * BEAT, on = expo(prog(t, a, a + .3));
+      css($(id), { transform: `scaleY(${on * (.75 + pump * .25)})`, opacity: on });
+    });
+    $("chev").setAttribute("stroke-dasharray", `${expo(prog(t, B(82), B(82.6))) * 100} 100`);
+    const push = lerp(.9, 1.35, inOut(prog(t, B(78), B(84))));
+    css($("markWrap"), { transform: `scale(${push * (1 + pump * .04)})` });
+    css($("bn"), { opacity: 0, visibility: "hidden" }); css($("bt"), { opacity: 0, visibility: "hidden" });
+    if (t > B(83.6)) css($("L_brand"), { opacity: 1 - prog(t, B(83.6), B(84)) });
+  }
+
+  // 7. the end card (second drop)
+  const eOp = layer("L_end", B(84), window.DURATION, .01, 1.4);
+  if (eOp > 0) {
+    show($("eI"), t, B(84), 99, { scale: .25, y: 0, blur: 24, inDur: .6 });
+    show($("eN"), t, B(85), 99, { y: 40, blur: 20, scale: .04 });
+    show($("eL"), t, B(86), 99, { y: 16 });
+    show($("eU"), t, B(87), 99, { y: 12 });
+  }
+}
+
+window.seek = async (t) => {
+  if (t < lastT) throw new Error("the film only plays forward");
+  for (let s = Math.max(lastT, 0); s <= t + 1e-9; s += 1 / 30) {
+    const step = Math.min(s, t);
+    while (done < ACTIONS.length && ACTIONS[done][0] <= step) {
+      ACTIONS[done][1]();
+      done++;
+      await new Promise((r) => setTimeout(r, 0));
+      if (id1 == null && win(W1).__video.last()?.filename?.startsWith("ubuntu")) id1 = win(W1).__video.last().id;
+      if (id2 == null && win(W2).__video.last()?.filename?.includes("Bunny")) id2 = win(W2).__video.last().id;
+    }
+    while (appTick < Math.floor(step * 2)) { appTick++; if (step > B(43)) win(APP).__video.step(); }
+    if (s >= t) break;
+  }
+  feed(t);
+  await new Promise((r) => setTimeout(r, 0));
+  frame(t);
+  lastT = t;
+};
+</script>
+</body>
+</html>

@@ -16,14 +16,15 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
 const value = (name, d) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : d; };
-const track = args.find((a) => !a.startsWith("--") && !args[args.indexOf(a) - 1]?.startsWith("--"));
+const track = args.find((a, i) => !a.startsWith("--") && !args[i - 1]?.startsWith("--"));
 if (!track || !existsSync(track)) {
   console.error("usage: node music.mjs <track.mp3> [--from seconds] [--volume 1]");
   process.exit(1);
 }
 const FFMPEG = process.env.FFMPEG || [join(process.env.APPDATA || "", "com.swiftdl.app/tools/ffmpeg/ffmpeg.exe")].find(existsSync) || "ffmpeg";
-const video = join(here, "out", "swiftdl-launch.mp4");
-const out = join(here, "out", "swiftdl-launch-music.mp4");
+const film = value("--film", "launch");
+const video = join(here, "out", `swiftdl-${film}.mp4`);
+const out = join(here, "out", `swiftdl-${film}-music.mp4`);
 
 const probe = spawnSync(FFMPEG, ["-i", video], { encoding: "utf8" }).stderr;
 const [, h, m, s] = /Duration: (\d+):(\d+):([\d.]+)/.exec(probe) || [];

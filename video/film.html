@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SwiftDL film</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=block" rel="stylesheet">
+<style>
+  /* Real material, framed like a screen recording: the pages are captures of
+     the real sites (capture.mjs), and the SwiftDL windows are the app's own UI
+     (app/ui) running in its preview mode, clicked and fed frame by frame.
+     Everything is laid out in 1920x1080 screen pixels; #cam zooms and pans. */
+  :root { --ink: #17171c; --muted: #6c6e78; color-scheme: light; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: #e8e9ed; font-family: Inter, system-ui, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+  .abs { position: absolute; }
+
+  /* backdrop: one neutral light grey, lit from the centre, fine grain */
+  .wall { position: absolute; inset: -80px; background: radial-gradient(ellipse 75% 70% at 50% 42%, #f8f8fa 0%, #ececef 55%, #e1e2e6 100%); overflow: hidden; }
+  .grain { position: absolute; inset: 0; opacity: .18; mix-blend-mode: soft-light; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='260' height='260' filter='url(%23n)'/></svg>"); }
+
+  #cam { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; }
+
+  /* Chrome (light, macOS) */
+  .chrome { left: 240px; top: 60px; width: 1440px; height: 944px; border-radius: 12px; overflow: hidden; background: #fff;
+    box-shadow: 0 0 0 .5px rgba(0,0,0,.28), 0 2px 6px rgba(0,0,0,.08), 0 30px 80px -10px rgba(20,24,40,.38); transform-origin: 50% 70%; }
+  .strip { height: 42px; background: #e3e7ed; position: relative; display: flex; align-items: flex-end; padding-left: 84px; }
+  .lights { position: absolute; left: 16px; top: 15px; display: flex; gap: 8px; }
+  .lights i { width: 12px; height: 12px; border-radius: 50%; box-shadow: inset 0 0 0 .5px rgba(0,0,0,.18); }
+  .tab { position: relative; height: 34px; width: 240px; padding: 0 12px; display: flex; align-items: center; gap: 9px; font: 12.5px/1 Inter, system-ui; color: #1f1f1f; }
+  .tab.on { background: #fff; border-radius: 9px 9px 0 0; }
+  .tab.on::before, .tab.on::after { content: ""; position: absolute; bottom: 0; width: 9px; height: 9px; }
+  .tab.on::before { left: -9px; background: radial-gradient(circle at 0 0, transparent 9px, #fff 9.5px); }
+  .tab.on::after { right: -9px; background: radial-gradient(circle at 100% 0, transparent 9px, #fff 9.5px); }
+  .tab img { width: 16px; height: 16px; border-radius: 3px; flex: none; }
+  .tab .tt { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; line-height: 1.3; }
+  .tab .x { flex: none; width: 16px; height: 16px; color: #5f6368; }
+  .tab.off { color: #474747; }
+  .tab.off + .sep { width: 1px; height: 18px; background: #b9bec7; align-self: center; }
+  .newtab { width: 28px; height: 28px; margin: 0 0 3px 6px; display: grid; place-items: center; color: #474747; }
+  .bar { height: 42px; display: flex; align-items: center; gap: 6px; padding: 0 8px; background: #fff; }
+  .ib { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; color: #474747; flex: none; }
+  .ib svg { width: 20px; height: 20px; fill: currentColor; }
+  .omni { flex: 1; height: 34px; margin: 0 6px; border-radius: 17px; background: #edf0f4; display: flex; align-items: center; gap: 10px; padding: 0 6px 0 12px; font: 14.5px/1 Inter, system-ui; color: #1f1f1f; }
+  .omni .tune { width: 26px; height: 26px; border-radius: 50%; background: #fff; display: grid; place-items: center; color: #474747; }
+  .omni .tune svg, .omni .star svg { width: 16px; height: 16px; fill: currentColor; }
+  .omni .path { color: #5f6368; }
+  .omni .star { margin-left: auto; width: 28px; height: 28px; display: grid; place-items: center; color: #474747; }
+  .extico { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; }
+  .avatar { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, #f6b38c, #e5869f); color: #fff; font: 600 12px/26px Inter; text-align: center; }
+  .viewport { position: absolute; left: 0; top: 84px; width: 1440px; height: 860px; overflow: hidden; background: #fff; }
+  .viewport img { position: absolute; inset: 0; width: 1440px; height: 860px; }
+
+  /* Chrome's own downloads: toolbar button with a progress ring, and the bubble */
+  .dlico { position: relative; }
+  .ib.dlico svg.pring { position: absolute; left: 2px; top: 2px; width: 28px; height: 28px; fill: none; transform: rotate(-90deg); }
+  .bubble { right: 92px; top: 80px; width: 452px; border-radius: 14px; background: #fff; box-shadow: 0 0 0 .5px rgba(0,0,0,.18), 0 8px 28px rgba(0,0,0,.18); padding: 8px 0; transform-origin: 85% 0; font-family: Inter, system-ui; }
+  .bub-row { display: flex; align-items: center; gap: 14px; padding: 10px 16px; }
+  .bub-ico { position: relative; width: 40px; height: 40px; flex: none; display: grid; place-items: center; }
+  .bub-ico svg.r { position: absolute; inset: 0; transform: rotate(-90deg); }
+  .bub-t { flex: 1; min-width: 0; }
+  .bub-t b { display: block; font-size: 13.5px; font-weight: 600; color: #1f1f1f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bub-t span { display: block; font-size: 12.5px; color: #5f6368; margin-top: 3px; }
+  .bub-foot { border-top: 1px solid #e3e3e3; margin-top: 6px; padding: 12px 16px 6px; font-size: 13px; color: #1f1f1f; display: flex; justify-content: space-between; }
+  .race { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .race h2 { font-size: 76px; font-weight: 650; letter-spacing: -.045em; color: #121318; margin-bottom: 70px; }
+  .lane { width: 1240px; display: grid; grid-template-columns: 300px 1fr 230px; align-items: center; gap: 36px; margin: 22px 0; }
+  .lane b { display: block; font-size: 32px; font-weight: 600; letter-spacing: -.02em; }
+  .lane span { display: block; font-size: 22px; color: var(--muted); margin-top: 4px; }
+  .lane .track { height: 18px; border-radius: 9px; background: rgba(15,15,25,.08); overflow: hidden; }
+  .lane .track i { display: block; height: 100%; border-radius: 9px; }
+  .lane .time { font-size: 40px; font-weight: 600; letter-spacing: -.03em; text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* the extension's "Download video" button (same look as content.js) */
+  .vbtn { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px 0 8px; border-radius: 9px; background: rgba(20,21,26,.86); color: #fff;
+    font: 600 12.5px/1 "Segoe UI Variable Text", "Segoe UI", system-ui; letter-spacing: -.005em; box-shadow: 0 0 0 1px rgba(255,255,255,.12), 0 6px 20px rgba(0,0,0,.35); backdrop-filter: blur(14px) saturate(1.5); }
+
+  /* SwiftDL's own windows */
+  iframe { border: 0; background: transparent; }
+  .dlw { width: 552px; height: 760px; transform-origin: 50% 25%; }
+  .appw { left: 300px; top: 130px; width: 1320px; height: 820px; border-radius: 10px; overflow: hidden; box-shadow: 0 0 0 .5px rgba(0,0,0,.3), 0 30px 80px -10px rgba(20,24,40,.4); }
+
+  /* cursor (macOS arrow) and click ring */
+  .cursor { left: 0; top: 0; width: 26px; height: 38px; transform-origin: 2px 2px; filter: drop-shadow(0 1.5px 2.5px rgba(0,0,0,.35)); }
+  .ring { width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; background: rgba(0,0,0,.12); }
+
+  /* titles and captions */
+  .card { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .card img { width: 160px; height: 160px; margin-bottom: 40px; filter: drop-shadow(0 28px 44px rgba(20,24,50,.28)); }
+  .big { font-size: 150px; font-weight: 650; letter-spacing: -.055em; line-height: 1; padding-bottom: .06em; color: #121318; }
+  .lede { font-size: 42px; font-weight: 500; letter-spacing: -.025em; color: var(--muted); margin-top: 20px; }
+  .caption { left: 50%; bottom: 60px; padding: 18px 34px; border-radius: 999px; background: rgba(255,255,255,.8); backdrop-filter: blur(24px) saturate(1.5);
+    box-shadow: 0 0 0 .5px rgba(0,0,0,.12), 0 16px 44px -12px rgba(20,24,50,.38); font-size: 38px; font-weight: 600; letter-spacing: -.025em; white-space: nowrap; }
+  .chip { left: 50%; top: 52px; padding: 11px 20px; border-radius: 999px; background: rgba(18,19,24,.85); backdrop-filter: blur(14px); color: #fff; font-size: 22px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+</style>
+</head>
+<body>
+<div class="wall" id="wall">
+  <div class="grain"></div>
+</div>
+
+<div id="cam">
+  <!-- the app's main window, for the last shot -->
+  <iframe class="abs appw" id="appw" src="../app/dist/index.html?video"></iframe>
+
+  <div class="chrome abs" id="chrome">
+    <div class="strip">
+      <div class="lights"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
+      <div class="tab on"><img id="favicon" src="out/pages/ubuntu-icon.png" alt=""><span class="tt" id="tabtitle">Download Ubuntu Desktop | Ubuntu</span>
+        <svg class="x" viewBox="0 0 24 24"><path fill="currentColor" d="M18.3 5.71 12 12.01l-6.3-6.3-1.41 1.41 6.3 6.3-6.3 6.29 1.41 1.42 6.3-6.3 6.29 6.3 1.42-1.42-6.3-6.29 6.3-6.3z" transform="scale(.75) translate(4 4)"/></svg></div>
+      <div class="tab off"><img src="out/pages/youtube-icon.png" alt="" id="tab2icon"><span class="tt">Home - YouTube</span></div><span class="sep"></span>
+      <div class="newtab"><svg width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></div>
+    </div>
+    <div class="bar">
+      <div class="ib"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></div>
+      <div class="ib" style="color:#b8bbbf"><svg viewBox="0 0 24 24"><path d="M4 13h12.17l-5.59 5.59L12 20l8-8-8-8-1.41 1.41L16.17 11H4v2z"/></svg></div>
+      <div class="ib"><svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg></div>
+      <div class="omni"><span class="tune"><svg viewBox="0 0 24 24"><path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/></svg></span>
+        <span id="url">ubuntu.com<span class="path">/download/desktop</span></span>
+        <span class="star"><svg viewBox="0 0 24 24"><path d="M22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.63-7.03L22 9.24zM12 15.4l-3.76 2.27 1-4.28-3.32-2.88 4.38-.38L12 6.1l1.71 4.04 4.38.38-3.32 2.88 1 4.28L12 15.4z"/></svg></span></div>
+      <div class="ib dlico" id="dlico" style="opacity:0"><svg viewBox="0 0 24 24"><path d="M12 16l-5-5 1.41-1.41L11 12.17V4h2v8.17l2.59-2.58L17 11l-5 5zm-6 4c-.55 0-1-.45-1-1v-3h2v2h10v-2h2v3c0 .55-.45 1-1 1H6z"/></svg>
+        <svg class="pring" viewBox="0 0 28 28"><circle cx="14" cy="14" r="12.5" fill="none" stroke="#dfe1e5" stroke-width="2"/><circle id="ringArc" cx="14" cy="14" r="12.5" fill="none" stroke="#0b57d0" stroke-width="2" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100"/></svg></div>
+      <div class="extico"><svg width="20" height="20" viewBox="0 0 32 32" fill="#202124"><rect x="4.5" y="3" width="4.4" height="12" rx="2.2"/><rect x="10.9" y="3" width="4.4" height="17" rx="2.2"/><rect x="16.7" y="3" width="4.4" height="17" rx="2.2"/><rect x="23.1" y="3" width="4.4" height="12" rx="2.2"/><path d="M6 21.5 16 28l10-6.5" fill="none" stroke="#202124" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="ib"><svg viewBox="0 0 24 24"><path d="M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5a2.5 2.5 0 0 0-5 0V5H4c-1.1 0-1.99.9-1.99 2v3.8H3.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7 1.49 0 2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5a2.5 2.5 0 0 0 0-5z"/></svg></div>
+      <div class="ib"><span class="avatar">H</span></div>
+      <div class="ib"><svg viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg></div>
+    </div>
+    <div class="viewport">
+      <img id="pg1" src="out/pages/ubuntu.png" alt="">
+      <img id="pg2" src="out/pages/youtube.png" alt="" style="opacity:0">
+      <div class="bubble abs" id="bubble" style="opacity:0">
+        <div class="bub-row">
+          <span class="bub-ico"><svg class="r" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="none" stroke="#dfe1e5" stroke-width="2.5"/><circle id="bubArc" cx="20" cy="20" r="18" fill="none" stroke="#0b57d0" stroke-width="2.5" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100"/></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#5f6368" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg></span>
+          <div class="bub-t"><b>ubuntu-26.04.1-desktop-amd64.iso</b><span id="bubMeta"></span></div>
+          <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#474747" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#474747" d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+        </div>
+        <div class="bub-foot"><span>Full download history</span><svg width="16" height="16" viewBox="0 0 24 24"><path fill="#474747" d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg></div>
+      </div>
+      <div class="vbtn abs" id="vbtn" style="left:852px;top:82px;opacity:0"><svg width="16" height="16" viewBox="0 0 32 32" fill="#fff"><rect x="4.5" y="3" width="4.4" height="12" rx="2.2"/><rect x="10.9" y="3" width="4.4" height="17" rx="2.2"/><rect x="16.7" y="3" width="4.4" height="17" rx="2.2"/><rect x="23.1" y="3" width="4.4" height="12" rx="2.2"/><path d="M6 21.5 16 28l10-6.5" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Download video<svg width="10" height="10" viewBox="0 0 24 24" style="opacity:.6;margin-left:2px"><path d="m6 9 6 6 6-6" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg></div>
+    </div>
+  </div>
+
+  <iframe class="abs dlw" id="win1" src="../app/dist/download.html?confirm=1&video" style="left:684px;top:286px"></iframe>
+  <iframe class="abs dlw" id="win2" src="../app/dist/download.html?confirm=2&video&yt" style="left:684px;top:250px"></iframe>
+
+  <svg class="cursor abs" id="cursor" viewBox="0 0 26 38"><path d="M2 2v26.5l6.3-6.1 4.4 10.1 4.3-1.9-4.3-9.9h8.8z" fill="#000" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>
+  <div class="ring abs" id="ring"></div>
+</div>
+
+<div class="chip abs" id="ff"><svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M3 6l9 6-9 6zM12 6l9 6-9 6z"/></svg>Three minutes later</div>
+<div class="caption abs" id="cap"></div>
+
+<div class="card" id="title"><img src="../site/assets/logo.svg" alt="" id="tI"><div class="big" id="tN">SwiftDL</div><div class="lede" id="tL">Every download, at full speed.</div></div>
+<div class="race" id="race">
+  <h2>Same file. Same internet.</h2>
+  <div class="lane"><div><b>Your browser</b><span>1 connection</span></div><div class="track"><i id="raceA" style="background:#a2a4ad"></i></div><div class="time" id="timeA" style="color:var(--muted)"></div></div>
+  <div class="lane"><div><b>SwiftDL</b><span>8 connections</span></div><div class="track"><i id="raceB" style="background:#007aff"></i></div><div class="time" id="timeB"></div></div>
+</div>
+<div class="card" id="end"><img src="../site/assets/logo.svg" alt="" id="eI"><div class="big" id="eN">SwiftDL</div><div class="lede" id="eL">Free and open source for Windows, macOS and Linux.</div>
+  <div id="eU" style="margin-top:46px;font:500 30px 'JetBrains Mono',monospace;color:#3c3d45">swiftdl.harshhh.me</div></div>
+
+<script>
+// The film is laid out in its own time ("old" seconds, as launch.html) and
+// played through WARP, which stretches each act onto the song: "Montagem
+// Ahora (Slowed)", 93.5 BPM. The title lands on the first drop (12.89 s),
+// the race on the big hit (30.86 s), the end card on the second drop (53.96 s).
+const BEAT = 60 / 93.5, BT = (k) => 0.055 + k * BEAT;
+const WARP = [[0, 0], [BT(20), 9.9], [BT(25), 13.9], [BT(47.5), 30.5], [BT(48), 31.5], [BT(55), 35.5], [BT(70), 45.7], [BT(84), 55.9], [BT(84) + 6.5, 62.4]];
+const warp = (t) => { for (let i = 1; i < WARP.length; i++) if (t <= WARP[i][0]) { const [a, b] = [WARP[i - 1], WARP[i]]; return b[1] - (b[1] - a[1]) * (b[0] - t) / (b[0] - a[0]); } return WARP.at(-1)[1]; };
+window.DURATION = WARP.at(-1)[0];
+const ROW = (id) => `.row[data-id="${id}"]`;
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const expo = (x) => (x >= 1 ? 1 : 1 - Math.pow(2, -10 * x));
+const cubic = (x) => 1 - Math.pow(1 - x, 3);
+const inOut = (x) => (x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const smooth = (x) => x * x * (3 - 2 * x);
+const lerp = (a, b, x) => a + (b - a) * x;
+const css = (el, o) => Object.assign(el.style, o);
+
+function show(el, t, a, b, { y = 24, blur = 12, inDur = .7, outDur = .45, scale = 0, x = "" } = {}) {
+  const i = expo(prog(t, a, a + inDur)), o = cubic(prog(t, b - outDur, b)), op = i * (1 - o);
+  css(el, { opacity: op, visibility: op > .001 ? "visible" : "hidden", filter: op > .001 && op < .999 ? `blur(${(1 - i) * blur + o * blur * .6}px)` : "none",
+    transform: `${x} translateY(${(1 - i) * y - o * y * .4}px) scale(${1 + scale * (1 - i)})` });
+}
+function pop(el, t, a, b) {
+  const i = expo(prog(t, a, a + .45)), o = cubic(prog(t, b - .3, b)), op = i * (1 - o);
+  css(el, { opacity: op, visibility: op > .001 ? "visible" : "hidden", transform: `scale(${lerp(.95, 1, i) - o * .03})` });
+}
+function keys(list, t) {
+  if (t <= list[0][0]) return list[0].slice(1);
+  for (let i = 1; i < list.length; i++) if (t <= list[i][0]) {
+    const [a, b] = [list[i - 1], list[i]], k = inOut(prog(t, a[0], b[0]));
+    return a.slice(1).map((v, j) => lerp(v, b[j + 1], k));
+  }
+  return list.at(-1).slice(1);
+}
+
+// ---------- the real UI in the frames ----------
+const W1 = $("win1"), W2 = $("win2"), APP = $("appw");
+const doc = (f) => f.contentDocument, win = (f) => f.contentWindow;
+// Centre of an element inside a frame, in screen (pre-camera) pixels.
+function inFrame(frame, sel) {
+  const el = doc(frame)?.querySelector(sel);
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  return [frame.offsetLeft + r.left + r.width / 2, frame.offsetTop + r.top + r.height / 2];
+}
+const loaded = (f) => new Promise((r) => (f.contentDocument?.readyState === "complete" ? r() : f.addEventListener("load", r, { once: true })));
+window.ready = (async () => {
+  await document.fonts.ready;
+  await Promise.all([W1, W2, APP].map(loaded));
+  await Promise.all([...document.images].map((i) => i.decode().catch(() => {})));
+  await new Promise((r) => setTimeout(r, 400)); // the frames' first render (probe answers, lists)
+  // The main window's sample list: the download we film has finished there.
+  win(APP).__video.set(1, { status: "completed", downloaded: 6.1 * 1024 ** 3, completedAt: Date.now() - 60000 });
+})();
+
+// The engine's split, precomputed: a part that finishes takes half of the
+// largest part left, exactly as SwiftDL does.
+const SIM = (() => {
+  let seed = 11; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  let segs = Array.from({ length: 8 }, (_, i) => ({ s: i / 8, p: i / 8, e: (i + 1) / 8, r: .6 + rnd() * .8 }));
+  const out = [];
+  for (let n = 0; n < 5000; n++) {
+    const done = segs.reduce((a, x) => a + (x.p - x.s), 0);
+    out.push({ done, segs: segs.map((x) => [x.s, x.p, x.e]).sort((a, b) => a[0] - b[0]) });
+    if (done >= .9999) break;
+    for (const x of segs) if (x.p < x.e) x.p = Math.min(x.e, x.p + .0004 * x.r);
+    const busy = segs.filter((x) => x.p < x.e);
+    if (busy.length < 8) {
+      const big = busy.sort((a, b) => (b.e - b.p) - (a.e - a.p))[0];
+      if (big && big.e - big.p > .01) { const m = big.p + (big.e - big.p) / 2; segs.push({ s: m, p: m, e: big.e, r: .6 + rnd() * .8 }); big.e = m; }
+    }
+  }
+  return out;
+})();
+const simAt = (frac) => { let lo = 0, hi = SIM.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (SIM[m].done < frac) lo = m + 1; else hi = m; } return SIM[lo]; };
+
+// ---------- the story ----------
+// 0-9.4      the problem: Chrome downloads Ubuntu on one connection, ~1 hour
+// 9.6-13.9   SwiftDL
+// 13.5-30.5  the same file with SwiftDL: eight connections, ~3.5 minutes
+// 30.5-35.5  the race, side by side
+// 35.5-45.7  YouTube
+// 45.7-58.4  the main window, then the end card
+const C = (t) => t + 9.3, E = (t) => t + 14.3; // the SwiftDL and YouTube acts
+const PAGE = [240, 144]; // where the page sits on screen
+const BTN = [PAGE[0] + 1105, PAGE[1] + 522]; // Ubuntu's Download button
+const CAM = [
+  [0, 960, 540, 1], [1.0, 960, 540, 1], [1.8, 1240, 600, 1.22], [2.7, 1394, 230, 1.75], [9.4, 1394, 236, 1.82], [10.0, 960, 540, 1],
+  [C(4.6), 960, 540, 1], [C(6.6), 1240, 610, 1.3], [C(7.9), 1200, 560, 1.3], [C(8.8), 960, 500, 1.6], [C(11.6), 960, 500, 1.6],
+  [C(12.8), 960, 560, 1.48], [C(17.4), 960, 560, 1.48], [C(19.9), 960, 520, 1.5], [C(21.2), 960, 540, 1], [E(21.2), 960, 540, 1],
+  [E(22.6), 760, 470, 1.22], [E(23.8), 1000, 330, 1.35], [E(25.0), 960, 470, 1.6], [E(30.6), 960, 470, 1.6], [E(31.8), 960, 540, 1], [E(37.4), 960, 540, 1.05],
+];
+// Cursor waypoints: [t, x, y] or [t, frame, selector].
+const CURSOR = [
+  [0.5, 1560, 900], [1.55, ...BTN], [C(4.9), 1500, 880], [C(6.9), ...BTN], [C(8.9), ...BTN], [C(10.05), W1, "#c-start"],
+  [C(11.1), W1, "#c-start"], [C(12.15), W1, "[data-a=details]"], [E(21.3), W1, "[data-a=details]"], [E(22.6), 700, 470], [E(23.3), 760, 480],
+  [E(24.05), PAGE[0] + 920, PAGE[1] + 97], [E(25.4), PAGE[0] + 920, PAGE[1] + 97], [E(26.4), W2, "#c-start"], [E(33.6), W2, "#c-start"],
+  [E(34.7), APP, ROW(6)], [E(35.2), APP, ROW(7)], [E(35.8), APP, ROW(8)], [E(36.6), APP, ROW(8)], [E(40.8), APP, ROW(8)],
+];
+// Clicks: time, and what the click does in the real UI.
+const ACTIONS = [
+  [1.7, () => {}],
+  [C(7.05), () => {}],
+  [C(10.2), () => doc(W1).querySelector("#c-start").click()],
+  [C(12.3), () => doc(W1).querySelector("[data-a=details]").click()],
+  [E(24.2), () => {}],
+  [E(26.55), () => doc(W2).querySelector("#c-start").click()],
+  [E(34.9), () => rowClick(6, false)],
+  [E(35.4), () => rowClick(7, true)],
+  [E(36.0), () => rowClick(8, true)],
+  [E(36.8), () => rowMenu(8)],
+];
+const CAPTIONS = [
+  [2.5, 6.0, "Your browser downloads on a single connection."],
+  [6.3, 9.3, "5.9 GB. Almost an hour."],
+  [C(8.1), C(12.4), "The same file, with SwiftDL."],
+  [C(12.8), C(17.4), "Eight connections, all working at once."],
+  [C(18.0), C(21.2), "Done in three and a half minutes."],
+  [E(24.6), E(31.0), "YouTube, in any quality, up to 4K and HDR."],
+  [E(32.4), E(34.6), "Every download, in one place."],
+  [E(35.0), E(40.8), "Select a few. Act on all of them at once."],
+];
+
+// The main window's rows, clicked the way a person would (Ctrl for more).
+function rowClick(id, ctrl) {
+  const el = doc(APP).querySelector(ROW(id));
+  el?.dispatchEvent(new (win(APP).MouseEvent)("mousedown", { bubbles: true, button: 0, detail: 1, ctrlKey: ctrl }));
+}
+function rowMenu(id) {
+  const el = doc(APP).querySelector(ROW(id)); if (!el) return;
+  const r = el.getBoundingClientRect();
+  el.dispatchEvent(new (win(APP).MouseEvent)("contextmenu", { bubbles: true, cancelable: true, clientX: r.left + r.width * .45, clientY: r.top + r.height / 2 }));
+}
+const point = (w) => (w.length === 3 && typeof w[2] === "string" ? inFrame(w[1], w[2]) || [960, 540] : [w[1], w[2]]);
+function cursorAt(t) {
+  if (t <= CURSOR[0][0]) return point(CURSOR[0]);
+  for (let i = 1; i < CURSOR.length; i++) if (t <= CURSOR[i][0]) {
+    const a = point(CURSOR[i - 1]), b = point(CURSOR[i]), k = inOut(prog(t, CURSOR[i - 1][0], CURSOR[i][0]));
+    const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1, arc = Math.sin(k * Math.PI) * Math.min(50, len * .1);
+    return [lerp(a[0], b[0], k) - (dy / len) * arc, lerp(a[1], b[1], k) + (dx / len) * arc];
+  }
+  return point(CURSOR.at(-1));
+}
+
+let id1 = null, id2 = null, lastT = -1, done = 0, appTick = 0;
+const GB = 1024 ** 3, MB = 1024 ** 2;
+const mins = (s) => `${Math.floor(s / 60)} min ${String(Math.floor(s % 60)).padStart(2, "0")} s`;
+
+function feed(t) {
+  if (id1 != null) {
+    const S = 5.9 * GB, complete = t >= C(19.9);
+    const p1 = lerp(0, .3, smooth(prog(t, C(10.4), C(17.6)))), frac = complete ? 1 : lerp(p1, 1, inOut(prog(t, C(17.6), C(19.9))));
+    const ramp = inOut(prog(t, C(10.4), C(12.0)));
+    const speed = complete ? 0 : (1.4 + 27.6 * ramp + Math.sin(t * 5.3) * .6 * ramp + Math.sin(t * 2.1) * .3) * MB;
+    const f = simAt(frac);
+    win(W1).__video.set(id1, complete
+      ? { status: "completed", downloaded: S, size: S, speed: 0, connections: 0, completedAt: Date.now(), segments: [] }
+      : { status: "downloading", size: S, downloaded: Math.round(frac * S), speed, connections: t < C(10.6) ? 0 : f.segs.filter(([, p, e]) => p < e).length,
+          segments: f.segs.map(([s, p, e]) => [Math.round(s * S), Math.round(p * S), Math.round(e * S)]) });
+  }
+  if (id2 != null) {
+    const S = 412 * MB, merging = t >= E(29.3) && t < E(30.0), complete = t >= E(30.0);
+    const f = merging || complete ? 1 : cubic(prog(t, E(26.8), E(29.3)));
+    win(W2).__video.set(id2, {
+      format: "bv*[height=1080]+ba/b[height=1080]/bv*[height<=1080]+ba/b", size: S, downloaded: Math.round(f * S), connections: merging || complete ? 0 : 16,
+      speed: merging || complete ? 0 : (23.8 + Math.sin(t * 4.7) * 1.4) * MB, note: merging ? "Merging video and audio" : null,
+      status: complete ? "completed" : "downloading", completedAt: complete ? Date.now() : null,
+    });
+  }
+}
+
+// How visible the screen (browser and windows) is: it gives way to the
+// title, the race and the end card.
+function screenOpacity(t) {
+  if (t < 11.6) return 1 - cubic(prog(t, 9.3, 10.0));
+  if (t < 32.5) return cubic(prog(t, 13.3, 13.9)) * (1 - cubic(prog(t, 30.2, 30.8)));
+  return cubic(prog(t, 35.2, 35.8)) * (1 - cubic(prog(t, E(41.2), E(42.0))));
+}
+
+function frame(t) {
+  // Title and end cards.
+  const tOp = cubic(prog(t, 9.7, 10.3)) * (1 - cubic(prog(t, 13.2, 13.9)));
+  css($("title"), { opacity: tOp, visibility: tOp > 0 ? "visible" : "hidden" });
+  show($("tI"), t, 9.9, 99, { scale: .12, y: 10 }); show($("tN"), t, 10.25, 99); show($("tL"), t, 10.8, 99, { y: 16 });
+  const eIn = cubic(prog(t, E(41.6), E(42.4)));
+  css($("end"), { opacity: eIn * (1 - cubic(prog(t, 61.4, 62.4))), visibility: eIn > 0 ? "visible" : "hidden" });
+  show($("eI"), t, E(41.9), 99, { scale: .12, y: 10 }); show($("eN"), t, E(42.2), 99); show($("eL"), t, E(42.8), 99, { y: 16 }); show($("eU"), t, E(43.4), 99, { y: 12 });
+
+  // The race, between the two acts: same file, same line.
+  const rOp = cubic(prog(t, 30.7, 31.2)) * (1 - cubic(prog(t, 35.0, 35.5)));
+  css($("race"), { opacity: rOp, visibility: rOp > 0 ? "visible" : "hidden" });
+  const rk = prog(t, 31.5, 34.3), sw = 211, br = 3356; // seconds: SwiftDL 3:31, browser 56 minutes
+  const elapsed = smooth(rk) * sw;
+  $("raceB").style.width = `${(elapsed / sw) * 100}%`;
+  $("raceA").style.width = `${(elapsed / br) * 100}%`;
+  $("timeB").textContent = rk >= 1 ? "3 min 31 s" : mins(elapsed);
+  $("timeA").textContent = rk >= 1 ? "56 min" : `${Math.round((br - elapsed) / 60)} min left`;
+
+  const so = screenOpacity(t);
+  css($("cam"), { opacity: so, visibility: so > 0 ? "visible" : "hidden", filter: so > 0 && so < 1 ? `blur(${(1 - so) * 12}px)` : "none" });
+  let [cx, cy, s] = keys(CAM, t);
+  const lean = inOut(prog(t, E(33.8), E(34.7))) * (1 - inOut(prog(t, E(39.8), E(40.9))));
+  if (lean > 0) { const r = inFrame(APP, ROW(7)) || [960, 540]; cx = lerp(cx, r[0] + 120, lean); cy = lerp(cy, r[1] + 40, lean); s = lerp(s, 1.55, lean); }
+  cx = clamp(cx, 960 / s, 1920 - 960 / s); cy = clamp(cy, 540 / s, 1080 - 540 / s);
+  $("cam").style.transform = `translate(${960 - cx * s}px, ${540 - cy * s}px) scale(${s})`;
+
+  // Browser.
+  const bIn = expo(prog(t, 0, .8)), bOut = cubic(prog(t, E(31.0), E(31.7))), bOp = bIn * (1 - bOut);
+  css($("chrome"), { opacity: bOp, visibility: bOp > 0 ? "visible" : "hidden", transform: `translateY(${(1 - bIn) * 50}px) scale(${lerp(.96, 1, bIn) - bOut * .03})` });
+  const yt = inOut(prog(t, E(21.4), E(21.9)));
+  $("pg1").style.opacity = 1 - yt; $("pg2").style.opacity = yt;
+  const onYT = t >= E(21.65);
+  $("tabtitle").textContent = onYT ? "Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film - YouTube" : "Download Ubuntu Desktop | Ubuntu";
+  $("favicon").src = onYT ? "out/pages/youtube-icon.png" : "out/pages/ubuntu-icon.png";
+  $("url").innerHTML = onYT ? `youtube.com<span class="path">/watch?v=aqz-KE-bpKQ</span>` : `ubuntu.com<span class="path">/download/desktop</span>`;
+  show($("vbtn"), t, E(23.15), E(31.0), { y: -6, blur: 4, inDur: .3 });
+
+  // Chrome's own download, crawling; cancelled before SwiftDL takes over.
+  const bIn2 = expo(prog(t, 1.95, 2.3)), bubOp = bIn2 * (1 - cubic(prog(t, 13.2, 13.5)));
+  css($("bubble"), { opacity: bubOp, visibility: bubOp > 0 ? "visible" : "hidden", transform: `scale(${lerp(.96, 1, bIn2)})` });
+  $("dlico").style.opacity = t >= 1.95 && t < 13.5 ? 1 : 0;
+  const el = Math.max(0, t - 1.95), got = 6.1 + el * 1.85, sp = 1.8 + Math.sin(t * 3.1) * .18 + Math.sin(t * 1.3) * .1;
+  $("bubMeta").textContent = `${sp.toFixed(1)} MB/s · ${got.toFixed(1)} MB of 5.9 GB, ${Math.round((5.9 * 1024 - got) / 1.8 / 60)} minutes left`;
+  const pct = (got / (5.9 * 1024)) * 100;
+  $("bubArc").setAttribute("stroke-dasharray", `${Math.max(.8, pct)} 100`);
+  $("ringArc").setAttribute("stroke-dasharray", `${Math.max(.8, pct)} 100`);
+
+  pop(W1, t, C(7.25), C(21.1));
+  pop(W2, t, E(24.4), E(31.2));
+  const aIn = expo(prog(t, E(31.4), E(32.5)));
+  css(APP, { opacity: aIn, visibility: aIn > 0 ? "visible" : "hidden", transform: `translateY(${(1 - aIn) * 70}px) scale(${lerp(.95, 1, aIn)})` });
+
+  // Cursor and clicks.
+  const [mx, my] = cursorAt(t);
+  const cVis = t < 11.6 ? expo(prog(t, .4, .8)) * (1 - cubic(prog(t, 8.8, 9.2)))
+    : t < 32.5 ? expo(prog(t, C(4.4), C(4.8))) * (1 - cubic(prog(t, 30.0, 30.4)))
+    : t < E(33) ? expo(prog(t, 35.8, 36.2)) * (1 - cubic(prog(t, E(30.8), E(31.2))))
+    : expo(prog(t, E(33.6), E(34.0))) * (1 - cubic(prog(t, E(40.4), E(40.8))));
+  const near = ACTIONS.map((a) => a[0]).find((c) => t >= c - .06 && t < c + .45);
+  const down = near ? Math.sin(prog(t, near - .06, near + .14) * Math.PI) : 0;
+  css($("cursor"), { opacity: cVis, transform: `translate(${mx}px, ${my}px) scale(${1 - down * .12})` });
+  const rq = near ? prog(t, near, near + .45) : 1;
+  css($("ring"), { left: `${mx + 1}px`, top: `${my + 1}px`, opacity: near ? (1 - rq) * cVis : 0, transform: `scale(${.35 + cubic(rq) * .9})` });
+
+  const cap = CAPTIONS.find(([a, b]) => t >= a && t < b);
+  if (cap) { $("cap").textContent = cap[2]; show($("cap"), t, cap[0], cap[1], { y: 26, x: "translateX(-50%)" }); }
+  else css($("cap"), { opacity: 0, visibility: "hidden" });
+  show($("ff"), t, C(17.7), C(19.9), { y: -14, x: "translateX(-50%)" });
+}
+
+// The film clicks real UI, so it plays forward: each step fires the clicks
+// it passes, feeds the windows, then draws.
+window.seek = async (tNew) => {
+  const t = warp(tNew);
+  if (t < lastT) throw new Error("the film only plays forward");
+  for (let s = Math.max(lastT, 0); s <= t + 1e-9; s += 1 / 30) {
+    const step = Math.min(s, t);
+    while (done < ACTIONS.length && ACTIONS[done][0] <= step) {
+      ACTIONS[done][1]();
+      done++;
+      await new Promise((r) => setTimeout(r, 0)); // let the UI's async handlers run
+      if (id1 == null && win(W1).__video.last()?.filename?.startsWith("ubuntu")) id1 = win(W1).__video.last().id;
+      if (id2 == null && win(W2).__video.last()?.filename?.includes("Bunny")) id2 = win(W2).__video.last().id;
+    }
+    while (appTick < Math.floor(step * 2)) { appTick++; if (step > E(31.4)) win(APP).__video.step(); }
+    if (s >= t) break;
+  }
+  feed(t);
+  await new Promise((r) => setTimeout(r, 0));
+  frame(t);
+  lastT = t;
+};
+</script>
+</body>
+</html>

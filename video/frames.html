@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SwiftDL style frames</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=block" rel="stylesheet">
+<style>
+  /* Style frames for the new film. Design system:
+     canvas warm paper #F7F4EE; ink #15161A; muted #77787F; one accent, SwiftDL blue #2F6BFF
+     (blue only ever means data moving); a soft grey for "the old way" #B9BAC0.
+     Headlines: Instrument Serif, sentence case, ending in a period. UI and labels: Inter 500/600.
+     Every frame has one subject, centred, with room around it. */
+  :root { --paper: #F7F4EE; --ink: #15161A; --muted: #77787F; --blue: #2F6BFF; --old: #B9BAC0; --line: rgba(21,22,26,.08); }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--paper); color: var(--ink); font-family: Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .frame { position: absolute; inset: 0; display: none; }
+  .on { display: block; }
+  .serif { font-family: "Instrument Serif", Georgia, serif; font-weight: 400; letter-spacing: -.02em; }
+  .title { position: absolute; left: 0; right: 0; text-align: center; font-size: 96px; line-height: 1.02; }
+  .title em { font-style: italic; color: var(--blue); }
+  .sub { position: absolute; left: 0; right: 0; text-align: center; font-size: 30px; color: var(--muted); font-weight: 500; letter-spacing: -.01em; }
+  .label { font: 600 18px/1 Inter; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .paper-grain { position: absolute; inset: 0; opacity: .35; mix-blend-mode: multiply; pointer-events: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .06 0'/></filter><rect width='300' height='300' filter='url(%23n)'/></svg>"); }
+
+  /* frame 1: the lanes (the problem, for anyone) */
+  .road { position: absolute; left: 260px; width: 1400px; }
+  .lane { position: relative; height: 34px; border-radius: 17px; background: var(--line); margin: 0 0 16px; overflow: hidden; }
+  .lane .car { position: absolute; top: 7px; height: 20px; border-radius: 10px; }
+  .lane .fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 17px; }
+  .lane-tag { position: absolute; left: -210px; width: 190px; text-align: right; font: 600 20px/34px Inter; color: var(--muted); }
+
+  /* frame 2: the product, rebuilt, large and centred */
+  .win { position: absolute; left: 50%; top: 250px; width: 1040px; transform: translateX(-50%); border-radius: 26px; background: #fff; padding: 40px 48px 44px;
+    box-shadow: 0 1px 0 rgba(255,255,255,.8) inset, 0 0 0 1px rgba(21,22,26,.06), 0 40px 90px -30px rgba(40,34,20,.28), 0 12px 30px -12px rgba(40,34,20,.12); }
+  .win .top { display: flex; align-items: center; gap: 20px; }
+  .ico { width: 64px; height: 64px; border-radius: 16px; background: #F1F2F5; display: grid; place-items: center; }
+  .win h4 { font-size: 30px; font-weight: 600; letter-spacing: -.02em; }
+  .win .meta { font-size: 20px; color: var(--muted); margin-top: 6px; }
+  .big { display: flex; align-items: baseline; justify-content: space-between; margin: 40px 0 18px; }
+  .speed { font-size: 92px; font-weight: 700; letter-spacing: -.05em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .speed small { font-size: 34px; color: var(--muted); font-weight: 500; letter-spacing: -.02em; margin-left: 10px; }
+  .eta { font-size: 30px; color: var(--muted); font-weight: 500; }
+  .segbar { position: relative; height: 26px; border-radius: 13px; background: var(--line); overflow: hidden; }
+  .segbar .s { position: absolute; top: 0; height: 100%; }
+  .segbar .s i { position: absolute; left: 0; top: 0; height: 100%; background: var(--blue); }
+  .segbar .s::after { content: ""; position: absolute; right: 0; top: 0; width: 3px; height: 100%; background: #fff; }
+  .conns { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; margin-top: 26px; }
+  .conns div { font: 500 15px/1 "JetBrains Mono", monospace; color: var(--muted); text-align: center; }
+  .conns b { display: block; font: 600 22px/1 Inter; color: var(--ink); margin-bottom: 8px; font-variant-numeric: tabular-nums; }
+
+  /* frame 3: Wi-Fi drops; one starts over, one keeps its place */
+  .pair { position: absolute; left: 260px; right: 260px; top: 470px; display: grid; grid-template-columns: 1fr 1fr; gap: 60px; }
+  .card { border-radius: 24px; background: #fff; padding: 34px 38px; box-shadow: 0 0 0 1px rgba(21,22,26,.06), 0 30px 70px -30px rgba(40,34,20,.25); }
+  .card h5 { font-size: 26px; font-weight: 600; letter-spacing: -.02em; margin: 14px 0 24px; }
+  .bar { position: relative; height: 20px; border-radius: 10px; background: var(--line); }
+  .bar i { position: absolute; left: 0; top: 0; height: 100%; border-radius: 10px; }
+  .pin { position: absolute; top: -46px; transform: translateX(-50%); font: 600 18px/1 Inter; padding: 8px 12px; border-radius: 10px; background: var(--ink); color: #fff; white-space: nowrap; }
+  .pin::after { content: ""; position: absolute; left: 50%; bottom: -6px; margin-left: -6px; border: 6px solid transparent; border-bottom: 0; border-top-color: var(--ink); }
+  .state { margin-top: 24px; font-size: 22px; font-weight: 600; }
+  .wifi { position: absolute; left: 50%; top: 330px; transform: translateX(-50%); }
+
+  /* frame 4: puzzle pieces straight into place */
+  .grid { position: absolute; top: 400px; display: grid; grid-template-columns: repeat(4, 150px); gap: 10px; }
+  .tile { height: 110px; border-radius: 14px; }
+  .loose { position: absolute; width: 150px; height: 110px; border-radius: 14px; background: var(--old); opacity: .9; }
+  .cap { position: absolute; font: 600 22px/1 Inter; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="paper-grain"></div>
+
+<!-- 1. The problem, for anyone: one lane -->
+<div class="frame" id="f1">
+  <div class="title serif" style="top:190px">Your browser downloads<br>through <em style="color:var(--ink)">one lane.</em></div>
+  <div class="road" style="top:520px">
+    <div class="lane"><span class="lane-tag">Your file</span><i class="fill" style="width:6%;background:var(--old)"></i></div>
+    <div class="lane" style="opacity:.35"></div><div class="lane" style="opacity:.35"></div><div class="lane" style="opacity:.35"></div>
+    <div class="lane" style="opacity:.35"></div><div class="lane" style="opacity:.35"></div><div class="lane" style="opacity:.35"></div><div class="lane" style="opacity:.35"></div>
+  </div>
+  <div class="sub" style="top:960px">The rest of your internet sits empty. <span style="color:var(--ink)">56 minutes left.</span></div>
+</div>
+
+<!-- 2. The magic moment: the product itself, rebuilt, centred -->
+<div class="frame" id="f2">
+  <div class="title serif" style="top:96px">SwiftDL opens <em>all eight.</em></div>
+  <div class="win">
+    <div class="top"><span class="ico"><svg width="30" height="30" viewBox="0 0 24 24"><path fill="#55565c" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg></span>
+      <div><h4>Ubuntu 26.04 — 5.9 GB</h4><div class="meta">Downloading from releases.ubuntu.com</div></div></div>
+    <div class="big"><div class="speed">33.4<small>MB/s</small></div><div class="eta">2 min 41 s left · 45%</div></div>
+    <div class="segbar" id="sb"></div>
+    <div class="conns" id="cn"></div>
+  </div>
+</div>
+
+<!-- 3. Reliability: Wi-Fi drops -->
+<div class="frame" id="f3">
+  <div class="title serif" style="top:150px">The Wi-Fi drops. <em>Nothing is lost.</em></div>
+  <svg class="wifi" width="80" height="60" viewBox="0 0 20 15"><path d="M10 14.2 7.1 11.3a4.1 4.1 0 0 1 5.8 0z" fill="#15161A"/><path d="M4.5 8.7a7.8 7.8 0 0 1 11 0l-1.4 1.4a5.8 5.8 0 0 0-8.2 0z" fill="#15161A" opacity=".25"/><path d="M1.6 5.8a11.9 11.9 0 0 1 16.8 0L17 7.2a9.9 9.9 0 0 0-14 0z" fill="#15161A" opacity=".25"/><path d="M3 1 17 14" stroke="#c5221f" stroke-width="1.6" stroke-linecap="round"/></svg>
+  <div class="pair">
+    <div class="card"><span class="label">Your browser</span><h5>Back to zero.</h5>
+      <div class="bar"><i style="width:94%;background:var(--old);opacity:.35"></i><i style="width:2%;background:var(--old)"></i></div>
+      <div class="state" style="color:#c5221f">Failed at 94%. Start again.</div></div>
+    <div class="card"><span class="label">SwiftDL</span><h5>Keeps its place.</h5>
+      <div class="bar"><i style="width:55%;background:var(--blue)"></i><span class="pin" style="left:55%">55%</span></div>
+      <div class="state" style="color:var(--blue)">Picked up right where it stopped.</div></div>
+  </div>
+</div>
+
+<!-- 4. The unique part: every piece straight into place -->
+<div class="frame" id="f4">
+  <div class="title serif" style="top:150px">Every piece goes <em>straight into place.</em></div>
+  <div class="cap" style="left:300px;top:340px">Other download managers</div>
+  <div class="loose" style="left:300px;top:400px"></div><div class="loose" style="left:470px;top:440px;transform:rotate(-6deg)"></div>
+  <div class="loose" style="left:330px;top:560px;transform:rotate(4deg)"></div><div class="loose" style="left:520px;top:600px"></div>
+  <div class="loose" style="left:690px;top:470px;transform:rotate(8deg)"></div><div class="loose" style="left:700px;top:640px;transform:rotate(-3deg)"></div>
+  <div class="cap" style="left:300px;top:930px;color:#b07a00">Assembling file… 23%</div>
+  <div class="cap" style="left:1150px;top:340px">SwiftDL</div>
+  <div class="grid" style="left:1150px" id="pz"></div>
+  <div class="cap" style="left:1150px;top:930px;color:var(--blue)">Ready. Nothing to glue together.</div>
+</div>
+
+<script>
+  const f = new URLSearchParams(location.search).get("f") || "1";
+  document.getElementById("f" + f).classList.add("on");
+  const done = [.82, .55, .71, .40, .66, .93, .48, .60];
+  document.getElementById("sb").innerHTML = done.map((d, i) => `<div class="s" style="left:${i * 12.5}%;width:12.5%"><i style="width:${d * 100}%"></i></div>`).join("");
+  document.getElementById("cn").innerHTML = done.map((d, i) => `<div><b>${Math.round(d * 100)}%</b>part ${i + 1}</div>`).join("");
+  const filled = [1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1];
+  document.getElementById("pz").innerHTML = filled.map((x) => `<div class="tile" style="background:${x ? "var(--blue)" : "rgba(21,22,26,.06)"}"></div>`).join("");
+</script>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SwiftDL style frames, Apple and Arc look</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700&family=Inter:wght@400;500;600;700&display=block" rel="stylesheet">
+<style>
+  /* Apple and Arc look: soft white studio light, one hero object with real depth,
+     big rounded product close-ups, display type set tight, one blue-violet glow. */
+  :root { --ink: #1d1d1f; --grey: #86868b; --blue: #0a6cff; --violet: #7b5cff; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; font-family: Inter, system-ui, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased;
+    background: radial-gradient(ellipse 70% 60% at 50% 38%, #ffffff 0%, #f6f6f8 45%, #e9e9ee 100%); }
+  .frame { position: absolute; inset: 0; display: none; perspective: 2600px; }
+  .on { display: block; }
+  .disp { font-family: "Inter Tight", Inter, sans-serif; font-weight: 600; letter-spacing: -.045em; }
+  .h { position: absolute; left: 0; right: 0; text-align: center; font-size: 108px; line-height: 1.02; }
+  .h .g { background: linear-gradient(95deg, var(--blue) 10%, var(--violet) 90%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .s { position: absolute; left: 0; right: 0; text-align: center; font-size: 32px; color: var(--grey); font-weight: 500; letter-spacing: -.015em; }
+
+  /* the hero window: SwiftDL's download window, rebuilt at hero size */
+  .win { position: absolute; width: 1180px; border-radius: 34px; background: rgba(255,255,255,.92); padding: 44px 54px 50px;
+    box-shadow: 0 0 0 1px rgba(0,0,0,.05), 0 2px 4px rgba(0,0,0,.04), 0 24px 48px -12px rgba(30,30,60,.18), 0 80px 140px -40px rgba(30,30,80,.32); }
+  .glow { position: absolute; width: 1300px; height: 520px; border-radius: 50%; filter: blur(90px); opacity: .55;
+    background: radial-gradient(closest-side, rgba(10,108,255,.55), rgba(123,92,255,.35) 55%, transparent); }
+  .bar-top { display: flex; align-items: center; gap: 22px; }
+  .appicon { width: 76px; height: 76px; border-radius: 18px; background: linear-gradient(180deg, #2e3036, #16171b); display: grid; place-items: center; box-shadow: 0 8px 18px -6px rgba(0,0,0,.35); }
+  .name { font-size: 34px; font-weight: 600; letter-spacing: -.025em; }
+  .from { font-size: 21px; color: var(--grey); margin-top: 6px; }
+  .num { display: flex; align-items: baseline; justify-content: space-between; margin: 46px 0 22px; }
+  .speed { font-family: "Inter Tight"; font-size: 132px; font-weight: 600; letter-spacing: -.06em; line-height: .9; font-variant-numeric: tabular-nums; }
+  .speed small { font-size: 40px; color: var(--grey); font-weight: 500; letter-spacing: -.02em; margin-left: 12px; }
+  .eta { font-size: 30px; color: var(--grey); font-weight: 500; text-align: right; line-height: 1.35; }
+  .eta b { color: var(--ink); font-weight: 600; }
+  .track { position: relative; height: 30px; border-radius: 15px; background: #eef0f4; overflow: hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,.06); }
+  .track .p { position: absolute; top: 0; height: 100%; }
+  .track .p i { position: absolute; left: 0; top: 0; height: 100%; background: linear-gradient(90deg, var(--blue), #4f8dff); }
+  .track .p::after { content: ""; position: absolute; right: 0; top: 0; width: 3px; height: 100%; background: #fff; }
+  .chips { display: grid; grid-template-columns: repeat(8, 1fr); gap: 12px; margin-top: 30px; }
+  .chip { border-radius: 16px; background: #f4f5f8; padding: 16px 0 14px; text-align: center; }
+  .chip b { display: block; font-family: "Inter Tight"; font-size: 28px; font-weight: 600; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  .chip span { font-size: 15px; color: var(--grey); font-weight: 500; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #34c759; margin-right: 6px; vertical-align: 1px; }
+
+  /* frame 3: the notification, macro */
+  .note { position: absolute; width: 900px; border-radius: 36px; padding: 34px 38px; display: flex; gap: 28px; align-items: center; background: rgba(255,255,255,.82); backdrop-filter: blur(40px) saturate(1.6);
+    box-shadow: 0 0 0 1px rgba(0,0,0,.05), 0 30px 80px -24px rgba(30,30,80,.3); }
+  .note .nt b { display: flex; justify-content: space-between; font-size: 30px; font-weight: 600; letter-spacing: -.02em; }
+  .note .nt b small { font-size: 22px; color: var(--grey); font-weight: 500; }
+  .note .nt span { display: block; font-size: 28px; color: #3a3a3c; margin-top: 8px; letter-spacing: -.01em; }
+  .wifi { width: 76px; height: 76px; border-radius: 18px; background: #e8e8ed; display: grid; place-items: center; flex: none; }
+</style>
+</head>
+<body>
+
+<!-- 1. Hero: the product, huge, tilted towards you, light behind the progress -->
+<div class="frame" id="f1">
+  <div class="h disp" style="top:96px">Downloads, at <span class="g">full speed.</span></div>
+  <div class="s" style="top:232px">Every connection your internet has. One file.</div>
+  <div class="glow" style="left:310px;top:470px"></div>
+  <div class="win" style="left:370px;top:330px;transform:rotateX(16deg) rotateY(-9deg) rotateZ(1.2deg);transform-origin:50% 0">
+    <div class="bar-top"><span class="appicon"><svg width="40" height="40" viewBox="0 0 32 32" fill="#fff"><rect x="4.5" y="3" width="4.4" height="12" rx="2.2"/><rect x="10.9" y="3" width="4.4" height="17" rx="2.2"/><rect x="16.7" y="3" width="4.4" height="17" rx="2.2"/><rect x="23.1" y="3" width="4.4" height="12" rx="2.2"/><path d="M6 21.5 16 28l10-6.5" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <div><div class="name">ubuntu-26.04-desktop.iso</div><div class="from"><span class="dot"></span>8 connections · releases.ubuntu.com</div></div></div>
+    <div class="num"><div class="speed">33.4<small>MB/s</small></div><div class="eta"><b>2 min 41 s</b> left<br>2.7 of 5.9 GB</div></div>
+    <div class="track" id="t1"></div>
+    <div class="chips" id="c1"></div>
+  </div>
+</div>
+
+<!-- 2. Macro: the camera right on the parts, depth of field -->
+<div class="frame" id="f2">
+  <div class="glow" style="left:60px;top:420px;width:1700px;height:600px;opacity:.6"></div>
+  <div class="win" style="left:140px;top:210px;width:1640px;transform-origin:0 50%;transform:rotateY(-24deg) rotateX(6deg)">
+    <div class="num" style="margin-top:0"><div class="speed" style="font-size:190px">33.4<small style="font-size:56px">MB/s</small></div><div class="eta" style="font-size:40px"><b>8 connections</b><br>all working at once</div></div>
+    <div class="track" id="t2" style="height:50px;border-radius:25px"></div>
+    <div class="chips" id="c2" style="gap:16px"></div>
+  </div>
+  <div style="position:absolute;top:0;bottom:0;right:0;width:760px;backdrop-filter:blur(9px);-webkit-mask-image:linear-gradient(90deg,transparent,#000 70%)"></div>
+  <div class="h disp" style="top:860px;font-size:72px">Eight parts. <span class="g">One file. All at once.</span></div>
+</div>
+
+<!-- 3. Reliability: the moment it picks up -->
+<div class="frame" id="f3">
+  <div class="h disp" style="top:120px">Wi-Fi drops. <span class="g">It keeps going.</span></div>
+  <div class="s" style="top:256px">Close the lid, lose the signal. SwiftDL picks up right where it stopped.</div>
+  <div class="glow" style="left:310px;top:560px;opacity:.4"></div>
+  <div class="note" style="left:510px;top:420px">
+    <span class="wifi"><svg width="40" height="30" viewBox="0 0 20 15"><path d="M10 14.2 7.1 11.3a4.1 4.1 0 0 1 5.8 0z" fill="#1d1d1f"/><path d="M4.5 8.7a7.8 7.8 0 0 1 11 0l-1.4 1.4a5.8 5.8 0 0 0-8.2 0z" fill="#1d1d1f"/><path d="M1.6 5.8a11.9 11.9 0 0 1 16.8 0L17 7.2a9.9 9.9 0 0 0-14 0z" fill="#1d1d1f"/></svg></span>
+    <div class="nt" style="flex:1"><b>Wi-Fi <small>now</small></b><span>Connected to Home again.</span></div>
+  </div>
+  <div class="note" style="left:510px;top:600px;transform:scale(1.04)">
+    <span class="appicon"><svg width="40" height="40" viewBox="0 0 32 32" fill="#fff"><rect x="4.5" y="3" width="4.4" height="12" rx="2.2"/><rect x="10.9" y="3" width="4.4" height="17" rx="2.2"/><rect x="16.7" y="3" width="4.4" height="17" rx="2.2"/><rect x="23.1" y="3" width="4.4" height="12" rx="2.2"/><path d="M6 21.5 16 28l10-6.5" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+    <div class="nt" style="flex:1"><b>SwiftDL <small>now</small></b><span>Picked up at 55%. Nothing was lost.</span></div>
+  </div>
+  <div class="track" style="position:absolute;left:510px;top:820px;width:900px;height:14px;border-radius:7px"><div class="p" style="left:0;width:100%"><i style="width:55%"></i></div></div>
+</div>
+
+<script>
+  const f = new URLSearchParams(location.search).get("f") || "1";
+  document.getElementById("f" + f).classList.add("on");
+  const d = [.82, .55, .71, .40, .66, .93, .48, .60];
+  for (const n of [1, 2]) {
+    document.getElementById("t" + n).innerHTML = d.map((x, i) => `<div class="p" style="left:${i * 12.5}%;width:12.5%"><i style="width:${x * 100}%"></i></div>`).join("");
+    document.getElementById("c" + n).innerHTML = d.map((x, i) => `<div class="chip"${n === 2 ? ' style="padding:26px 0 22px"' : ""}><b${n === 2 ? ' style="font-size:46px"' : ""}>${Math.round(x * 100)}%</b><span${n === 2 ? ' style="font-size:22px"' : ""}>part ${i + 1}</span></div>`).join("");
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,571 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SwiftDL: The Wait</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=block" rel="stylesheet">
+<style>
+  /* "The Wait": someone needs a 5.9 GB file before morning.
+     The progress bar is the main character and the menu-bar clock tells the
+     story. Night (cool) to morning (warm); blue only ever means data moving.
+     Cut to "Montagem Ahora (Slowed)", 93.5 BPM: B(k) is beat k. The pain sits
+     in the quiet intro, SwiftDL arrives on the drop (B20), the payoff on the
+     big hit (B48), life after on the breakdown, the promise on the second
+     drop (B84). SwiftDL's windows are the app's real UI (app/dist, ?video). */
+  :root { --ink: #121318; --muted: #6c6e78; --blue: #2f6bff; color-scheme: light; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: #000; font-family: Inter, system-ui, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+  .abs { position: absolute; }
+
+  /* the desktop: night and morning wallpapers, crossfaded */
+  #cam { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; overflow: hidden; }
+  .wall { position: absolute; inset: -60px; }
+  #night { background: radial-gradient(ellipse 75% 70% at 50% 42%, #f6f7fa 0%, #e9ebf0 55%, #dcdfe6 100%); }
+  #morning { background: radial-gradient(ellipse 75% 70% at 50% 42%, #faf9f7 0%, #eeece8 55%, #e3e0da 100%); opacity: 0; }
+  .grain { position: absolute; inset: 0; opacity: .16; mix-blend-mode: soft-light; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='260' height='260' filter='url(%23n)'/></svg>"); }
+
+  /* menu bar */
+  #menubar { position: absolute; left: 0; top: 0; width: 1920px; height: 30px; display: flex; align-items: center; gap: 22px; padding: 0 18px; font: 500 14px/1 Inter, system-ui; color: #1d1e22;
+    background: rgba(255,255,255,.42); backdrop-filter: blur(30px) saturate(1.6); box-shadow: 0 .5px 0 rgba(0,0,0,.08); }
+  #menubar b { font-weight: 700; }
+  #menubar .right { margin-left: auto; display: flex; align-items: center; gap: 18px; }
+  #clock { font-variant-numeric: tabular-nums; min-width: 150px; text-align: right; }
+  #wifi.off path { opacity: .25; }
+  #wifi .x { opacity: 0; }
+  #wifi.off .x { opacity: 1; }
+
+  /* Chrome (light, macOS) */
+  .chrome { left: 240px; top: 70px; width: 1440px; height: 944px; border-radius: 12px; overflow: hidden; background: #fff;
+    box-shadow: 0 0 0 .5px rgba(0,0,0,.28), 0 2px 6px rgba(0,0,0,.08), 0 30px 80px -10px rgba(20,24,40,.38); }
+  .strip { height: 42px; background: #e3e7ed; position: relative; display: flex; align-items: flex-end; padding-left: 84px; }
+  .lights { position: absolute; left: 16px; top: 15px; display: flex; gap: 8px; }
+  .lights i { width: 12px; height: 12px; border-radius: 50%; box-shadow: inset 0 0 0 .5px rgba(0,0,0,.18); }
+  .tab { position: relative; height: 34px; width: 280px; padding: 0 12px; display: flex; align-items: center; gap: 9px; font: 12.5px/1 Inter, system-ui; color: #1f1f1f; background: #fff; border-radius: 9px 9px 0 0; }
+  .tab img { width: 16px; height: 16px; border-radius: 3px; flex: none; }
+  .tab .tt { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; line-height: 1.3; }
+  .bar { height: 42px; display: flex; align-items: center; gap: 6px; padding: 0 8px; background: #fff; }
+  .ib { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; color: #474747; flex: none; position: relative; }
+  .ib svg { width: 20px; height: 20px; fill: currentColor; }
+  .omni { flex: 1; height: 34px; margin: 0 6px; border-radius: 17px; background: #edf0f4; display: flex; align-items: center; gap: 10px; padding: 0 12px; font: 14.5px/1 Inter, system-ui; color: #1f1f1f; }
+  .omni .path { color: #5f6368; }
+  .avatar { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, #f6b38c, #e5869f); color: #fff; font: 600 12px/26px Inter; text-align: center; }
+  .viewport { position: absolute; left: 0; top: 84px; width: 1440px; height: 860px; overflow: hidden; background: #fff; }
+  .viewport img { position: absolute; inset: 0; width: 1440px; height: 860px; }
+  svg.pring { position: absolute; left: 2px; top: 2px; width: 28px; height: 28px; fill: none; transform: rotate(-90deg); }
+
+  /* Chrome's downloads bubble */
+  .bubble { right: 92px; top: 80px; width: 452px; border-radius: 14px; background: #fff; box-shadow: 0 0 0 .5px rgba(0,0,0,.18), 0 8px 28px rgba(0,0,0,.18); padding: 8px 0; transform-origin: 85% 0; }
+  .bub-row { display: flex; align-items: center; gap: 14px; padding: 10px 16px; }
+  .bub-ico { position: relative; width: 40px; height: 40px; flex: none; display: grid; place-items: center; }
+  .bub-ico svg.r { position: absolute; inset: 0; transform: rotate(-90deg); }
+  .bub-t { flex: 1; min-width: 0; }
+  .bub-t b { display: block; font-size: 13.5px; font-weight: 600; color: #1f1f1f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bub-t span { display: block; font-size: 12.5px; color: #5f6368; margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .bub-t span.fail { color: #c5221f; font-weight: 500; }
+  .bub-foot { border-top: 1px solid #e3e3e3; margin-top: 6px; padding: 12px 16px 6px; font-size: 13px; color: #1f1f1f; }
+
+  .vbtn { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px 0 8px; border-radius: 9px; background: rgba(20,21,26,.86); color: #fff;
+    font: 600 12.5px/1 "Segoe UI Variable Text", "Segoe UI", system-ui; box-shadow: 0 0 0 1px rgba(255,255,255,.12), 0 6px 20px rgba(0,0,0,.35); }
+
+  /* SwiftDL's windows */
+  iframe { border: 0; background: transparent; }
+  .dlw { width: 552px; height: 760px; transform-origin: 50% 25%; }
+  .appw { left: 300px; top: 130px; width: 1320px; height: 820px; border-radius: 10px; overflow: hidden; box-shadow: 0 0 0 .5px rgba(0,0,0,.3), 0 30px 80px -10px rgba(20,24,40,.4); }
+
+  /* notifications (macOS) */
+  .note { right: 16px; top: 42px; width: 380px; padding: 14px 16px; border-radius: 18px; background: rgba(246,246,248,.86); backdrop-filter: blur(30px) saturate(1.6);
+    box-shadow: 0 0 0 .5px rgba(0,0,0,.12), 0 12px 36px -8px rgba(20,24,40,.32); display: flex; gap: 12px; align-items: flex-start; }
+  .note img { width: 38px; height: 38px; flex: none; border-radius: 9px; }
+  .note .nt { flex: 1; min-width: 0; font-size: 13.5px; line-height: 1.35; }
+  .note .nt b { display: flex; justify-content: space-between; font-weight: 600; }
+  .note .nt b small { font-weight: 400; color: var(--muted); font-size: 12px; }
+  .note .nt span { display: block; color: #2c2d33; }
+  .wico { width: 38px; height: 38px; border-radius: 9px; background: #e4e6eb; display: grid; place-items: center; flex: none; }
+
+  /* cursor */
+  .cursor { left: 0; top: 0; width: 26px; height: 38px; transform-origin: 2px 2px; filter: drop-shadow(0 1.5px 2.5px rgba(0,0,0,.35)); }
+  .ring { width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; background: rgba(0,0,0,.12); }
+
+  /* the network meter: what you pay for, and what you get */
+  .meter { right: 16px; top: 42px; width: 340px; padding: 14px 16px 16px; border-radius: 18px; background: rgba(250,250,252,.88); backdrop-filter: blur(30px) saturate(1.6);
+    box-shadow: 0 0 0 .5px rgba(0,0,0,.12), 0 12px 36px -8px rgba(20,24,40,.28); font-size: 13px; }
+  .meter .mh { display: flex; justify-content: space-between; color: var(--muted); font-weight: 500; }
+  .meter .mv { font-size: 34px; font-weight: 650; letter-spacing: -.03em; margin: 6px 0 10px; font-variant-numeric: tabular-nums; }
+  .meter .mv small { font-size: 16px; color: var(--muted); font-weight: 500; margin-left: 4px; }
+  .meter .mt { height: 8px; border-radius: 4px; background: rgba(18,19,24,.08); overflow: hidden; }
+  .meter .mt i { display: block; height: 100%; border-radius: 4px; background: var(--blue); }
+  .meter .mf { margin-top: 8px; color: #2c2d33; font-variant-numeric: tabular-nums; }
+
+  .caption { left: 50%; bottom: 60px; padding: 18px 34px; border-radius: 999px; background: rgba(255,255,255,.82); backdrop-filter: blur(24px) saturate(1.5);
+    box-shadow: 0 0 0 .5px rgba(0,0,0,.12), 0 16px 44px -12px rgba(20,24,50,.38); font-size: 38px; font-weight: 600; letter-spacing: -.025em; white-space: nowrap; }
+
+  /* the unique part: no merging */
+  .scene { position: absolute; inset: 0; background: radial-gradient(ellipse 75% 70% at 50% 42%, #f8f8fa 0%, #ececef 55%, #e1e2e6 100%); }
+  .head { position: absolute; left: 0; right: 0; top: 150px; text-align: center; font-size: 76px; font-weight: 650; letter-spacing: -.05em; line-height: 1.05; }
+  .head2 { position: absolute; left: 0; right: 0; top: 248px; text-align: center; font-size: 30px; font-weight: 500; color: var(--muted); letter-spacing: -.02em; }
+  .panel { position: absolute; top: 360px; width: 760px; height: 520px; border-radius: 24px; background: #fff; padding: 34px 36px;
+    box-shadow: 0 0 0 .5px rgba(0,0,0,.12), 0 30px 70px -24px rgba(20,24,40,.3); }
+  .panel h3 { font-size: 26px; font-weight: 600; letter-spacing: -.02em; display: flex; justify-content: space-between; align-items: baseline; }
+  .panel h3 small { font-size: 18px; color: var(--muted); font-weight: 500; }
+  .parts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 26px; }
+  .part { border-radius: 12px; background: #f4f5f7; padding: 12px 12px 14px; font: 500 14px/1 "JetBrains Mono", monospace; color: #3c3d45; }
+  .part .pb { height: 6px; border-radius: 3px; background: rgba(18,19,24,.08); margin-top: 12px; overflow: hidden; }
+  .part .pb i { display: block; height: 100%; background: #a2a4ad; }
+  .file { margin-top: 26px; border-radius: 14px; background: #f4f5f7; padding: 16px 16px 18px; }
+  .file .fn { font: 500 15px/1 "JetBrains Mono", monospace; color: #3c3d45; display: flex; justify-content: space-between; }
+  .fbar { position: relative; height: 40px; border-radius: 8px; background: rgba(18,19,24,.07); margin-top: 14px; overflow: hidden; }
+  .fbar .seg { position: absolute; top: 0; height: 100%; }
+  .fbar .seg i { position: absolute; left: 0; top: 0; height: 100%; background: var(--blue); }
+  .fbar .seg::after { content: ""; position: absolute; right: 0; top: 0; width: 2px; height: 100%; background: #f4f5f7; }
+  .status { margin-top: 26px; display: flex; align-items: center; gap: 12px; font-size: 22px; font-weight: 600; letter-spacing: -.01em; min-height: 30px; }
+  .status .sb { flex: 1; height: 8px; border-radius: 4px; background: rgba(18,19,24,.08); overflow: hidden; }
+  .status .sb i { display: block; height: 100%; background: #e0a100; }
+  .disk { position: absolute; left: 36px; right: 36px; bottom: 30px; display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid #ececef; padding-top: 18px; }
+  .disk span { font-size: 18px; color: var(--muted); }
+  .disk b { font-size: 34px; font-weight: 650; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  .ok { color: #1f8a4c; }
+
+  /* light by design */
+  .stats { position: absolute; left: 0; right: 0; top: 420px; display: flex; justify-content: center; gap: 36px; }
+  .stat { width: 420px; height: 300px; border-radius: 28px; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    box-shadow: 0 0 0 .5px rgba(0,0,0,.1), 0 30px 70px -24px rgba(20,24,40,.28); }
+  .stat b { font-size: 100px; font-weight: 700; letter-spacing: -.06em; line-height: 1; }
+  .stat span { font-size: 24px; color: var(--muted); margin-top: 18px; font-weight: 500; }
+
+  /* the promise */
+  .card { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: radial-gradient(ellipse 75% 70% at 50% 42%, #f8f8fa 0%, #ececef 55%, #e1e2e6 100%); }
+  .card img { width: 150px; height: 150px; margin-bottom: 44px; filter: drop-shadow(0 28px 44px rgba(20,24,50,.28)); }
+  .promise { font-size: 110px; font-weight: 650; letter-spacing: -.055em; line-height: 1.02; }
+  .lede2 { font-size: 34px; font-weight: 500; letter-spacing: -.02em; color: var(--muted); margin-top: 30px; }
+  .url { margin-top: 40px; font: 500 30px "JetBrains Mono", monospace; color: #3c3d45; }
+  #fade { position: absolute; inset: 0; background: #000; pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="cam">
+  <div class="wall" id="night"></div><div class="wall" id="morning"></div><div class="grain"></div>
+
+  <div id="menubar">
+    <svg width="15" height="18" viewBox="0 0 17 20"><path fill="#1d1e22" d="M14.1 10.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9C3.6 4.8 2 5.8 1 7.3c-1.9 3.3-.5 8.2 1.4 10.9.9 1.3 2 2.8 3.4 2.7 1.4-.1 1.9-.9 3.5-.9s2.1.9 3.5.9c1.5 0 2.4-1.3 3.3-2.7 1-1.5 1.5-3 1.5-3.1-.1 0-2.9-1.1-3-4.5zM11.6 2.9c.7-.9 1.2-2.1 1.1-3.3-1 .1-2.3.7-3 1.6-.7.8-1.2 2-1.1 3.2 1.1.1 2.3-.6 3-1.5z"/></svg>
+    <b id="appname">Google Chrome</b><span>File</span><span>Edit</span><span>View</span><span>History</span><span>Window</span><span>Help</span>
+    <div class="right">
+      <svg width="18" height="18" viewBox="0 0 32 32" fill="#1d1e22"><rect x="4.5" y="3" width="4.4" height="12" rx="2.2"/><rect x="10.9" y="3" width="4.4" height="17" rx="2.2"/><rect x="16.7" y="3" width="4.4" height="17" rx="2.2"/><rect x="23.1" y="3" width="4.4" height="12" rx="2.2"/><path d="M6 21.5 16 28l10-6.5" fill="none" stroke="#1d1e22" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg width="26" height="13" viewBox="0 0 26 13"><rect x=".5" y=".5" width="22" height="12" rx="3.5" fill="none" stroke="#1d1e22" opacity=".45"/><rect x="2" y="2" width="15" height="9" rx="2" fill="#1d1e22"/><rect x="23.5" y="4.5" width="1.8" height="4" rx=".9" fill="#1d1e22" opacity=".45"/></svg>
+      <svg id="wifi" width="20" height="15" viewBox="0 0 20 15"><path d="M10 14.2 7.1 11.3a4.1 4.1 0 0 1 5.8 0z" fill="#1d1e22"/><path d="M4.5 8.7a7.8 7.8 0 0 1 11 0l-1.4 1.4a5.8 5.8 0 0 0-8.2 0z" fill="#1d1e22"/><path d="M1.6 5.8a11.9 11.9 0 0 1 16.8 0L17 7.2a9.9 9.9 0 0 0-14 0z" fill="#1d1e22"/><path class="x" d="M3 1 17 14" stroke="#1d1e22" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span id="clock">Thu Nov 26  11:47 PM</span>
+    </div>
+  </div>
+
+  <iframe class="abs appw" id="appw" src="../app/dist/index.html?video"></iframe>
+
+  <div class="chrome abs" id="chrome">
+    <div class="strip">
+      <div class="lights"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
+      <div class="tab"><img id="favicon" src="out/pages/ubuntu-icon.png" alt=""><span class="tt" id="tabtitle">Download Ubuntu Desktop | Ubuntu</span></div>
+    </div>
+    <div class="bar">
+      <div class="ib"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></div>
+      <div class="ib" style="color:#b8bbbf"><svg viewBox="0 0 24 24"><path d="M4 13h12.17l-5.59 5.59L12 20l8-8-8-8-1.41 1.41L16.17 11H4v2z"/></svg></div>
+      <div class="ib"><svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg></div>
+      <div class="omni"><span id="url">ubuntu.com<span class="path">/download/desktop</span></span></div>
+      <div class="ib" id="dlico" style="opacity:0"><svg viewBox="0 0 24 24"><path d="M12 16l-5-5 1.41-1.41L11 12.17V4h2v8.17l2.59-2.58L17 11l-5 5zm-6 4c-.55 0-1-.45-1-1v-3h2v2h10v-2h2v3c0 .55-.45 1-1 1H6z"/></svg>
+        <svg class="pring" viewBox="0 0 28 28"><circle cx="14" cy="14" r="12.5" fill="none" stroke="#dfe1e5" stroke-width="2"/><circle id="ringArc" cx="14" cy="14" r="12.5" fill="none" stroke="#0b57d0" stroke-width="2" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100"/></svg></div>
+      <div class="ib"><svg width="20" height="20" viewBox="0 0 32 32" fill="#202124"><rect x="4.5" y="3" width="4.4" height="12" rx="2.2"/><rect x="10.9" y="3" width="4.4" height="17" rx="2.2"/><rect x="16.7" y="3" width="4.4" height="17" rx="2.2"/><rect x="23.1" y="3" width="4.4" height="12" rx="2.2"/><path d="M6 21.5 16 28l10-6.5" fill="none" stroke="#202124" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="ib"><span class="avatar">H</span></div>
+    </div>
+    <div class="viewport">
+      <img id="pg1" src="out/pages/ubuntu.png" alt="">
+      <img id="pg2" src="out/pages/youtube.png" alt="" style="opacity:0">
+      <div class="bubble abs" id="bubble" style="opacity:0">
+        <div class="bub-row">
+          <span class="bub-ico"><svg class="r" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="none" stroke="#dfe1e5" stroke-width="2.5"/><circle id="bubArc" cx="20" cy="20" r="18" fill="none" stroke="#0b57d0" stroke-width="2.5" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100"/></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#5f6368" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg></span>
+          <div class="bub-t"><b>ubuntu-26.04.1-desktop-amd64.iso</b><span id="bubMeta"></span></div>
+          <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#474747" d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+        </div>
+        <div class="bub-foot">Full download history</div>
+      </div>
+      <div class="vbtn abs" id="vbtn" style="left:852px;top:82px;opacity:0"><svg width="16" height="16" viewBox="0 0 32 32" fill="#fff"><rect x="4.5" y="3" width="4.4" height="12" rx="2.2"/><rect x="10.9" y="3" width="4.4" height="17" rx="2.2"/><rect x="16.7" y="3" width="4.4" height="17" rx="2.2"/><rect x="23.1" y="3" width="4.4" height="12" rx="2.2"/><path d="M6 21.5 16 28l10-6.5" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Download video</div>
+    </div>
+  </div>
+
+  <iframe class="abs dlw" id="win1" src="../app/dist/download.html?confirm=1&video" style="left:684px;top:170px"></iframe>
+  <iframe class="abs dlw" id="win2" src="../app/dist/download.html?confirm=2&video&yt" style="left:684px;top:250px"></iframe>
+
+  <div class="meter abs" id="meter">
+    <div class="mh"><span>Network</span><span>Your plan: 300 Mbps</span></div>
+    <div class="mv">↓ <span id="mspeed">0.0</span><small>MB/s</small></div>
+    <div class="mt"><i id="mfill"></i></div>
+    <div class="mf" id="muse">Using 0% of your internet</div>
+  </div>
+  <div class="note abs" id="n3" style="top:200px"><img src="../site/assets/logo.svg" alt=""><div class="nt"><b>SwiftDL <small>11:50 PM</small></b><span>ubuntu-26.04.1-desktop-amd64.iso is ready. 5.9 GB in 3 min 8 s.</span></div></div>
+  <div class="note abs" id="n4"><img src="../site/assets/logo.svg" alt=""><div class="nt"><b>SwiftDL <small>now</small></b><span>Big Buck Bunny is ready to watch offline. 1080p60, 412 MB.</span></div></div>
+
+  <svg class="cursor abs" id="cursor" viewBox="0 0 26 38"><path d="M2 2v26.5l6.3-6.1 4.4 10.1 4.3-1.9-4.3-9.9h8.8z" fill="#000" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>
+  <div class="ring abs" id="ring"></div>
+</div>
+<div class="caption abs" id="cap"></div>
+
+<!-- the unique part: no merging -->
+<div class="scene" id="merge">
+  <div class="head" id="mh1"></div>
+  <div class="head2" id="mh2"></div>
+  <div class="panel" id="pA" style="left:170px">
+    <h3><span>Other download managers</span><small>8 separate files</small></h3>
+    <div class="parts" id="partsA"></div>
+    <div class="status" id="stA"></div>
+    <div class="disk"><span>Disk used</span><b id="diskA">0 GB</b></div>
+  </div>
+  <div class="panel" id="pB" style="left:990px">
+    <h3><span>SwiftDL</span><small>1 file, written in place</small></h3>
+    <div class="file"><div class="fn"><span>ubuntu-26.04.1-desktop-amd64.iso</span><span id="pctB">0%</span></div><div class="fbar" id="fbar"></div></div>
+    <div class="status" id="stB"></div>
+    <div class="disk"><span>Disk used</span><b id="diskB">0 GB</b></div>
+  </div>
+</div>
+
+<!-- light by design -->
+<div class="scene" id="light">
+  <div class="head" id="lh">Light by design.</div>
+  <div class="stats">
+    <div class="stat" id="s1"><b>5.7 MB</b><span>the whole installer</span></div>
+    <div class="stat" id="s2"><b>Rust</b><span>native, no browser inside</span></div>
+    <div class="stat" id="s3"><b>32</b><span>connections per file</span></div>
+  </div>
+</div>
+
+<div class="card" id="end">
+  <img src="../site/assets/logo.svg" alt="" id="eI">
+  <div class="promise" id="eP">Download at the speed you pay for.</div>
+  <div class="lede2" id="eL">SwiftDL. Free and open source for Windows, macOS and Linux.</div>
+  <div class="url" id="eU">swiftdl.harshhh.me</div>
+</div>
+<div id="fade"></div>
+<script>
+// "The Wait", second cut. Speed is the story: you pay for 300 Mbps and a
+// browser uses 5% of it. SwiftDL uses all of it, and, unlike download managers
+// that save parts and merge them, writes every part straight into its place.
+// Cut to "Montagem Ahora (Slowed)", 93.5 BPM: B(k) is beat k.
+//   Act 1  0    - B20  11:47 PM. The browser: 1.8 MB/s, 5% of your internet. The clock races.
+//   Act 2  B20  - B36  DROP. The same file in SwiftDL: 90% of your internet, done at 11:51.
+//   Act 3  B36  - B50  No merging: 8 .tmp files then "Assembling", against one file filled in place.
+//                      The big hit (B48) lands on "SwiftDL writes every part straight into place."
+//   Act 4  B50  - B56  Light by design: 5.7 MB, Rust, 32 connections.
+//   Act 5  B56  - B84  Morning: a video saved for offline; everything people download, in one place.
+//   Act 6  B84  -      SECOND DROP. Download at the speed you pay for.
+const BEAT = 60 / 93.5, B = (k) => 0.055 + k * BEAT;
+window.DURATION = B(84) + 6.5;
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const expo = (x) => (x >= 1 ? 1 : 1 - Math.pow(2, -10 * x));
+const cubic = (x) => 1 - Math.pow(1 - x, 3);
+const inOut = (x) => (x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const smooth = (x) => x * x * (3 - 2 * x);
+const lerp = (a, b, x) => a + (b - a) * x;
+const css = (el, o) => Object.assign(el.style, o);
+
+function show(el, t, a, b, { y = 24, blur = 12, inDur = .7, outDur = .45, scale = 0, x = "" } = {}) {
+  const i = expo(prog(t, a, a + inDur)), o = cubic(prog(t, b - outDur, b)), op = i * (1 - o);
+  css(el, { opacity: op, visibility: op > .001 ? "visible" : "hidden", filter: op > .001 && op < .999 ? `blur(${(1 - i) * blur + o * blur * .6}px)` : "none",
+    transform: `${x} translateY(${(1 - i) * y - o * y * .4}px) scale(${1 + scale * (1 - i)})` });
+}
+function pop(el, t, a, b) {
+  const i = expo(prog(t, a, a + .45)), o = cubic(prog(t, b - .3, b)), op = i * (1 - o);
+  css(el, { opacity: op, visibility: op > .001 ? "visible" : "hidden", transform: `scale(${lerp(.95, 1, i) - o * .03})` });
+}
+function note(el, t, a, b) {
+  const i = expo(prog(t, a, a + .5)), o = cubic(prog(t, b - .35, b)), op = i * (1 - o);
+  css(el, { opacity: op, visibility: op > .001 ? "visible" : "hidden", transform: `translateX(${(1 - i) * 420 + o * 420}px)` });
+}
+function keys(list, t) {
+  if (t <= list[0][0]) return list[0].slice(1);
+  for (let i = 1; i < list.length; i++) if (t <= list[i][0]) {
+    const [a, b] = [list[i - 1], list[i]], k = inOut(prog(t, a[0], b[0]));
+    return a.slice(1).map((v, j) => lerp(v, b[j + 1], k));
+  }
+  return list.at(-1).slice(1);
+}
+// a line of text that changes over time: [from, to, text]
+function lines(el, t, list, opts) {
+  const cur = list.find(([a, b]) => t >= a && t < b);
+  if (!cur) { css(el, { opacity: 0, visibility: "hidden" }); return; }
+  el.textContent = cur[2]; show(el, t, cur[0], cur[1], opts);
+}
+
+// ---------- the real UI ----------
+const W1 = $("win1"), W2 = $("win2"), APP = $("appw");
+const doc = (f) => f.contentDocument, win = (f) => f.contentWindow;
+function inFrame(frame, sel) {
+  const el = doc(frame)?.querySelector(sel);
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  return [frame.offsetLeft + r.left + r.width / 2, frame.offsetTop + r.top + r.height / 2];
+}
+const loaded = (f) => new Promise((r) => (f.contentDocument?.readyState === "complete" ? r() : f.addEventListener("load", r, { once: true })));
+const GB = 1024 ** 3, MB = 1024 ** 2, S1 = 5.9 * GB;
+window.ready = (async () => {
+  await document.fonts.ready;
+  await Promise.all([W1, W2, APP].map(loaded));
+  await Promise.all([...document.images].map((i) => i.decode().catch(() => {})));
+  await new Promise((r) => setTimeout(r, 400));
+  // The main window holds what the people this is for actually download.
+  const v = win(APP).__video, day = Date.now();
+  v.set(1, { status: "completed", downloaded: S1, size: S1, completedAt: day - 8 * 3600000 });
+  v.set(3, { filename: "llama-3.1-8b-instruct.Q4_K_M.gguf", size: 4.9 * GB, downloaded: 0, status: "downloading", category: "Other" });
+  v.set(4, { filename: "Lecture 12 - Linear Algebra.mp4", size: 380 * MB, category: "Video" });
+  v.set(5, { filename: "game-update-v2.4.pak", size: 18.6 * GB, downloaded: 0, status: "queued", error: null, category: "Other" });
+  v.set(6, { filename: "wedding-shoot-day1-4K.zip", size: 22.4 * GB, downloaded: 22.4 * GB, category: "Compressed" });
+  v.set(7, { filename: "imagenet-subset-train.tar", size: 7.2 * GB, downloaded: 7.2 * GB, category: "Compressed" });
+  // the merge scene's parts
+  $("partsA").innerHTML = Array.from({ length: 8 }, (_, i) => `<div class="part">part${i + 1}.tmp<div class="pb"><i></i></div></div>`).join("");
+  $("fbar").innerHTML = Array.from({ length: 16 }, () => `<div class="seg"><i></i></div>`).join("");
+})();
+
+// The engine's split, precomputed: a finished part takes half of the largest one left.
+const SIM = (() => {
+  let seed = 11; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  let segs = Array.from({ length: 8 }, (_, i) => ({ s: i / 8, p: i / 8, e: (i + 1) / 8, r: .6 + rnd() * .8 }));
+  const out = [];
+  for (let n = 0; n < 5000; n++) {
+    const done = segs.reduce((a, x) => a + (x.p - x.s), 0);
+    out.push({ done, segs: segs.map((x) => [x.s, x.p, x.e]).sort((a, b) => a[0] - b[0]) });
+    if (done >= .9999) break;
+    for (const x of segs) if (x.p < x.e) x.p = Math.min(x.e, x.p + .0004 * x.r);
+    const busy = segs.filter((x) => x.p < x.e);
+    if (busy.length < 8) {
+      const big = busy.sort((a, b) => (b.e - b.p) - (a.e - a.p))[0];
+      if (big && big.e - big.p > .01) { const m = big.p + (big.e - big.p) / 2; segs.push({ s: m, p: m, e: big.e, r: .6 + rnd() * .8 }); big.e = m; }
+    }
+  }
+  return out;
+})();
+const simAt = (frac) => { let lo = 0, hi = SIM.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (SIM[m].done < frac) lo = m + 1; else hi = m; } return SIM[lo]; };
+
+const PAGE = [240, 154];
+const BTN = [PAGE[0] + 1105, PAGE[1] + 522];
+const VBTN = [PAGE[0] + 920, PAGE[1] + 97];
+const ROW = (id) => `.row[data-id="${id}"]`;
+
+const CURSOR = [
+  [0.4, 1500, 880], [1.3, ...BTN], [2.4, ...BTN], [3.4, 1500, 900],
+  [B(19), 1500, 900], [B(20.4), W1, "#c-start"], [B(21.3), W1, "#c-start"], [B(22.4), W1, "[data-a=details]"], [B(24), W1, "[data-a=details]"],
+  [B(58), 1300, 800], [B(59.6), ...VBTN], [B(60.6), ...VBTN], [B(62), W2, "#c-start"], [B(63.4), W2, "#c-start"],
+  [B(70), W2, "#c-start"], [B(70.8), APP, ROW(6)], [B(71.5), APP, ROW(7)], [B(72.3), APP, ROW(8)], [B(73.3), APP, ROW(8)], [B(78), APP, ROW(8)],
+];
+const ACTIONS = [
+  [1.45, () => {}],
+  [B(21.4), () => doc(W1).querySelector("#c-start").click()],
+  [B(22.5), () => doc(W1).querySelector("[data-a=details]")?.click()],
+  [B(60.7), () => {}],
+  [B(63.5), () => doc(W2).querySelector("#c-start").click()],
+  [B(70.9), () => rowDown(6, false)],
+  [B(71.6), () => rowDown(7, true)],
+  [B(72.4), () => rowDown(8, true)],
+  [B(73.4), () => rowMenu(8)],
+];
+const CLICKS = ACTIONS.map((a) => a[0]);
+function rowDown(id, ctrl) {
+  doc(APP).querySelector(ROW(id))?.dispatchEvent(new (win(APP).MouseEvent)("mousedown", { bubbles: true, button: 0, detail: 1, ctrlKey: ctrl }));
+}
+function rowMenu(id) {
+  const el = doc(APP).querySelector(ROW(id)); if (!el) return;
+  const r = el.getBoundingClientRect();
+  el.dispatchEvent(new (win(APP).MouseEvent)("contextmenu", { bubbles: true, cancelable: true, clientX: r.left + r.width * .45, clientY: r.top + r.height / 2 }));
+}
+const point = (w) => (w.length === 3 && typeof w[2] === "string" ? inFrame(w[1], w[2]) || [960, 540] : [w[1], w[2]]);
+function cursorAt(t) {
+  if (t <= CURSOR[0][0]) return point(CURSOR[0]);
+  for (let i = 1; i < CURSOR.length; i++) if (t <= CURSOR[i][0]) {
+    const a = point(CURSOR[i - 1]), b = point(CURSOR[i]), k = inOut(prog(t, CURSOR[i - 1][0], CURSOR[i][0]));
+    const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1, arc = Math.sin(k * Math.PI) * Math.min(50, len * .1);
+    return [lerp(a[0], b[0], k) - (dy / len) * arc, lerp(a[1], b[1], k) + (dx / len) * arc];
+  }
+  return point(CURSOR.at(-1));
+}
+
+// The clock races while the browser crawls, and barely moves while SwiftDL works.
+function clockAt(t) {
+  if (t < B(20)) return -13 + 56 * inOut(prog(t, 2.6, B(16)));       // 11:47 PM -> 12:43 AM
+  if (t < B(56)) return -13 + 3 * prog(t, B(21.4), B(33));            // 11:47 -> 11:50
+  return 8 * 60 + 12 + 3 * prog(t, B(56), B(84));                     // 8:12 -> 8:15 AM
+}
+function clockText(m) {
+  m = Math.floor(m); const day = m < 0 ? "Thu Nov 26" : "Fri Nov 27";
+  const mm = ((m % 1440) + 1440) % 1440, h = Math.floor(mm / 60), min = mm % 60;
+  return `${day}  ${((h + 11) % 12) + 1}:${String(min).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+}
+
+let id1 = null, id2 = null, lastT = -1, done = 0, appTick = 0;
+const browserFrac = (t) => clamp(.002 + .968 * inOut(prog(t, 2.6, B(16))));
+const swiftFrac = (t) => (t < B(22) ? 0 : smooth(prog(t, B(22), B(33))));
+let swiftSpeed = 0;
+function feed(t) {
+  if (id1 != null) {
+    const frac = swiftFrac(t), complete = t >= B(33);
+    const ramp = inOut(prog(t, B(22), B(23.2)));
+    swiftSpeed = complete ? 0 : (2 + 31.6 * ramp + Math.sin(t * 5.3) * .6 * ramp) * MB;
+    const f = simAt(frac);
+    win(W1).__video.set(id1, complete
+      ? { status: "completed", downloaded: S1, size: S1, speed: 0, connections: 0, completedAt: Date.now(), segments: [] }
+      : { status: "downloading", size: S1, downloaded: Math.round(frac * S1), speed: swiftSpeed,
+          connections: t < B(22) ? 0 : f.segs.filter(([, p, e]) => p < e).length,
+          segments: f.segs.map(([s, p, e]) => [Math.round(s * S1), Math.round(p * S1), Math.round(e * S1)]) });
+  }
+  if (id2 != null) {
+    const S = 412 * MB, merging = t >= B(67) && t < B(67.8), complete = t >= B(67.8);
+    const f = merging || complete ? 1 : cubic(prog(t, B(63.8), B(67)));
+    win(W2).__video.set(id2, {
+      format: "bv*[height=1080]+ba/b[height=1080]/bv*[height<=1080]+ba/b", size: S, downloaded: Math.round(f * S), connections: merging || complete ? 0 : 16,
+      speed: merging || complete ? 0 : (38.6 + Math.sin(t * 4.7) * 2.1) * MB, note: merging ? "Joining video and audio" : null,
+      status: complete ? "completed" : "downloading", completedAt: complete ? Date.now() : null,
+    });
+  }
+}
+
+const CAM = [
+  [0, 960, 540, 1], [1.0, 960, 540, 1], [2.2, 1240, 460, 1.18], [3.4, 1480, 230, 1.62], [B(16), 1500, 220, 1.7], [B(19.6), 1500, 220, 1.82],
+  [B(20), 1244, 360, 1.42], [B(22.6), 1244, 360, 1.42], [B(35.5), 1244, 360, 1.42],
+  [B(56), 960, 540, 1.04], [B(58), 960, 540, 1], [B(59.4), 1100, 300, 1.35], [B(61), 1100, 300, 1.35], [B(62.6), 960, 480, 1.25], [B(67.6), 960, 480, 1.3],
+  [B(68.6), 1250, 260, 1.15], [B(69.6), 960, 540, 1], [B(78), 960, 540, 1.03], [B(84), 960, 540, 1.06],
+];
+const CAPTIONS = [
+  [B(16.2), B(19.5), "You pay for 300 Mbps. You get 15."],
+  [B(24), B(32.6), "Same file. All of your internet."],
+  [B(58.8), B(67.6), "Any video, saved for offline."],
+  [B(69.6), B(72.8), "Everything you download, in one place."],
+  [B(73.4), B(77.8), "Select a few. Act on all at once."],
+];
+
+function frame(t) {
+  $("morning").style.opacity = smooth(prog(t, B(54), B(58)));
+  $("clock").textContent = clockText(clockAt(t));
+  $("appname").textContent = t >= B(20) && t < B(36) ? "SwiftDL" : t >= B(68.6) && t < B(84) ? "SwiftDL" : "Google Chrome";
+
+  let [cx, cy, s] = keys(CAM, t);
+  const lean = inOut(prog(t, B(70), B(71))) * (1 - inOut(prog(t, B(76.5), B(78))));
+  if (lean > 0) { const r = inFrame(APP, ROW(7)) || [960, 540]; cx = lerp(cx, r[0] + 120, lean); cy = lerp(cy, r[1] + 40, lean); s = lerp(s, 1.5, lean); }
+  cx = clamp(cx, 960 / s, 1920 - 960 / s); cy = clamp(cy, 540 / s, 1080 - 540 / s);
+  $("cam").style.transform = `translate(${960 - cx * s}px, ${540 - cy * s}px) scale(${s})`;
+  const camOp = (1 - cubic(prog(t, B(35.6), B(36)))) + cubic(prog(t, B(55.6), B(56.4))) * (1 - cubic(prog(t, B(83.4), B(84))));
+  css($("cam"), { opacity: clamp(camOp), visibility: camOp > .001 ? "visible" : "hidden" });
+
+  // Act 1: Chrome
+  const onYT = t >= B(57);
+  const chromeOp = t < B(19.6) ? expo(prog(t, 0, .8)) : t < B(56) ? 0 : t < B(68.6) ? 1 - cubic(prog(t, B(68.2), B(68.8))) : 0;
+  css($("chrome"), { opacity: chromeOp, visibility: chromeOp > 0 ? "visible" : "hidden", transform: `translateY(${(1 - expo(prog(t, 0, .8))) * 40}px)` });
+  $("pg1").style.opacity = onYT ? 0 : 1; $("pg2").style.opacity = onYT ? 1 : 0;
+  $("tabtitle").textContent = onYT ? "Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film - YouTube" : "Download Ubuntu Desktop | Ubuntu";
+  $("favicon").src = onYT ? "out/pages/youtube-icon.png" : "out/pages/ubuntu-icon.png";
+  $("url").innerHTML = onYT ? `youtube.com<span class="path">/watch?v=aqz-KE-bpKQ</span>` : `ubuntu.com<span class="path">/download/desktop</span>`;
+  const bubOp = expo(prog(t, 1.65, 2.0)) * (t < B(19.6) ? 1 : 0);
+  css($("bubble"), { opacity: bubOp, visibility: bubOp > 0 ? "visible" : "hidden", transform: `scale(${lerp(.96, 1, expo(prog(t, 1.65, 2.0)))})` });
+  $("dlico").style.opacity = t >= 1.65 && t < B(19.6) ? 1 : 0;
+  const bf = browserFrac(t), gotMB = bf * 5.9 * 1024, left = Math.max(1, Math.round((1 - bf) * 56));
+  const brSpeed = 1.7 + Math.sin(t * 3.1) * .12;
+  $("bubMeta").textContent = `${brSpeed.toFixed(1)} MB/s · ${gotMB < 1024 ? gotMB.toFixed(0) + " MB" : (gotMB / 1024).toFixed(2) + " GB"} of 5.9 GB, ${left} minute${left === 1 ? "" : "s"} left`;
+  $("bubArc").setAttribute("stroke-dasharray", `${Math.max(.8, bf * 100)} 100`);
+  $("ringArc").setAttribute("stroke-dasharray", `${Math.max(.8, bf * 100)} 100`);
+  show($("vbtn"), t, B(58.6), B(68.6), { y: -6, blur: 4, inDur: .3 });
+
+  // the network meter: the browser's 5%, then SwiftDL's 90%
+  const mOp = t < B(36) ? expo(prog(t, 1.7, 2.2)) : 0;
+  css($("meter"), { opacity: mOp, visibility: mOp > 0 ? "visible" : "hidden" });
+  const plan = 37.5; // 300 Mbps in MB/s
+  const sp = t < B(20) ? (t >= 1.65 ? brSpeed : 0) : swiftSpeed / MB;
+  $("mspeed").textContent = sp.toFixed(1);
+  const use = Math.round((sp / plan) * 100);
+  $("mfill").style.width = `${clamp(sp / plan) * 100}%`;
+  $("mfill").style.background = t < B(20) ? "#a2a4ad" : "var(--blue)";
+  $("muse").textContent = t >= B(33) && t < B(36) ? "Done. 5.9 GB in 3 min 8 s." : `Using ${use}% of your internet`;
+
+  // Act 2: SwiftDL
+  pop(W1, t, B(20) + .02, B(35.8));
+  note($("n3"), t, B(33.4), B(35.7));
+
+  // Act 5: morning
+  pop(W2, t, B(61.2), B(68.6));
+  note($("n4"), t, B(68), B(73));
+  const aIn = expo(prog(t, B(68.6), B(69.8))), aOp = t < B(84) ? aIn : 0;
+  css(APP, { opacity: aOp, visibility: aOp > 0 ? "visible" : "hidden", transform: `translateY(${(1 - aIn) * 70}px) scale(${lerp(.95, 1, aIn)})` });
+
+  // cursor
+  const [mx, my] = cursorAt(t);
+  const cVis = t < B(19.6) ? expo(prog(t, .3, .7)) * (1 - cubic(prog(t, 3.2, 3.8)))
+    : t < B(36) ? expo(prog(t, B(19.8), B(20.2))) * (1 - cubic(prog(t, B(24), B(24.6))))
+    : expo(prog(t, B(57.6), B(58))) * (1 - cubic(prog(t, B(77.6), B(78.2))));
+  const near = CLICKS.find((c) => t >= c - .06 && t < c + .45);
+  const down = near ? Math.sin(prog(t, near - .06, near + .14) * Math.PI) : 0;
+  css($("cursor"), { opacity: cVis, transform: `translate(${mx}px, ${my}px) scale(${1 - down * .12})` });
+  const rq = near ? prog(t, near, near + .45) : 1;
+  css($("ring"), { left: `${mx + 1}px`, top: `${my + 1}px`, opacity: near ? (1 - rq) * cVis : 0, transform: `scale(${.35 + cubic(rq) * .9})` });
+  const cap = CAPTIONS.find(([a, b]) => t >= a && t < b);
+  if (cap) { $("cap").textContent = cap[2]; show($("cap"), t, cap[0], cap[1], { y: 26, x: "translateX(-50%)" }); }
+  else css($("cap"), { opacity: 0, visibility: "hidden" });
+
+  // Act 3: nothing to merge
+  const mgOp = cubic(prog(t, B(36), B(36.4))) * (1 - cubic(prog(t, B(49.6), B(50))));
+  css($("merge"), { opacity: mgOp, visibility: mgOp > 0 ? "visible" : "hidden" });
+  if (mgOp > 0) {
+    const k = smooth(prog(t, B(37), B(41.5)));
+    [...$("partsA").children].forEach((p, i) => { p.querySelector("i").style.width = `${clamp(k * (1 + ((i * 37) % 5) * .1)) * 100}%`; });
+    const asm = prog(t, B(41.6), B(50)) * .45;
+    $("stA").innerHTML = k >= 1 ? `<span>Assembling file… ${Math.round(asm * 100)}%</span><span class="sb"><i style="width:${asm * 100}%"></i></span>` : "";
+    $("diskA").textContent = `${(5.9 * k + 5.9 * asm).toFixed(1)} GB`;
+    const f = simAt(k), segs = [...$("fbar").children];
+    segs.forEach((el, i) => {
+      const sg = f.segs[i];
+      if (!sg || k <= 0) { el.style.display = "none"; return; }
+      const [a, p, e] = sg;
+      css(el, { display: "block", left: `${a * 100}%`, width: `${(e - a) * 100}%` });
+      el.firstChild.style.width = `${((p - a) / (e - a || 1)) * 100}%`;
+    });
+    $("pctB").textContent = `${Math.round(k * 100)}%`;
+    $("stB").innerHTML = k >= 1 ? `<span class="ok">✓ Ready. Nothing to merge.</span>` : "";
+    $("diskB").textContent = "5.9 GB";
+    lines($("mh1"), t, [[B(36.2), B(41.5), "Same file. Same speed."], [B(41.6), B(47.8), "Then one of them has to stitch."], [B(48), B(50.4), "SwiftDL writes every part in place."]], { y: 20 });
+    lines($("mh2"), t, [[B(36.5), B(41.5), "Both download 8 parts at once."], [B(41.9), B(47.8), "8 files copied into one, while your disk fills twice."], [B(48.3), B(50.4), "Nothing to merge. No second copy."]], { y: 12 });
+    const hit = expo(prog(t, B(48), B(48.5)));
+    css($("pA"), { opacity: 1 - hit * .45, transform: `scale(${1 - hit * .03})` });
+    css($("pB"), { transform: `scale(${1 + hit * .04})`, boxShadow: hit > 0 ? `0 0 0 ${hit * 2}px rgba(47,107,255,.5), 0 30px 70px -24px rgba(20,24,40,.3)` : "" });
+  }
+
+  // Act 4: light by design
+  const lOp = cubic(prog(t, B(50), B(50.3))) * (1 - cubic(prog(t, B(55.6), B(56))));
+  css($("light"), { opacity: lOp, visibility: lOp > 0 ? "visible" : "hidden" });
+  if (lOp > 0) { show($("lh"), t, B(50), 99, { y: 20 }); pop($("s1"), t, B(51), 99); pop($("s2"), t, B(52), 99); pop($("s3"), t, B(53), 99); }
+
+  // Act 6: the promise
+  const eIn = cubic(prog(t, B(84), B(84) + .35));
+  css($("end"), { opacity: eIn, visibility: eIn > 0 ? "visible" : "hidden" });
+  show($("eI"), t, B(84), 99, { scale: .12, y: 10 });
+  show($("eP"), t, B(84.6), 99, { y: 30, blur: 16 });
+  show($("eL"), t, B(86), 99, { y: 16 });
+  show($("eU"), t, B(87.2), 99, { y: 12 });
+  $("fade").style.opacity = Math.max(1 - prog(t, 0, .6), prog(t, window.DURATION - 1.2, window.DURATION));
+}
+
+window.seek = async (t) => {
+  if (t < lastT) throw new Error("the film only plays forward");
+  for (let s = Math.max(lastT, 0); s <= t + 1e-9; s += 1 / 30) {
+    const step = Math.min(s, t);
+    while (done < ACTIONS.length && ACTIONS[done][0] <= step) {
+      ACTIONS[done][1]();
+      done++;
+      await new Promise((r) => setTimeout(r, 0));
+      if (id1 == null && win(W1).__video.last()?.filename?.startsWith("ubuntu")) id1 = win(W1).__video.last().id;
+      if (id2 == null && win(W2).__video.last()?.filename?.includes("Bunny")) id2 = win(W2).__video.last().id;
+    }
+    while (appTick < Math.floor(step * 2)) { appTick++; if (step > B(68.6)) win(APP).__video.step(); }
+    if (s >= t) break;
+  }
+  feed(t);
+  await new Promise((r) => setTimeout(r, 0));
+  frame(t);
+  lastT = t;
+};
+</script>
+</body>
+</html>
