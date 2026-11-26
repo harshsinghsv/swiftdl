@@ -37,15 +37,17 @@ Browsers download every file over **a single connection**, and many servers cap 
 
 <p align="center"><img src="docs/assets/problem.png" width="820" alt="Chrome's download bubble: ubuntu-26.04.1-desktop-amd64.iso at under 2 MB/s, 56 minutes left" /></p>
 
-SwiftDL splits the same file across many connections at once, keeps every one of them busy until the last byte, and writes straight into the final file. Same file, same internet:
+SwiftDL splits the same file across many connections at once and keeps every one of them busy until the last byte. Many download managers save each part as a separate file and then spend time merging them, with the file briefly taking up twice the disk space. SwiftDL writes every part straight into its place in the final file, so when the last byte arrives, the file is ready. Same file, same internet:
 
 <p align="center"><img src="docs/assets/race.gif" width="820" alt="Same file, same internet: your browser on one connection takes 56 minutes, SwiftDL on eight connections takes 3 minutes 31 seconds" /></p>
 
 And it saves its progress every second, so a crash, a closed laptop or a dropped Wi-Fi connection never means starting over.
 
+It's light, too: the Windows installer is under 6 MB. The engine is written in Rust, and the app uses your system's own web view instead of bundling a browser.
+
 ## See it in action
 
-Click a download in your browser and SwiftDL takes it from there, with your cookies, so downloads behind a login still work. On video sites, the **Download video** button on the player lets you pick a quality, from 4K down to audio only:
+Click a download in your browser and SwiftDL takes it from there, with your cookies, so downloads behind a login still work. On video sites, the **Download video** button on the player lets you pick a quality, from 4K and HDR down to audio only:
 
 <p align="center"><img src="docs/assets/youtube.gif" width="820" alt="On a YouTube video, SwiftDL's Download video button opens a window with the quality set to 1080p60; the 412 MB video downloads and merges" /></p>
 
@@ -58,10 +60,11 @@ Everything lands in one place: live speed, every connection, queue, pause and re
 | Platform | Installer |
 | --- | --- |
 | **Windows** 10 and 11 | [`SwiftDL_x.y.z_x64-setup.exe`](https://github.com/harshsinghsv/swiftdl/releases/latest), installs per user, no admin rights needed |
+| **Windows on ARM** (experimental) | [`SwiftDL_x.y.z_arm64_installer.exe`](https://github.com/harshsinghsv/swiftdl/releases/latest) |
 | **macOS** (Apple silicon and Intel) | [`SwiftDL_x.y.z_universal.dmg`](https://github.com/harshsinghsv/swiftdl/releases/latest) |
 | **Linux** | [`.AppImage`, `.deb` or `.rpm`](https://github.com/harshsinghsv/swiftdl/releases/latest) |
 
-Then add the [browser extension](#browser-extension) so SwiftDL can catch your downloads.
+Then add the [browser extension](#browser-extension) so SwiftDL can catch your downloads. SwiftDL starts quietly in the tray when you sign in, so the extension always has it to hand downloads to (turn this off in **Settings → General**). It tells you when a new version is out, and on Windows installs it for you.
 
 > [!NOTE]
 > The official source for SwiftDL is [github.com/harshsinghsv/swiftdl](https://github.com/harshsinghsv/swiftdl). Download installers only from its [Releases page](https://github.com/harshsinghsv/swiftdl/releases).
@@ -100,7 +103,8 @@ SwiftDL checks the file before downloading: its real name, size, type and whethe
 
 - **Many connections per file**, up to 32.
 - **Dynamic segmentation:** when a connection finishes its part, it takes half of the biggest part left, so nothing sits idle near the end.
-- **No joining step:** the file is reserved up front and every connection writes straight into it.
+- **No merging step:** the file is reserved up front and every connection writes straight into it. No temporary part files, no "assembling" wait, no second copy on disk.
+- **Mirrors:** paste other links to the same file and the parts are shared between all of them. If one server fails, the others take over.
 
 </td>
 <td width="50%" valign="top">
@@ -111,14 +115,55 @@ SwiftDL checks the file before downloading: its real name, size, type and whethe
 
 **Also included**
 
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**Video**
+
+- **YouTube and most video sites,** in any quality from 4K and **HDR** down to audio only.
+- **Whole playlists:** pick the videos you want, as video or audio.
+- **Streams (HLS and DASH)** are fetched many pieces at a time, not one by one.
+- **Skip the window** if you like: start straight away at your usual quality.
+
+**Downloads**
+
 - **Resume anything.** Pause, quit, lose your connection or crash: SwiftDL continues where it stopped.
-- **Torrents and magnet links.** Pick the files you want; SwiftDL opens magnet links and .torrent files from anywhere.
-- **Download video button.** A button appears over video players and lists the video and audio files the page loaded.
-- **Queue and speed limit.** Choose how many downloads run at once and cap total bandwidth.
-- **Tidy by default.** Files are sorted into Video, Music, Programs, Compressed and Documents folders.
+- **Torrents and magnet links,** with the files you pick. FTP links and Metalink files too.
+- **Paste many links at once,** including patterns like `file[01-50].zip`.
+- **Find files on a page** and download the ones you want.
+- **Replace a dead link** and keep the parts already downloaded.
+- **Check the file** against a SHA-256 you paste in.
+- **Unpack archives** (`.zip`, `.tar.gz`, `.7z`) when they finish, if you want.
+- **File-hosting links** through Real-Debrid, AllDebrid or Premiumize, with your own account.
+
+</td>
+<td width="50%" valign="top">
+
+**Control**
+
+- **Queue and speed limit.** Choose how many downloads run at once, move one to the front, and cap total bandwidth.
+- **Schedule.** Hold the queue until a set time, then quit, sleep or shut down when everything is done.
+- **Select several downloads** and pause, resume or remove them together.
 - **Command palette.** Press <kbd>Ctrl</kbd> <kbd>K</kbd> to find a download or run any action.
-- **Lives in the tray.** Close the window and downloads keep going.
-- **Light and dark.** Follows your system, or pick one in Settings.
+- **Remote control.** An aria2-compatible API for tools like AriaNg and scripts, and a web page to follow downloads from your phone. Off by default, and protected by a secret.
+
+**Network**
+
+- **Proxies,** including SOCKS5, or your system's proxy settings.
+- **Send downloads out through one network adapter,** so if your VPN drops, downloads stop instead of leaking.
+- **Watch the clipboard** for links, if you turn it on.
+
+**Everyday**
+
+- **Lives in the tray** and starts with your computer. Close the window and downloads keep going.
+- **Progress on the taskbar button.**
+- **Tidy by default.** Files are sorted into Video, Music, Programs, Compressed and Documents folders.
+- **Light and dark,** and an interface size setting from 90 to 150%.
+
+</td>
+</tr>
+</table>
 
 <div align="center">
 <img src="docs/assets/app-light.png" alt="SwiftDL in light mode" width="1000" />
@@ -142,7 +187,7 @@ Eight connections finishing in exactly an eighth of the time shows the rebalanci
 
 ## Browser extension
 
-The SwiftDL extension works in **Chrome, Edge, Brave, Vivaldi and Firefox**:
+The SwiftDL extension works in **Chrome, Edge, Brave, Vivaldi and Firefox**, and in their forks such as Opera, Helium, Thorium, ungoogled-chromium, Zen, LibreWolf and Waterfox:
 
 - Sends browser downloads to SwiftDL, with your cookies and referrer.
 - Adds **Download with SwiftDL** to the right-click menu on links and media.
@@ -161,6 +206,8 @@ The SwiftDL extension works in **Chrome, Edge, Brave, Vivaldi and Firefox**:
 
 Use that folder rather than a copy: it stays in place while SwiftDL is installed and is refreshed when SwiftDL updates. If you don't have the app installed, `swiftdl-extension.zip` on the [latest release](https://github.com/harshsinghsv/swiftdl/releases/latest) has the same files.
 
+**Portable copy, or SwiftDL running as administrator?** The extension normally reaches SwiftDL through a helper that the installer registers with your browser. Where that isn't possible, turn on **Remote control** in SwiftDL's Settings and enter its port and secret under **Connect through a port instead** in the extension's popup.
+
 Once the extension is on the Chrome Web Store, SwiftDL will offer it automatically: Chrome, Edge and Brave show a one-time **New extension added** prompt and you click **Enable**. No browser lets an app install an extension silently.
 
 ## FAQ
@@ -172,9 +219,15 @@ When the server limits each connection, which many do, yes, by roughly the numbe
 </details>
 
 <details>
+<summary><b>How is it different from IDM?</b></summary>
+
+It's free, open source and runs on Windows, macOS and Linux. It also never merges: download managers like IDM save each part as a separate file and assemble them at the end, which takes time and briefly needs twice the disk space. SwiftDL writes every part straight into the final file.
+</details>
+
+<details>
 <summary><b>Can it download videos from YouTube?</b></summary>
 
-Yes, and from Vimeo, X, Reddit and other video sites. Click the **Download video** button on the player (or paste the link into **New download**) and pick a quality, from 4K down to audio only. These sites don't serve a plain file, so SwiftDL uses [yt-dlp](https://github.com/yt-dlp/yt-dlp) for them, plus ffmpeg to join the video and audio. Both are downloaded the first time you need them (on macOS and Linux, install ffmpeg with Homebrew or your package manager), and yt-dlp is kept up to date. Only download what you have the right to. DRM-protected video, like Netflix, will never be supported.
+Yes, and from Vimeo, X, Reddit and other video sites, including whole YouTube playlists. Click the **Download video** button on the player (or paste the link into **New download**) and pick a quality, from 4K and HDR down to audio only. These sites don't serve a plain file, so SwiftDL uses [yt-dlp](https://github.com/yt-dlp/yt-dlp) to find the video, downloads it itself over many connections, and uses ffmpeg to join the video and audio. Both are downloaded the first time you need them (on macOS and Linux, install ffmpeg with Homebrew or your package manager), and yt-dlp is kept up to date. Only download what you have the right to. DRM-protected video, like Netflix, will never be supported.
 </details>
 
 <details>
@@ -190,9 +243,15 @@ Yes, when they come from the browser extension. It passes the site's cookies, re
 </details>
 
 <details>
+<summary><b>Can I control it from my phone or a script?</b></summary>
+
+Yes. Turn on **Remote control** in Settings. SwiftDL then answers aria2's API, so tools like AriaNg and your own scripts can add and manage downloads, and it serves a small web page for following downloads from your phone. It's off by default, every call needs your secret, and it only listens on your computer unless you allow your local network.
+</details>
+
+<details>
 <summary><b>Does SwiftDL collect any data?</b></summary>
 
-No. It has no accounts, analytics or telemetry. It only connects to the servers you download from.
+No. It has no accounts, analytics or telemetry. It only connects to the servers you download from, and to GitHub to check for updates and to fetch yt-dlp and ffmpeg when you first need them.
 </details>
 
 <details>
@@ -219,8 +278,10 @@ cd app/src-tauri && cargo tauri dev
 | [`crates/cli`](crates/cli) | `swiftdl`, a command-line downloader built on the engine |
 | [`app/src-tauri`](app/src-tauri) | The desktop app: download manager, windows, tray and browser integration |
 | [`app/ui`](app/ui) | The interface |
-| [`extension`](extension) | The Chromium extension (Manifest V3) |
+| [`extension`](extension) | The browser extension (Manifest V3; the Firefox build is generated from it) |
 | [`tools`](tools) | A throttled test server and a native-messaging test client |
+| [`video`](video) | The launch films, rendered frame by frame from HTML |
+| [`packaging`](packaging) | Generates winget and Homebrew files for a release |
 
 Working on the interface only? It is TypeScript, built with Vite: run `npm install` and `npm run dev` in `app/`, then open http://localhost:5179. A simulated backend fills it with downloads, so no Rust build is needed. Run `npm run build` once before building the app with Cargo.
 
