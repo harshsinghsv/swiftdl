@@ -135,6 +135,7 @@ export interface Commands {
   open_file: [{ id: number }, void];
   open_folder: [{ id: number }, void];
   set_settings: [{ settings: Settings }, void];
+  set_zoom: [{ percent: number }, void];
   open_url: [{ url: string }, void];
   extension_dir: [void, string | null];
   open_extension_folder: [void, void];

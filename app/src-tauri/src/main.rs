@@ -34,6 +34,14 @@ pub fn show_main_window(app: &AppHandle) {
     }
 }
 
+/// Sets the main window's interface size, in percent (80-160).
+pub fn main_zoom(app: &AppHandle, percent: u32) {
+    let pct = if (80..=160).contains(&percent) { percent } else { 100 };
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.set_zoom(f64::from(pct) / 100.0);
+    }
+}
+
 /// SwiftDL lives in the tray like IDM: closing the main window keeps
 /// downloads (and browser integration) running.
 fn build_tray(app: &AppHandle) -> tauri::Result<()> {
@@ -108,6 +116,7 @@ fn main() {
             if let Some(main) = app.get_webview_window("main") {
                 windows::polish(&main);
             }
+            main_zoom(app.handle(), mgr.settings().ui_scale);
             if let Err(e) = build_tray(app.handle()) {
                 crate::log::line(&format!("tray icon not available: {e:#}"));
             }
@@ -142,6 +151,7 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::get_state,
+            commands::set_zoom,
             commands::probe_url,
             commands::probe_media,
             commands::probe_note,

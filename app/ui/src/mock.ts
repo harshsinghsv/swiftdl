@@ -153,6 +153,7 @@ declare global { interface Window { __video?: unknown } }
     resume: ({ ids }) => { items.filter((i) => ids.includes(i.id) && ["paused", "error"].includes(i.status)).forEach((i) => { i.status = "queued"; i.error = null; }); schedule(); },
     remove: ({ ids }) => { for (const id of ids) { const k = items.findIndex((i) => i.id === id); if (k >= 0) items.splice(k, 1); sims.delete(id); } },
     set_settings: ({ settings: s }) => { settings = s; schedule(); },
+    set_zoom: ({ percent }) => { document.documentElement.style.zoom = String(percent / 100); },
     pick_folder: () => "C:\\Users\\you\\Desktop",
     open_file: () => {}, open_folder: () => {}, open_url: () => {}, open_extension_folder: () => {},
     extension_dir: () => "C:\\Users\\you\\AppData\\Local\\SwiftDL\\extension",

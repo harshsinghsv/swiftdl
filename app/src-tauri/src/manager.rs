@@ -976,10 +976,38 @@ impl DownloadManager {
             *dirty = false;
             (items.clone(), active)
         };
+        self.taskbar_progress(&snapshot);
         let _ = self.app.emit("downloads", snapshot);
         if active && n % 10 == 0 {
             self.save();
         }
+    }
+
+    /// Overall progress of the running downloads on the main window's taskbar
+    /// button (#28): a bar while sizes are known, a pulse while they aren't.
+    fn taskbar_progress(&self, items: &[Item]) {
+        use tauri::Manager;
+        use tauri::window::{ProgressBarState, ProgressBarStatus};
+        static LAST: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(u64::MAX);
+        const NONE: u64 = u64::MAX;
+        const PULSE: u64 = u64::MAX - 1;
+        let running: Vec<&Item> = items.iter().filter(|i| i.status == Status::Downloading).collect();
+        let (done, total) = running.iter().filter_map(|i| i.size.filter(|s| *s > 0).map(|s| (i.downloaded.min(s), s))).fold((0u64, 0u64), |a, b| (a.0 + b.0, a.1 + b.1));
+        let state = match (running.is_empty(), total) {
+            (true, _) => NONE,
+            (false, 0) => PULSE,
+            (false, t) => done * 100 / t,
+        };
+        if LAST.swap(state, Ordering::Relaxed) == state {
+            return;
+        }
+        let Some(w) = self.app.get_webview_window("main") else { return };
+        let bar = match state {
+            NONE => ProgressBarState { status: Some(ProgressBarStatus::None), progress: None },
+            PULSE => ProgressBarState { status: Some(ProgressBarStatus::Indeterminate), progress: None },
+            p => ProgressBarState { status: Some(ProgressBarStatus::Normal), progress: Some(p) },
+        };
+        let _ = w.set_progress_bar(bar);
     }
 
     fn changed(&self) {

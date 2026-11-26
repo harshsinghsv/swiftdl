@@ -6,6 +6,20 @@ uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-11-26
+
+### Added
+- **Download progress on the taskbar button** (#28): a bar for the running
+  downloads, or a pulse while their sizes aren't known yet.
+
+### Fixed
+- **Downloads from the browser didn't arrive when SwiftDL ran as
+  administrator** (#16). With Remote control on, the browser helper now hands
+  downloads over through SwiftDL's port first, and the extension tries a port
+  set in its popup before the helper.
+- **Interface size above 100% cut off the bottom of the window** when it was
+  enlarged or maximized (#29). The whole page is now zoomed by the app.
+
 ## [0.5.0] - 2026-11-24
 
 ### Added

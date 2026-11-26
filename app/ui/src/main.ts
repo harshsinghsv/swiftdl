@@ -965,7 +965,9 @@ function nextPending() {
 
 // ---------- settings ----------
 // Interface size: the whole window scales (the download windows keep their size).
-const applyScale = (pct?: number) => { document.documentElement.style.zoom = String((pct && pct >= 80 && pct <= 160 ? pct : 100) / 100); };
+// The whole page is zoomed by the app: CSS zoom made the layout taller than the
+// window, cutting off its bottom when maximized (#29).
+const applyScale = (pct?: number) => { invoke("set_zoom", { percent: pct && pct >= 80 && pct <= 160 ? pct : 100 }).catch(() => {}); };
 let setScale = 100, setDebridProvider = "realdebrid", setVideoDef = "ask";
 function renderVideoDef() { $("set-videodef").querySelectorAll<HTMLElement>("[data-v]").forEach((b) => b.classList.toggle("on", b.dataset.v === setVideoDef)); }
 $("set-videodef").addEventListener("click", (e) => { const b = target(e).closest<HTMLElement>("[data-v]"); if (b) { setVideoDef = b.dataset.v!; renderVideoDef(); } });

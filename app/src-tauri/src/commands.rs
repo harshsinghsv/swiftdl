@@ -157,6 +157,13 @@ pub fn set_settings(m: Mgr, settings: Settings) {
     m.set_settings(settings);
 }
 
+/// Interface size (#29). Zooming the whole page, rather than with CSS zoom,
+/// keeps the layout inside the window at any size.
+#[tauri::command]
+pub fn set_zoom(m: Mgr, percent: u32) {
+    crate::main_zoom(m.app_handle(), percent);
+}
+
 #[tauri::command]
 pub fn open_url(m: Mgr, url: String) -> Result<(), String> {
     m.app_handle().opener().open_url(url, None::<&str>).map_err(|e| e.to_string())

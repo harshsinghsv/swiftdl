@@ -74,20 +74,19 @@ async function sendToApp({ url, referrer, filename, qualities, pick }) {
   // closed. A start that fails once (the computer is busy, an update is
   // still being written) usually works a moment later, so try twice.
   let reply;
+  // A port set up in the popup comes first: the helper can start and say "ok"
+  // and still not reach an app that runs as administrator (#16).
+  if (await apiConfig()) {
+    reply = await apiCall("swiftdl.download", [message]);
+    if (reply.ok) return;
+    await log(`local API failed, trying the helper: ${reply.error}`);
+  }
   try {
     reply = await chrome.runtime.sendNativeMessage(HOST, message);
   } catch (e) {
     await log(`native host failed, retrying: ${e?.message || e}`);
     await new Promise((r) => setTimeout(r, 800));
-    try {
-      reply = await chrome.runtime.sendNativeMessage(HOST, message);
-    } catch (e2) {
-      // No helper registered (a portable copy, say): the app's local API is
-      // another way in, when it is switched on and the secret was entered.
-      if (!(await apiConfig())) throw e2;
-      await log(`using the local API instead: ${e2?.message || e2}`);
-      reply = await apiCall("swiftdl.download", [message]);
-    }
+    reply = await chrome.runtime.sendNativeMessage(HOST, message);
   }
   if (!reply?.ok) throw new Error(reply?.error || "SwiftDL did not accept the download");
 }

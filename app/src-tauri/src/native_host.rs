@@ -60,6 +60,10 @@ fn handle(msg: &[u8]) -> Value {
             // The site won't give SwiftDL this file: say so, and the extension
             // lets the browser keep (and finish) its own download.
             Some(why) => json!({ "ok": false, "error": why }),
+            // The app's local API first, when it is switched on: it also
+            // reaches an app running as administrator, which handing the
+            // download to a new process can't (#16).
+            None if via_local_api(&v) => json!({ "ok": true }),
             None => reply(launch_app(&["--add", &URL_SAFE_NO_PAD.encode(msg)])),
         },
         Some("show") => reply(launch_app(&[])),
@@ -87,6 +91,64 @@ fn refused(v: &Value) -> Option<String> {
     let result = tauri::async_runtime::block_on(probe)?;
     let err = format!("{:#}", result.err()?);
     (err.starts_with("server returned") || err.starts_with("This link opens a web page")).then(|| format!("{err}. The browser keeps this download."))
+}
+
+/// Hands a download to the running app through its local API, if that is
+/// switched on. False when it is off, or the app didn't take it.
+fn via_local_api(download: &Value) -> bool {
+    let Ok(raw) = std::fs::read(crate::browser::data_dir().join("settings.json")) else { return false };
+    let Ok(s) = serde_json::from_slice::<crate::settings::Settings>(&raw) else { return false };
+    s.api_enabled && !s.api_secret.is_empty() && post_download(s.api_port, &s.api_secret, download)
+}
+
+fn post_download(port: u16, secret: &str, download: &Value) -> bool {
+    use std::net::{SocketAddr, TcpStream};
+    use std::time::Duration;
+    let body = json!({ "jsonrpc": "2.0", "id": 1, "method": "swiftdl.download", "params": [format!("token:{secret}"), download] }).to_string();
+    let Ok(mut conn) = TcpStream::connect_timeout(&SocketAddr::from(([127, 0, 0, 1], port)), Duration::from_secs(2)) else { return false };
+    let _ = conn.set_read_timeout(Some(Duration::from_secs(5)));
+    let request = format!(
+        "POST /jsonrpc HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+        body.len()
+    );
+    if conn.write_all(request.as_bytes()).is_err() {
+        return false;
+    }
+    let mut answer = String::new();
+    let _ = conn.read_to_string(&mut answer);
+    answer.split("\r\n\r\n").nth(1).and_then(|b| serde_json::from_str::<Value>(b).ok()).is_some_and(|v| v["result"] == "OK")
+}
+
+#[cfg(test)]
+mod api_tests {
+    use super::post_download;
+    use crate::manager::Item;
+    use serde_json::{Value, json};
+    use std::sync::{Arc, Mutex};
+
+    struct Taker(Mutex<Vec<Value>>);
+    impl crate::rpc::Backend for Taker {
+        fn items(&self) -> Vec<Item> { vec![] }
+        fn add(&self, _: &str, _: Option<&str>, _: Option<&str>) -> Result<u64, String> { Ok(1) }
+        fn pause(&self, _: u64) {}
+        fn resume(&self, _: u64) {}
+        fn remove(&self, _: u64) {}
+        fn hand_over(&self, d: Value) -> Result<(), String> {
+            self.0.lock().unwrap().push(d);
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn hands_a_download_to_the_running_app_through_its_port() {
+        let taker = Arc::new(Taker(Mutex::new(vec![])));
+        let port = crate::rpc::serve("127.0.0.1:0", taker.clone(), "s3cret".into(), false).unwrap();
+        let download = json!({ "type": "download", "url": "https://a.example/x.zip" });
+        assert!(!post_download(port, "wrong", &download), "the secret must match");
+        assert!(post_download(port, "s3cret", &download));
+        assert_eq!(taker.0.lock().unwrap()[0]["url"], "https://a.example/x.zip");
+        assert!(!post_download(1, "s3cret", &download), "nothing listening");
+    }
 }
 
 /// Starts the app with `args`. If it is already open, the single-instance
